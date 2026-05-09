@@ -49,7 +49,8 @@
         // Gemini 返回的音频播放队列
         let audioQueue = [];
         let isPlaying = false;
-        let playContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 }); // Gemini 输出通常是 24kHz
+        let playContext = null;
+        let nextPlayTime = 0;
 
         function log(message, type = 'system') {
             const p = document.createElement('div');
@@ -74,6 +75,7 @@
             ws.onopen = () => {
                 log('已连接到 Worker (正在初始化 Gemini...)', 'system');
                 btnConnect.textContent = '断开连接';
+                ensurePlaybackReady();
                 updateMicButtonState();
                 updateTextButtonState();
             };
@@ -132,6 +134,7 @@
                 log('请先连接 Gemini', 'system');
                 return;
             }
+            ensurePlaybackReady();
 
             const text = textInput.value.trim();
             if (!text) return;
@@ -169,9 +172,13 @@
                     log(`Gemini: ${part.text}`, 'gemini');
                 }
 
-                const audioData = part.inlineData?.data || part.inlineData?.inlineData?.data || part.inlineData?.audioData?.data;
+                const inlineData = part.inlineData || part.inline_data || part.audioData || part.audio_data;
+                const nestedInlineData = inlineData?.inlineData || inlineData?.inline_data || inlineData?.audioData || inlineData?.audio_data;
+                const audioData = inlineData?.data || nestedInlineData?.data;
                 if (audioData) {
-                    playAudioBase64(audioData);
+                    const mimeType = inlineData?.mimeType || inlineData?.mime_type || nestedInlineData?.mimeType || nestedInlineData?.mime_type;
+                    log(`收到音频块 mimeType=${mimeType || 'audio/pcm;rate=24000'} bytes≈${Math.floor(audioData.length * 3 / 4)}`, 'gemini');
+                    playAudioBase64(audioData, mimeType);
                 }
 
                 if (part.functionCall) {
@@ -210,6 +217,7 @@
                 log('请先点击“授权麦克风”', 'system');
                 return;
             }
+            ensurePlaybackReady();
             
             log('正在倾听...', 'user');
             btnMic.textContent = '松开结束';
@@ -277,7 +285,27 @@
         // ==========================================
         // 3. 接收音频与播放 (Output: 24kHz PCM)
         // ==========================================
-        function playAudioBase64(base64) {
+        function ensurePlaybackReady() {
+            if (!playContext) {
+                playContext = new (window.AudioContext || window.webkitAudioContext)();
+                nextPlayTime = playContext.currentTime;
+            }
+            if (playContext.state === 'suspended') {
+                playContext.resume().catch((error) => {
+                    log(`音频播放解锁失败: ${error.message || error}`, 'system');
+                });
+            }
+        }
+
+        function sampleRateFromMimeType(mimeType) {
+            const match = /rate=(\d+)/i.exec(mimeType || '');
+            return match ? Number(match[1]) : 24000;
+        }
+
+        function playAudioBase64(base64, mimeType) {
+            ensurePlaybackReady();
+            if (!playContext) return;
+
             // 1. Base64 -> ArrayBuffer -> Int16Array
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -285,7 +313,7 @@
             for (let i = 0; i < len; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
-            const pcm16 = new Int16Array(bytes.buffer);
+            const pcm16 = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
 
             // 2. Int16Array -> Float32Array (AudioContext 需要 Float32)
             const float32Data = new Float32Array(pcm16.length);
@@ -294,7 +322,8 @@
             }
 
             // 3. 创建 AudioBuffer
-            const audioBuffer = playContext.createBuffer(1, float32Data.length, 24000); // 24kHz
+            const outputSampleRate = sampleRateFromMimeType(mimeType);
+            const audioBuffer = playContext.createBuffer(1, float32Data.length, outputSampleRate);
             audioBuffer.copyToChannel(float32Data, 0);
 
             // 4. 加入播放队列
@@ -303,20 +332,25 @@
         }
 
         function playNextAudio() {
-            if (isPlaying || audioQueue.length === 0) return;
-            isPlaying = true;
+            ensurePlaybackReady();
+            if (!playContext || audioQueue.length === 0) return;
 
-            const buffer = audioQueue.shift();
-            const source = playContext.createBufferSource();
-            source.buffer = buffer;
-            source.connect(playContext.destination);
-            
-            source.onended = () => {
-                isPlaying = false;
-                playNextAudio(); // 播放下一个块
-            };
-            
-            source.start();
+            while (audioQueue.length > 0) {
+                const buffer = audioQueue.shift();
+                const source = playContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(playContext.destination);
+
+                const startAt = Math.max(nextPlayTime, playContext.currentTime + 0.02);
+                source.start(startAt);
+                nextPlayTime = startAt + buffer.duration;
+                isPlaying = true;
+                source.onended = () => {
+                    if (playContext.currentTime >= nextPlayTime - 0.05) {
+                        isPlaying = false;
+                    }
+                };
+            }
         }
 
         // 工具函数：ArrayBuffer 转 Base64
