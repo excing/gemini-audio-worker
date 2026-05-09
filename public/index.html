@@ -1,368 +1,91 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>Gemini 2.5 Flash Native Audio Demo</title>
-    <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
-        button { padding: 10px 20px; font-size: 16px; margin: 5px; cursor: pointer; }
-        #log { background: #f0f0f0; padding: 10px; height: 300px; overflow-y: auto; margin-top: 20px; border-radius: 5px;}
-        .system { color: gray; }
-        .user { color: blue; }
-        .gemini { color: green; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gemini 语音对话</title>
+  <style>
+    :root { color-scheme: dark; --bg:#080b13; --panel:rgba(255,255,255,.08); --line:rgba(255,255,255,.14); --text:#f7f8ff; --muted:#aab2c8; --brand:#7c5cff; --ok:#38d996; --warn:#ffca5c; --bad:#ff6b7a; }
+    * { box-sizing: border-box; } body { margin:0; min-height:100vh; display:grid; place-items:center; font:16px/1.5 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background:radial-gradient(circle at 20% 10%,#4530a8 0 18rem,transparent 32rem),radial-gradient(circle at 80% 20%,#0b7b86 0 16rem,transparent 31rem),var(--bg); }
+    main { width:min(1040px,100%); min-height:min(760px,100vh); padding:28px; display:grid; gap:18px; grid-template-rows:auto 1fr auto; }
+    header, .card, form { border:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06)); box-shadow:0 24px 80px rgba(0,0,0,.35); backdrop-filter:blur(24px); border-radius:28px; }
+    header { padding:22px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; } h1 { margin:0; font-size:clamp(24px,4vw,42px); letter-spacing:-.04em; } p { margin:.35rem 0 0; color:var(--muted); } .status { display:flex; gap:9px; align-items:center; white-space:nowrap; color:var(--muted); } .dot { width:11px; height:11px; border-radius:99px; background:var(--bad); box-shadow:0 0 22px currentColor; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); }
+    .card { min-height:420px; padding:20px; overflow:hidden; display:grid; grid-template-rows:1fr auto; } #chat { overflow:auto; padding:4px; display:flex; flex-direction:column; gap:14px; scroll-behavior:smooth; } .msg { max-width:82%; padding:13px 16px; border:1px solid var(--line); border-radius:20px; background:rgba(255,255,255,.08); animation:pop .18s ease-out; } .user { align-self:flex-end; background:linear-gradient(135deg,var(--brand),#23b8d5); } .ai { align-self:flex-start; } .role { display:block; margin-bottom:4px; font-size:12px; color:rgba(255,255,255,.7); } .live { margin-top:14px; padding:14px 16px; border-radius:20px; border:1px dashed var(--line); color:var(--muted); min-height:56px; }
+    form { padding:12px; display:grid; grid-template-columns:auto 1fr auto; gap:10px; } input { width:100%; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } button { border:0; border-radius:18px; padding:13px 18px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); }
+    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @media (max-width:700px) { main{padding:12px} header{display:block}.status{margin-top:12px} form{grid-template-columns:1fr 1fr} input{grid-column:1/-1; min-height:48px}.msg{max-width:94%} }
+  </style>
 </head>
 <body>
+  <main>
+    <header>
+      <div><h1>Gemini 语音对话</h1><p>支持文字、麦克风输入、AI 语音输出和实时字幕。</p></div>
+      <div class="status"><span id="dot" class="dot"></span><span id="status">未连接</span></div>
+    </header>
 
-    <h2>Gemini 2.5 Flash 语音实时对话</h2>
-    
-    <div>
-        <!-- 替换为你自己部署的 Worker WebSocket 地址 -->
-        <input type="text" id="wsUrl" value="wss://gemini-audio-worker.archer-zz.workers.dev/ws" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="wss://your-worker.workers.dev/ws">
-    </div>
-    
-    <button id="btnConnect">1. 连接 Gemini</button>
-    <button id="btnGrantMic">2. 授权麦克风</button>
-    <button id="btnMic" disabled>3. 按住说话 (Push to Talk)</button>
-    <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
-        <input id="textInput" type="text" placeholder="输入文字后回车发送" style="flex: 1; padding: 8px;">
-        <button id="btnSendText" disabled>发送文字</button>
-    </div>
+    <section class="card">
+      <div id="chat"></div>
+      <div id="caption" class="live">字幕会显示在这里。点击“连接”开始。</div>
+    </section>
 
-    <div id="log"></div>
+    <form id="form">
+      <button id="mic" type="button" disabled>🎙️ 按住说话</button>
+      <input id="text" autocomplete="off" placeholder="输入消息，或使用麦克风实时说话…" />
+      <button id="send" type="submit">连接</button>
+    </form>
+  </main>
 
-    <script>
-        const btnConnect = document.getElementById('btnConnect');
-        const btnGrantMic = document.getElementById('btnGrantMic');
-        const btnMic = document.getElementById('btnMic');
-        const btnSendText = document.getElementById('btnSendText');
-        const textInput = document.getElementById('textInput');
-        const logDiv = document.getElementById('log');
-        const wsUrlInput = document.getElementById('wsUrl');
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const chat = $('chat'), caption = $('caption'), statusEl = $('status'), dot = $('dot'), mic = $('mic'), text = $('text'), send = $('send');
+    let ws, audioCtx, micStream, processor, source, playbackTime = 0, connected = false, recording = false;
 
-        let ws = null;
-        let audioContext = null;
-        let mediaStream = null;
-        let processor = null;
-        let micPermissionGranted = false;
-        
-        // Gemini 返回的音频播放队列
-        let audioQueue = [];
-        let isPlaying = false;
-        let playContext = null;
-        let nextPlayTime = 0;
+    function setStatus(label, state = '') { statusEl.textContent = label; dot.className = `dot ${state}`; }
+    function add(role, content) { if (!content.trim()) return; const el = document.createElement('div'); el.className = `msg ${role === '我' ? 'user' : 'ai'}`; el.innerHTML = `<span class="role">${role}</span>${escapeHtml(content)}`; chat.append(el); chat.scrollTop = chat.scrollHeight; }
+    function escapeHtml(s) { return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    function b64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return btoa(s); }
 
-        function log(message, type = 'system') {
-            const p = document.createElement('div');
-            p.className = type;
-            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logDiv.appendChild(p);
-            logDiv.scrollTop = logDiv.scrollHeight;
-        }
+    async function connect() {
+      if (connected) return;
+      ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+      setStatus('连接中…', 'wait'); send.disabled = true;
+      ws.onopen = async () => { connected = true; await ensureAudio(); setStatus('初始化…', 'wait'); caption.textContent = '正在初始化 Gemini Live 会话…'; };
+      ws.onmessage = (event) => handleMessage(JSON.parse(event.data));
+      ws.onerror = () => setStatus('连接错误', '');
+      ws.onclose = () => { connected = recording = false; stopMic(); setStatus('已断开', ''); send.textContent = '连接'; send.disabled = false; mic.disabled = true; };
+    }
 
-        // ==========================================
-        // 1. WebSocket 通信逻辑
-        // ==========================================
-        btnConnect.onclick = () => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.close();
-                return;
-            }
+    function handleMessage(msg) {
+      if (msg.workerStatus) { caption.textContent = msg.workerStatus.message; return; }
+      if (msg.setupComplete) { setStatus('已连接', 'ok'); send.textContent = '发送'; send.disabled = false; mic.disabled = false; caption.textContent = '可以开始对话了。'; return; }
+      const content = msg.serverContent;
+      if (!content) return;
+      if (content.inputTranscription?.text) { caption.textContent = `我：${content.inputTranscription.text}`; add('我', content.inputTranscription.text); }
+      if (content.outputTranscription?.text) { caption.textContent = `Gemini：${content.outputTranscription.text}`; add('Gemini', content.outputTranscription.text); }
+      for (const part of content.modelTurn?.parts || []) if (part.inlineData?.data) playPcm(part.inlineData.data, part.inlineData.mimeType);
+      if (content.turnComplete) caption.textContent = '本轮回复完成。';
+    }
 
-            const url = wsUrlInput.value.trim();
-            ws = new WebSocket(url);
+    async function ensureAudio() { audioCtx ||= new AudioContext(); if (audioCtx.state !== 'running') await audioCtx.resume(); playbackTime = Math.max(playbackTime, audioCtx.currentTime); }
+    function playPcm(data, mime = 'audio/pcm;rate=24000') {
+      ensureAudio(); const rate = +(mime.match(/rate=(\d+)/)?.[1] || 24000), raw = atob(data), samples = raw.length / 2, buffer = audioCtx.createBuffer(1, samples, rate), out = buffer.getChannelData(0);
+      for (let i = 0; i < samples; i++) { const lo = raw.charCodeAt(i*2), hi = raw.charCodeAt(i*2+1); let v = (hi << 8) | lo; if (v & 0x8000) v -= 0x10000; out[i] = v / 32768; }
+      const node = audioCtx.createBufferSource(); node.buffer = buffer; node.connect(audioCtx.destination); playbackTime = Math.max(playbackTime, audioCtx.currentTime); node.start(playbackTime); playbackTime += buffer.duration;
+    }
 
-            ws.onopen = () => {
-                log('已连接到 Worker (正在初始化 Gemini...)', 'system');
-                btnConnect.textContent = '断开连接';
-                ensurePlaybackReady();
-                updateMicButtonState();
-                updateTextButtonState();
-            };
+    async function startMic() {
+      if (!connected || recording) return; await ensureAudio(); micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      source = audioCtx.createMediaStreamSource(micStream); processor = audioCtx.createScriptProcessor(4096, 1, 1); source.connect(processor); processor.connect(audioCtx.destination); recording = true; mic.classList.add('recording'); mic.textContent = '松开发送'; caption.textContent = '正在聆听…';
+      processor.onaudioprocess = (e) => sendPcm16k(e.inputBuffer.getChannelData(0), audioCtx.sampleRate);
+    }
+    function stopMic() { if (recording && connected && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } })); processor?.disconnect(); source?.disconnect(); micStream?.getTracks().forEach(t => t.stop()); processor = source = micStream = null; recording = false; mic.classList.remove('recording'); mic.textContent = '🎙️ 按住说话'; }
+    function sendPcm16k(input, inRate) {
+      if (!connected || ws.readyState !== WebSocket.OPEN) return; const ratio = inRate / 16000, len = Math.floor(input.length / ratio), pcm = new Int16Array(len);
+      for (let i = 0; i < len; i++) { const s = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)])); pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff; }
+      ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64(new Uint8Array(pcm.buffer)), mimeType: 'audio/pcm;rate=16000' } } }));
+    }
 
-            ws.onmessage = async (event) => {
-                // 读取 Blob 数据为 Text
-                const text = event.data instanceof Blob ? await event.data.text() : event.data;
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (error) {
-                    log(`收到非 JSON 消息: ${text.slice(0, 120)}`, 'system');
-                    return;
-                }
-
-                if (data.workerStatus) {
-                    const statusType = data.workerStatus.type === 'error' ? 'system' : 'gemini';
-                    log(`Worker: ${data.workerStatus.message}`, statusType);
-                    return;
-                }
-
-                handleGeminiMessage(data);
-            };
-
-            ws.onerror = () => {
-                log('WebSocket 发生错误，请检查地址、Worker 日志和 Gemini API Key', 'system');
-            };
-
-            ws.onclose = (event) => {
-                log(`连接已断开 code=${event.code} reason=${event.reason || '无'}`, 'system');
-                btnConnect.textContent = '1. 连接 Gemini';
-                btnMic.disabled = true;
-                btnSendText.disabled = true;
-            };
-        };
-
-        btnGrantMic.onclick = async () => {
-            try {
-                await ensureMicPermission();
-                log('麦克风已授权', 'system');
-                updateMicButtonState();
-            } catch (error) {
-                log(`麦克风授权失败: ${error.name || 'Error'} ${error.message || ''}`, 'system');
-            }
-        };
-
-        btnSendText.onclick = sendTextMessage;
-        textInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                sendTextMessage();
-            }
-        });
-
-        function sendTextMessage() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                log('请先连接 Gemini', 'system');
-                return;
-            }
-            ensurePlaybackReady();
-
-            const text = textInput.value.trim();
-            if (!text) return;
-
-            ws.send(JSON.stringify({
-                realtimeInput: {
-                    text: text
-                }
-            }));
-            log(`你: ${text}`, 'user');
-            textInput.value = '';
-        }
-
-        function updateTextButtonState() {
-            btnSendText.disabled = !(ws && ws.readyState === WebSocket.OPEN);
-        }
-
-        function updateMicButtonState() {
-            btnMic.disabled = !(ws && ws.readyState === WebSocket.OPEN && micPermissionGranted);
-            updateTextButtonState();
-        }
-
-        function handleGeminiMessage(data) {
-            const modelTurn = data?.serverContent?.modelTurn;
-            if (!modelTurn) {
-                if (data?.serverContent?.turnComplete) {
-                    log('Gemini 回复结束', 'system');
-                }
-                return;
-            }
-
-            const parts = modelTurn.parts || [];
-            for (const part of parts) {
-                if (part.text) {
-                    log(`Gemini: ${part.text}`, 'gemini');
-                }
-
-                const inlineData = part.inlineData || part.inline_data || part.audioData || part.audio_data;
-                const nestedInlineData = inlineData?.inlineData || inlineData?.inline_data || inlineData?.audioData || inlineData?.audio_data;
-                const audioData = inlineData?.data || nestedInlineData?.data;
-                if (audioData) {
-                    const mimeType = inlineData?.mimeType || inlineData?.mime_type || nestedInlineData?.mimeType || nestedInlineData?.mime_type;
-                    log(`收到音频块 mimeType=${mimeType || 'audio/pcm;rate=24000'} bytes≈${Math.floor(audioData.length * 3 / 4)}`, 'gemini');
-                    playAudioBase64(audioData, mimeType);
-                }
-
-                if (part.functionCall) {
-                    log(`Gemini functionCall: ${JSON.stringify(part.functionCall)}`, 'system');
-                }
-            }
-
-            if (data.serverContent.turnComplete) {
-                log('Gemini 回复结束', 'system');
-            }
-        }
-
-        async function ensureMicPermission() {
-            if (micPermissionGranted) return;
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error('当前浏览器或页面环境不支持麦克风，请使用 HTTPS 或 localhost');
-            }
-
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            stream.getTracks().forEach(track => track.stop());
-            micPermissionGranted = true;
-        }
-
-        // ==========================================
-        // 2. 麦克风采集与发送 (Input: 16kHz PCM)
-        // ==========================================
-        btnMic.onmousedown = startRecording;
-        btnMic.onmouseup = stopRecording;
-        btnMic.ontouchstart = startRecording;
-        btnMic.ontouchend = stopRecording;
-
-        async function startRecording(e) {
-            e.preventDefault();
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            if (!micPermissionGranted) {
-                log('请先点击“授权麦克风”', 'system');
-                return;
-            }
-            ensurePlaybackReady();
-            
-            log('正在倾听...', 'user');
-            btnMic.textContent = '松开结束';
-
-            // 请求麦克风权限 (强制采样率为 16000)
-            audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            } catch (error) {
-                log(`无法打开麦克风: ${error.name || 'Error'} ${error.message || ''}`, 'system');
-                btnMic.textContent = '3. 按住说话 (Push to Talk)';
-                return;
-            }
-            const source = audioContext.createMediaStreamSource(mediaStream);
-
-            // 使用 ScriptProcessorNode 提取原始 PCM 数据 (为了简便使用此方案，生产环境建议 AudioWorklet)
-            processor = audioContext.createScriptProcessor(4096, 1, 1);
-            
-            processor.onaudioprocess = (e) => {
-                const inputData = e.inputBuffer.getChannelData(0); // Float32Array (-1.0 to 1.0)
-                
-                // 将 Float32 转换为 Int16 (Gemini 需要 16-bit PCM)
-                const pcm16 = new Int16Array(inputData.length);
-                for (let i = 0; i < inputData.length; i++) {
-                    let s = Math.max(-1, Math.min(1, inputData[i]));
-                    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                }
-
-                // 将 Int16Array 转换为 Base64
-                const base64Audio = arrayBufferToBase64(pcm16.buffer);
-
-                // 发送给 Gemini API 的特定 JSON 格式
-                const message = {
-                    realtimeInput: {
-                        audio: {
-                            data: base64Audio,
-                            mimeType: "audio/pcm;rate=16000"
-                        }
-                    }
-                };
-                ws.send(JSON.stringify(message));
-            };
-
-            source.connect(processor);
-            processor.connect(audioContext.destination);
-        }
-
-        function stopRecording() {
-            log('结束倾听，等待回复...', 'user');
-            btnMic.textContent = '3. 按住说话 (Push to Talk)';
-            if (processor) {
-                processor.disconnect();
-                processor = null;
-            }
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-            }
-            if (audioContext) {
-                audioContext.close();
-                audioContext = null;
-            }
-        }
-
-        // ==========================================
-        // 3. 接收音频与播放 (Output: 24kHz PCM)
-        // ==========================================
-        function ensurePlaybackReady() {
-            if (!playContext) {
-                playContext = new (window.AudioContext || window.webkitAudioContext)();
-                nextPlayTime = playContext.currentTime;
-            }
-            if (playContext.state === 'suspended') {
-                playContext.resume().catch((error) => {
-                    log(`音频播放解锁失败: ${error.message || error}`, 'system');
-                });
-            }
-        }
-
-        function sampleRateFromMimeType(mimeType) {
-            const match = /rate=(\d+)/i.exec(mimeType || '');
-            return match ? Number(match[1]) : 24000;
-        }
-
-        function playAudioBase64(base64, mimeType) {
-            ensurePlaybackReady();
-            if (!playContext) return;
-
-            // 1. Base64 -> ArrayBuffer -> Int16Array
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            const pcm16 = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
-
-            // 2. Int16Array -> Float32Array (AudioContext 需要 Float32)
-            const float32Data = new Float32Array(pcm16.length);
-            for (let i = 0; i < pcm16.length; i++) {
-                float32Data[i] = pcm16[i] / (pcm16[i] < 0 ? 32768 : 32767);
-            }
-
-            // 3. 创建 AudioBuffer
-            const outputSampleRate = sampleRateFromMimeType(mimeType);
-            const audioBuffer = playContext.createBuffer(1, float32Data.length, outputSampleRate);
-            audioBuffer.copyToChannel(float32Data, 0);
-
-            // 4. 加入播放队列
-            audioQueue.push(audioBuffer);
-            playNextAudio();
-        }
-
-        function playNextAudio() {
-            ensurePlaybackReady();
-            if (!playContext || audioQueue.length === 0) return;
-
-            while (audioQueue.length > 0) {
-                const buffer = audioQueue.shift();
-                const source = playContext.createBufferSource();
-                source.buffer = buffer;
-                source.connect(playContext.destination);
-
-                const startAt = Math.max(nextPlayTime, playContext.currentTime + 0.02);
-                source.start(startAt);
-                nextPlayTime = startAt + buffer.duration;
-                isPlaying = true;
-                source.onended = () => {
-                    if (playContext.currentTime >= nextPlayTime - 0.05) {
-                        isPlaying = false;
-                    }
-                };
-            }
-        }
-
-        // 工具函数：ArrayBuffer 转 Base64
-        function arrayBufferToBase64(buffer) {
-            let binary = '';
-            const bytes = new Uint8Array(buffer);
-            const len = bytes.byteLength;
-            for (let i = 0; i < len; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            return window.btoa(binary);
-        }
-    </script>
+    $('form').onsubmit = async (e) => { e.preventDefault(); if (!connected) return connect(); const value = text.value.trim(); if (!value) return; ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } })); add('我', value); text.value = ''; };
+    mic.onpointerdown = startMic; mic.onpointerup = stopMic; mic.onpointercancel = stopMic; mic.onpointerleave = () => recording && stopMic();
+  </script>
 </body>
 </html>

@@ -50,16 +50,16 @@ export default {
       console.log('Connected to Gemini');
       const setupMessage = {
         setup: {
-          // 使用 gemini 2.5 flash 模型
-          model: "models/gemini-2.5-flash-native-audio-preview-12-2025",
+          model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
           generationConfig: {
-            // 指定要求模型返回音频流 (AUDIO)
-            responseModalities: ["AUDIO"]
+            responseModalities: ['AUDIO'],
           },
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
           systemInstruction: {
-            parts: [{ text: 'You are a helpful assistant.' }]
-          }
-        }
+            parts: [{ text: 'You are a concise, friendly Chinese voice assistant.' }]
+          },
+        },
       };
       geminiWs.send(JSON.stringify(setupMessage));
       geminiReady = true;
