@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Gemini 2.5 Flash Native Audio Demo</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 5px; cursor: pointer; }
+        #log { background: #f0f0f0; padding: 10px; height: 300px; overflow-y: auto; margin-top: 20px; border-radius: 5px;}
+        .system { color: gray; }
+        .user { color: blue; }
+        .gemini { color: green; }
+    </style>
+</head>
+<body>
+
+    <h2>Gemini 2.5 Flash 语音实时对话</h2>
+    
+    <div>
+        <!-- 替换为你自己部署的 Worker WebSocket 地址 -->
+        <input type="text" id="wsUrl" value="wss://gemini-audio-worker.archer-zz.workers.dev/ws" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="wss://your-worker.workers.dev/ws">
+    </div>
+    
+    <button id="btnConnect">1. 连接 Gemini</button>
+    <button id="btnMic" disabled>2. 按住说话 (Push to Talk)</button>
+
+    <div id="log"></div>
+
+    <script>
+        const btnConnect = document.getElementById('btnConnect');
+        const btnMic = document.getElementById('btnMic');
+        const logDiv = document.getElementById('log');
+        const wsUrlInput = document.getElementById('wsUrl');
+
+        let ws = null;
+        let audioContext = null;
+        let mediaStream = null;
+        let processor = null;
+        
+        // Gemini 返回的音频播放队列
+        let audioQueue = [];
+        let isPlaying = false;
+        let playContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 }); // Gemini 输出通常是 24kHz
+
+        function log(message, type = 'system') {
+            const p = document.createElement('div');
+            p.className = type;
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // ==========================================
+        // 1. WebSocket 通信逻辑
+        // ==========================================
+        btnConnect.onclick = () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+                return;
+            }
+
+            const url = wsUrlInput.value.trim();
+            ws = new WebSocket(url);
+
+            ws.onopen = () => {
+                log('已连接到 Worker (正在初始化 Gemini...)', 'system');
+                btnConnect.textContent = '断开连接';
+                btnMic.disabled = false;
+            };
+
+            ws.onmessage = async (event) => {
+                // 读取 Blob 数据为 Text
+                const text = event.data instanceof Blob ? await event.data.text() : event.data;
+                const data = JSON.parse(text);
+
+                // 解析 Gemini 的返回数据
+                if (data.serverContent && data.serverContent.modelTurn) {
+                    const parts = data.serverContent.modelTurn.parts;
+                    for (const part of parts) {
+                        // 1. 处理文本数据 (如果模型同时返回文本)
+                        if (part.text) {
+                            log(`Gemini: ${part.text}`, 'gemini');
+                        }
+                        // 2. 处理原生音频数据 (base64 PCM)
+                        if (part.inlineData && part.inlineData.data) {
+                            playAudioBase64(part.inlineData.data);
+                        }
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                log('连接已断开', 'system');
+                btnConnect.textContent = '1. 连接 Gemini';
+                btnMic.disabled = true;
+            };
+        };
+
+        // ==========================================
+        // 2. 麦克风采集与发送 (Input: 16kHz PCM)
+        // ==========================================
+        btnMic.onmousedown = startRecording;
+        btnMic.onmouseup = stopRecording;
+        btnMic.ontouchstart = startRecording;
+        btnMic.ontouchend = stopRecording;
+
+        async function startRecording(e) {
+            e.preventDefault();
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            
+            log('正在倾听...', 'user');
+            btnMic.textContent = '松开结束';
+
+            // 请求麦克风权限 (强制采样率为 16000)
+            audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = audioContext.createMediaStreamSource(mediaStream);
+
+            // 使用 ScriptProcessorNode 提取原始 PCM 数据 (为了简便使用此方案，生产环境建议 AudioWorklet)
+            processor = audioContext.createScriptProcessor(4096, 1, 1);
+            
+            processor.onaudioprocess = (e) => {
+                const inputData = e.inputBuffer.getChannelData(0); // Float32Array (-1.0 to 1.0)
+                
+                // 将 Float32 转换为 Int16 (Gemini 需要 16-bit PCM)
+                const pcm16 = new Int16Array(inputData.length);
+                for (let i = 0; i < inputData.length; i++) {
+                    let s = Math.max(-1, Math.min(1, inputData[i]));
+                    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+
+                // 将 Int16Array 转换为 Base64
+                const base64Audio = arrayBufferToBase64(pcm16.buffer);
+
+                // 发送给 Gemini API 的特定 JSON 格式
+                const message = {
+                    realtimeInput: {
+                        mediaChunks: [{
+                            mimeType: "audio/pcm;rate=16000",
+                            data: base64Audio
+                        }]
+                    }
+                };
+                ws.send(JSON.stringify(message));
+            };
+
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+        }
+
+        function stopRecording() {
+            log('结束倾听，等待回复...', 'user');
+            btnMic.textContent = '2. 按住说话 (Push to Talk)';
+            if (processor) {
+                processor.disconnect();
+                processor = null;
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+        }
+
+        // ==========================================
+        // 3. 接收音频与播放 (Output: 24kHz PCM)
+        // ==========================================
+        function playAudioBase64(base64) {
+            // 1. Base64 -> ArrayBuffer -> Int16Array
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const pcm16 = new Int16Array(bytes.buffer);
+
+            // 2. Int16Array -> Float32Array (AudioContext 需要 Float32)
+            const float32Data = new Float32Array(pcm16.length);
+            for (let i = 0; i < pcm16.length; i++) {
+                float32Data[i] = pcm16[i] / (pcm16[i] < 0 ? 32768 : 32767);
+            }
+
+            // 3. 创建 AudioBuffer
+            const audioBuffer = playContext.createBuffer(1, float32Data.length, 24000); // 24kHz
+            audioBuffer.copyToChannel(float32Data, 0);
+
+            // 4. 加入播放队列
+            audioQueue.push(audioBuffer);
+            playNextAudio();
+        }
+
+        function playNextAudio() {
+            if (isPlaying || audioQueue.length === 0) return;
+            isPlaying = true;
+
+            const buffer = audioQueue.shift();
+            const source = playContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(playContext.destination);
+            
+            source.onended = () => {
+                isPlaying = false;
+                playNextAudio(); // 播放下一个块
+            };
+            
+            source.start();
+        }
+
+        // 工具函数：ArrayBuffer 转 Base64
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+    </script>
+</body>
+</html>
