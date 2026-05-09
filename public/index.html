@@ -24,6 +24,10 @@
     <button id="btnConnect">1. 连接 Gemini</button>
     <button id="btnGrantMic">2. 授权麦克风</button>
     <button id="btnMic" disabled>3. 按住说话 (Push to Talk)</button>
+    <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+        <input id="textInput" type="text" placeholder="输入文字后回车发送" style="flex: 1; padding: 8px;">
+        <button id="btnSendText" disabled>发送文字</button>
+    </div>
 
     <div id="log"></div>
 
@@ -31,6 +35,8 @@
         const btnConnect = document.getElementById('btnConnect');
         const btnGrantMic = document.getElementById('btnGrantMic');
         const btnMic = document.getElementById('btnMic');
+        const btnSendText = document.getElementById('btnSendText');
+        const textInput = document.getElementById('textInput');
         const logDiv = document.getElementById('log');
         const wsUrlInput = document.getElementById('wsUrl');
 
@@ -69,12 +75,19 @@
                 log('已连接到 Worker (正在初始化 Gemini...)', 'system');
                 btnConnect.textContent = '断开连接';
                 updateMicButtonState();
+                updateTextButtonState();
             };
 
             ws.onmessage = async (event) => {
                 // 读取 Blob 数据为 Text
                 const text = event.data instanceof Blob ? await event.data.text() : event.data;
-                const data = JSON.parse(text);
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    log(`收到非 JSON 消息: ${text.slice(0, 120)}`, 'system');
+                    return;
+                }
 
                 if (data.workerStatus) {
                     const statusType = data.workerStatus.type === 'error' ? 'system' : 'gemini';
@@ -82,20 +95,7 @@
                     return;
                 }
 
-                // 解析 Gemini 的返回数据
-                if (data.serverContent && data.serverContent.modelTurn) {
-                    const parts = data.serverContent.modelTurn.parts;
-                    for (const part of parts) {
-                        // 1. 处理文本数据 (如果模型同时返回文本)
-                        if (part.text) {
-                            log(`Gemini: ${part.text}`, 'gemini');
-                        }
-                        // 2. 处理原生音频数据 (base64 PCM)
-                        if (part.inlineData && part.inlineData.data) {
-                            playAudioBase64(part.inlineData.data);
-                        }
-                    }
-                }
+                handleGeminiMessage(data);
             };
 
             ws.onerror = () => {
@@ -106,6 +106,7 @@
                 log(`连接已断开 code=${event.code} reason=${event.reason || '无'}`, 'system');
                 btnConnect.textContent = '1. 连接 Gemini';
                 btnMic.disabled = true;
+                btnSendText.disabled = true;
             };
         };
 
@@ -119,8 +120,68 @@
             }
         };
 
+        btnSendText.onclick = sendTextMessage;
+        textInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                sendTextMessage();
+            }
+        });
+
+        function sendTextMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('请先连接 Gemini', 'system');
+                return;
+            }
+
+            const text = textInput.value.trim();
+            if (!text) return;
+
+            ws.send(JSON.stringify({
+                realtimeInput: {
+                    text: text
+                }
+            }));
+            log(`你: ${text}`, 'user');
+            textInput.value = '';
+        }
+
+        function updateTextButtonState() {
+            btnSendText.disabled = !(ws && ws.readyState === WebSocket.OPEN);
+        }
+
         function updateMicButtonState() {
             btnMic.disabled = !(ws && ws.readyState === WebSocket.OPEN && micPermissionGranted);
+            updateTextButtonState();
+        }
+
+        function handleGeminiMessage(data) {
+            const modelTurn = data?.serverContent?.modelTurn;
+            if (!modelTurn) {
+                if (data?.serverContent?.turnComplete) {
+                    log('Gemini 回复结束', 'system');
+                }
+                return;
+            }
+
+            const parts = modelTurn.parts || [];
+            for (const part of parts) {
+                if (part.text) {
+                    log(`Gemini: ${part.text}`, 'gemini');
+                }
+
+                const audioData = part.inlineData?.data || part.inlineData?.inlineData?.data || part.inlineData?.audioData?.data;
+                if (audioData) {
+                    playAudioBase64(audioData);
+                }
+
+                if (part.functionCall) {
+                    log(`Gemini functionCall: ${JSON.stringify(part.functionCall)}`, 'system');
+                }
+            }
+
+            if (data.serverContent.turnComplete) {
+                log('Gemini 回复结束', 'system');
+            }
         }
 
         async function ensureMicPermission() {
@@ -183,10 +244,10 @@
                 // 发送给 Gemini API 的特定 JSON 格式
                 const message = {
                     realtimeInput: {
-                        mediaChunks: [{
-                            mimeType: "audio/pcm;rate=16000",
-                            data: base64Audio
-                        }]
+                        audio: {
+                            data: base64Audio,
+                            mimeType: "audio/pcm;rate=16000"
+                        }
                     }
                 };
                 ws.send(JSON.stringify(message));
