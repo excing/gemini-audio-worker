@@ -43,16 +43,17 @@ export default {
     const geminiWs = new WebSocket(geminiUrl);
     let geminiReady = false;
 
+    sendClientStatus({ type: 'info', message: '开始连接...' });
+
     // 4. 当与 Gemini 的连接建立时，发送 Setup 初始化消息
     geminiWs.addEventListener('open', () => {
       console.log('Connected to Gemini');
       const setupMessage = {
-        setup: {
-          // 使用 gemini 2.5 flash 模型
-          model: "models/gemini-2.5-flash-native-audio-preview-12-2025", 
-          generationConfig: {
-            // 指定要求模型返回音频流 (AUDIO)
-            responseModalities: ["AUDIO"] 
+        config: {
+          model: `models/gemini-2.5-flash-native-audio-preview-12-2025`,
+          responseModalities: ['AUDIO'],
+          systemInstruction: {
+            parts: [{ text: 'You are a helpful assistant.' }]
           }
         }
       };
