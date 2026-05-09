@@ -12,7 +12,7 @@ export default {
   async fetch(request, env) {
     const upgradeHeader = request.headers.get('Upgrade');
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
-      return new Response('Expected Upgrade: websocket', { status: 426 });
+      return env.ASSETS.fetch(request);
     }
 
     // 1. 创建 WebSocket 对 (client端返回给前端，server端在Worker内部处理)
@@ -22,10 +22,26 @@ export default {
     // 2. 接受前端的 WebSocket 连接
     server.accept();
 
-    // 3. 连接到 Gemini Multimodal Live API
+    const sendClientStatus = (payload) => {
+      if (server.readyState === WebSocket.OPEN) {
+        server.send(JSON.stringify({ workerStatus: payload }));
+      }
+    };
+
+    if (!env.GEMINI_API_KEY) {
+      sendClientStatus({ type: 'error', message: 'Worker 缺少 GEMINI_API_KEY secret' });
+      server.close(1011, 'Missing GEMINI_API_KEY');
+      return new Response(null, {
+        status: 101,
+        webSocket: client,
+      });
+    }
+
+    // 3. 连接到 Gemini Live API
     // 注意：Gemini Live API 使用专门的 bidi (双向) 端点
-    const geminiUrl = `wss://generativeai.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${env.GEMINI_API_KEY}`;
+    const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${env.GEMINI_API_KEY}`;
     const geminiWs = new WebSocket(geminiUrl);
+    let geminiReady = false;
 
     // 4. 当与 Gemini 的连接建立时，发送 Setup 初始化消息
     geminiWs.addEventListener('open', () => {
@@ -33,7 +49,7 @@ export default {
       const setupMessage = {
         setup: {
           // 使用 gemini 2.5 flash 模型
-          model: "gemini-2.5-flash-native-audio-preview-12-2025", 
+          model: "models/gemini-2.5-flash-native-audio-preview-12-2025", 
           generationConfig: {
             // 指定要求模型返回音频流 (AUDIO)
             responseModalities: ["AUDIO"] 
@@ -41,12 +57,19 @@ export default {
         }
       };
       geminiWs.send(JSON.stringify(setupMessage));
+      geminiReady = true;
+      sendClientStatus({ type: 'gemini_open', message: 'Gemini 连接已建立，setup 已发送' });
     });
 
     // 5. 消息透传：前端 -> Worker -> Gemini
     server.addEventListener('message', (event) => {
       if (geminiWs.readyState === WebSocket.OPEN) {
         geminiWs.send(event.data);
+      } else {
+        sendClientStatus({
+          type: 'warning',
+          message: `Gemini 尚未就绪，当前状态: ${geminiWs.readyState}`,
+        });
       }
     });
 
@@ -57,9 +80,24 @@ export default {
       }
     });
 
+    geminiWs.addEventListener('error', (event) => {
+      console.log('Gemini WebSocket error', event);
+      sendClientStatus({ type: 'error', message: 'Gemini WebSocket 发生错误，请查看 Worker 日志' });
+    });
+
     // 处理关闭事件
     server.addEventListener('close', () => geminiWs.close());
-    geminiWs.addEventListener('close', () => server.close());
+    geminiWs.addEventListener('close', (event) => {
+      const message = `Gemini 连接关闭 code=${event.code || 'unknown'} reason=${event.reason || '无'}`;
+      console.log(message);
+      sendClientStatus({
+        type: geminiReady ? 'gemini_close' : 'error',
+        message,
+        code: event.code,
+        reason: event.reason,
+      });
+      server.close(1011, message.slice(0, 120));
+    });
 
     // 返回 101 Switching Protocols
     return new Response(null, {

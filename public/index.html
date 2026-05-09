@@ -22,12 +22,14 @@
     </div>
     
     <button id="btnConnect">1. 连接 Gemini</button>
-    <button id="btnMic" disabled>2. 按住说话 (Push to Talk)</button>
+    <button id="btnGrantMic">2. 授权麦克风</button>
+    <button id="btnMic" disabled>3. 按住说话 (Push to Talk)</button>
 
     <div id="log"></div>
 
     <script>
         const btnConnect = document.getElementById('btnConnect');
+        const btnGrantMic = document.getElementById('btnGrantMic');
         const btnMic = document.getElementById('btnMic');
         const logDiv = document.getElementById('log');
         const wsUrlInput = document.getElementById('wsUrl');
@@ -36,6 +38,7 @@
         let audioContext = null;
         let mediaStream = null;
         let processor = null;
+        let micPermissionGranted = false;
         
         // Gemini 返回的音频播放队列
         let audioQueue = [];
@@ -65,13 +68,19 @@
             ws.onopen = () => {
                 log('已连接到 Worker (正在初始化 Gemini...)', 'system');
                 btnConnect.textContent = '断开连接';
-                btnMic.disabled = false;
+                updateMicButtonState();
             };
 
             ws.onmessage = async (event) => {
                 // 读取 Blob 数据为 Text
                 const text = event.data instanceof Blob ? await event.data.text() : event.data;
                 const data = JSON.parse(text);
+
+                if (data.workerStatus) {
+                    const statusType = data.workerStatus.type === 'error' ? 'system' : 'gemini';
+                    log(`Worker: ${data.workerStatus.message}`, statusType);
+                    return;
+                }
 
                 // 解析 Gemini 的返回数据
                 if (data.serverContent && data.serverContent.modelTurn) {
@@ -89,12 +98,41 @@
                 }
             };
 
-            ws.onclose = () => {
-                log('连接已断开', 'system');
+            ws.onerror = () => {
+                log('WebSocket 发生错误，请检查地址、Worker 日志和 Gemini API Key', 'system');
+            };
+
+            ws.onclose = (event) => {
+                log(`连接已断开 code=${event.code} reason=${event.reason || '无'}`, 'system');
                 btnConnect.textContent = '1. 连接 Gemini';
                 btnMic.disabled = true;
             };
         };
+
+        btnGrantMic.onclick = async () => {
+            try {
+                await ensureMicPermission();
+                log('麦克风已授权', 'system');
+                updateMicButtonState();
+            } catch (error) {
+                log(`麦克风授权失败: ${error.name || 'Error'} ${error.message || ''}`, 'system');
+            }
+        };
+
+        function updateMicButtonState() {
+            btnMic.disabled = !(ws && ws.readyState === WebSocket.OPEN && micPermissionGranted);
+        }
+
+        async function ensureMicPermission() {
+            if (micPermissionGranted) return;
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('当前浏览器或页面环境不支持麦克风，请使用 HTTPS 或 localhost');
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => track.stop());
+            micPermissionGranted = true;
+        }
 
         // ==========================================
         // 2. 麦克风采集与发送 (Input: 16kHz PCM)
@@ -107,13 +145,23 @@
         async function startRecording(e) {
             e.preventDefault();
             if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            if (!micPermissionGranted) {
+                log('请先点击“授权麦克风”', 'system');
+                return;
+            }
             
             log('正在倾听...', 'user');
             btnMic.textContent = '松开结束';
 
             // 请求麦克风权限 (强制采样率为 16000)
             audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (error) {
+                log(`无法打开麦克风: ${error.name || 'Error'} ${error.message || ''}`, 'system');
+                btnMic.textContent = '3. 按住说话 (Push to Talk)';
+                return;
+            }
             const source = audioContext.createMediaStreamSource(mediaStream);
 
             // 使用 ScriptProcessorNode 提取原始 PCM 数据 (为了简便使用此方案，生产环境建议 AudioWorklet)
@@ -150,7 +198,7 @@
 
         function stopRecording() {
             log('结束倾听，等待回复...', 'user');
-            btnMic.textContent = '2. 按住说话 (Push to Talk)';
+            btnMic.textContent = '3. 按住说话 (Push to Talk)';
             if (processor) {
                 processor.disconnect();
                 processor = null;
