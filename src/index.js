@@ -49,9 +49,13 @@ export default {
     geminiWs.addEventListener('open', () => {
       console.log('Connected to Gemini');
       const setupMessage = {
-        config: {
-          model: `models/gemini-2.5-flash-native-audio-preview-12-2025`,
-          responseModalities: ['AUDIO'],
+        setup: {
+          // 使用 gemini 2.5 flash 模型
+          model: "models/gemini-2.5-flash-native-audio-preview-12-2025",
+          generationConfig: {
+            // 指定要求模型返回音频流 (AUDIO)
+            responseModalities: ["AUDIO"]
+          },
           systemInstruction: {
             parts: [{ text: 'You are a helpful assistant.' }]
           }
