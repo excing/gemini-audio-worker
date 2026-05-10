@@ -88,7 +88,7 @@ export default {
         if (rawData instanceof Blob) {
           rawData = await rawData.text(); // Convert Blob to string
         }
-        server.send(JSON.parse(rawData));
+        server.send(rawData);
         } catch (error) {
           sendClientStatus({
             type: 'warning',
