@@ -81,7 +81,7 @@ export default {
     // 6. 消息透传：Gemini -> Worker -> 前端
     geminiWs.addEventListener('message', (event) => {
       if (server.readyState === WebSocket.OPEN) {
-        server.send(event.data);
+        server.send(JSON.parse(event.data));
       }
     });
 
