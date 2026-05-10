@@ -10,9 +10,9 @@
     main { width:min(1040px,100%); min-height:min(760px,100vh); padding:28px; display:grid; gap:18px; grid-template-rows:auto 1fr auto; }
     header, .card, form { border:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06)); box-shadow:0 24px 80px rgba(0,0,0,.35); backdrop-filter:blur(24px); border-radius:28px; }
     header { padding:22px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; } h1 { margin:0; font-size:clamp(24px,4vw,42px); letter-spacing:-.04em; } p { margin:.35rem 0 0; color:var(--muted); } .status { display:flex; gap:9px; align-items:center; white-space:nowrap; color:var(--muted); } .dot { width:11px; height:11px; border-radius:99px; background:var(--bad); box-shadow:0 0 22px currentColor; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); }
-    .card { min-height:420px; padding:20px; overflow:hidden; display:grid; grid-template-rows:1fr auto; } #chat { overflow:auto; padding:4px; display:flex; flex-direction:column; gap:14px; scroll-behavior:smooth; } .msg { max-width:82%; padding:13px 16px; border:1px solid var(--line); border-radius:20px; background:rgba(255,255,255,.08); animation:pop .18s ease-out; } .user { align-self:flex-end; background:linear-gradient(135deg,var(--brand),#23b8d5); } .ai { align-self:flex-start; } .role { display:block; margin-bottom:4px; font-size:12px; color:rgba(255,255,255,.7); } .live { margin-top:14px; padding:14px 16px; border-radius:20px; border:1px dashed var(--line); color:var(--muted); min-height:56px; }
+    .card { min-height:420px; padding:20px; overflow:hidden; display:grid; grid-template-rows:1fr auto; } #chat { overflow:auto; padding:4px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; } .group { max-width:82%; display:flex; flex-direction:column; gap:4px; animation:pop .18s ease-out; } .group.user { align-self:flex-end; align-items:flex-end; } .group.ai { align-self:flex-start; align-items:flex-start; } .role { padding:0 6px; font-size:12px; color:rgba(255,255,255,.68); } .msg { padding:10px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); } .user .msg { background:linear-gradient(135deg,var(--brand),#23b8d5); } .group .msg + .msg { margin-top:0; } .live { margin-top:14px; padding:14px 16px; border-radius:20px; border:1px dashed var(--line); color:var(--muted); min-height:56px; }
     form { padding:12px; display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:10px; } .input-wrap { flex:1 1 auto; min-width:120px; } .actions { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; } input { width:100%; min-height:48px; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } button { flex:0 0 auto; min-width:48px; min-height:48px; border:0; border-radius:18px; padding:0 14px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-size:20px; font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); }
-    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @media (max-width:700px) { main{padding:12px} header{display:block}.status{margin-top:12px}.msg{max-width:94%} }
+    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @media (max-width:700px) { main{padding:12px} header{display:block}.status{margin-top:12px}.group{max-width:94%} }
   </style>
 </head>
 <body>
@@ -41,9 +41,33 @@
     const $ = (id) => document.getElementById(id);
     const chat = $('chat'), caption = $('caption'), statusEl = $('status'), dot = $('dot'), mic = $('mic'), text = $('text'), send = $('send'), connectBtn = $('connect');
     let ws, audioCtx, micStream, processor, source, playbackTime = 0, connected = false, recording = false;
+    let lastGroup, inputDraft = '', outputDraft = '';
 
     function setStatus(label, state = '') { statusEl.textContent = label; dot.className = `dot ${state}`; }
-    function add(role, content) { if (!content.trim()) return; const el = document.createElement('div'); el.className = `msg ${role === '我' ? 'user' : 'ai'}`; el.innerHTML = `<span class="role">${role}</span>${escapeHtml(content)}`; chat.append(el); chat.scrollTop = chat.scrollHeight; }
+    function add(role, content) {
+      if (!content.trim()) return;
+      const type = role === '我' ? 'user' : 'ai';
+      if (!lastGroup || lastGroup.dataset.role !== role) {
+        lastGroup = document.createElement('div');
+        lastGroup.className = `group ${type}`;
+        lastGroup.dataset.role = role;
+        lastGroup.innerHTML = `<span class="role">${role}</span>`;
+        chat.append(lastGroup);
+      }
+      const el = document.createElement('div');
+      el.className = 'msg';
+      el.textContent = content.trim();
+      lastGroup.append(el);
+      chat.scrollTop = chat.scrollHeight;
+    }
+    function addTranscript(role, text, flush = false) {
+      const isUser = role === '我';
+      let draft = (isUser ? inputDraft : outputDraft) + text;
+      const parts = draft.match(/[^。！？!?；;\n]+[。！？!?；;\n]+|[^。！？!?；;\n]+$/g) || [];
+      const pending = !flush && parts.length && !/[。！？!?；;\n]$/.test(parts.at(-1)) ? parts.pop() : '';
+      parts.forEach(part => add(role, part));
+      if (isUser) inputDraft = pending; else outputDraft = pending;
+    }
     function escapeHtml(s) { return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
     function b64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return btoa(s); }
 
@@ -58,15 +82,14 @@
     }
 
     function handleMessage(msg) {
-      console.log('handleMessage:', msg);
       if (msg.workerStatus) { caption.textContent = msg.workerStatus.message; return; }
       if (msg.setupComplete) { setStatus('已连接', 'ok'); send.disabled = false; mic.disabled = false; caption.textContent = '可以开始对话了。'; return; }
       const content = msg.serverContent;
       if (!content) return;
-      if (content.inputTranscription?.text) { caption.textContent = `我：${content.inputTranscription.text}`; add('我', content.inputTranscription.text); }
-      if (content.outputTranscription?.text) { caption.textContent = `Gemini：${content.outputTranscription.text}`; add('Gemini', content.outputTranscription.text); }
+      if (content.inputTranscription?.text) { caption.textContent = `我：${inputDraft}${content.inputTranscription.text}`; addTranscript('我', content.inputTranscription.text); }
+      if (content.outputTranscription?.text) { caption.textContent = `Gemini：${outputDraft}${content.outputTranscription.text}`; addTranscript('Gemini', content.outputTranscription.text); }
       for (const part of content.modelTurn?.parts || []) if (part.inlineData?.data) playPcm(part.inlineData.data, part.inlineData.mimeType);
-      if (content.turnComplete) caption.textContent = '本轮回复完成。';
+      if (content.turnComplete) { addTranscript('我', '', true); addTranscript('Gemini', '', true); caption.textContent = '本轮回复完成。'; lastGroup = null; inputDraft = outputDraft = ''; }
     }
 
     async function ensureAudio() { audioCtx ||= new AudioContext(); if (audioCtx.state !== 'running') await audioCtx.resume(); playbackTime = Math.max(playbackTime, audioCtx.currentTime); }
@@ -88,7 +111,7 @@
       ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64(new Uint8Array(pcm.buffer)), mimeType: 'audio/pcm;rate=16000' } } }));
     }
 
-    $('form').onsubmit = async (e) => { e.preventDefault(); if (!connected) return; const value = text.value.trim(); if (!value) return; ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } })); add('我', value); text.value = ''; };
+    $('form').onsubmit = async (e) => { e.preventDefault(); if (!connected) return; const value = text.value.trim(); if (!value) return; ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } })); lastGroup = null; add('我', value); lastGroup = null; text.value = ''; };
     connectBtn.onclick = () => connected ? ws.close(1000, 'User disconnected') : connect();
     mic.onpointerdown = startMic; mic.onpointerup = stopMic; mic.onpointercancel = stopMic; mic.onpointerleave = () => recording && stopMic();
   </script>
