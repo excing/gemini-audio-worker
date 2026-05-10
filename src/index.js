@@ -81,13 +81,20 @@ export default {
     // 6. 消息透传：Gemini -> Worker -> 前端
     geminiWs.addEventListener('message', (event) => {
       if (server.readyState === WebSocket.OPEN) {
-        server.send(JSON.parse(event.data));
+        try {
+          server.send(JSON.parse(event.data));
+        } catch (error) {
+          sendClientStatus({
+            type: 'warning',
+            message: `Gemini message: ${error.message || error}`,
+          });
+        }
       }
     });
 
     geminiWs.addEventListener('error', (event) => {
       console.log('Gemini WebSocket error', event);
-      sendClientStatus({ type: 'error', message: 'Gemini WebSocket 发生错误，请查看 Worker 日志' });
+      sendClientStatus({ type: 'error', message: `Gemini WebSocket 发生错误: ${event}` });
     });
 
     // 处理关闭事件
