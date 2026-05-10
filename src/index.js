@@ -82,7 +82,13 @@ export default {
     geminiWs.addEventListener('message', (event) => {
       if (server.readyState === WebSocket.OPEN) {
         try {
-          server.send(JSON.parse(event.data));
+        let rawData = event.data;
+
+        // Check if the data is a Blob
+        if (rawData instanceof Blob) {
+          rawData = await rawData.text(); // Convert Blob to string
+        }
+        server.send(JSON.parse(rawData));
         } catch (error) {
           sendClientStatus({
             type: 'warning',
