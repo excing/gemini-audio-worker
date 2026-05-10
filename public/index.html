@@ -11,7 +11,7 @@
     header, .card, form { border:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06)); box-shadow:0 24px 80px rgba(0,0,0,.35); backdrop-filter:blur(24px); border-radius:28px; }
     header { padding:22px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; } h1 { margin:0; font-size:clamp(24px,4vw,42px); letter-spacing:-.04em; } p { margin:.35rem 0 0; color:var(--muted); } .status { display:flex; gap:9px; align-items:center; white-space:nowrap; color:var(--muted); } .dot { width:11px; height:11px; border-radius:99px; background:var(--bad); box-shadow:0 0 22px currentColor; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); }
     .card { min-height:420px; padding:20px; overflow:hidden; display:grid; grid-template-rows:1fr auto; } #chat { overflow:auto; padding:4px; display:flex; flex-direction:column; gap:14px; scroll-behavior:smooth; } .msg { max-width:82%; padding:13px 16px; border:1px solid var(--line); border-radius:20px; background:rgba(255,255,255,.08); animation:pop .18s ease-out; } .user { align-self:flex-end; background:linear-gradient(135deg,var(--brand),#23b8d5); } .ai { align-self:flex-start; } .role { display:block; margin-bottom:4px; font-size:12px; color:rgba(255,255,255,.7); } .live { margin-top:14px; padding:14px 16px; border-radius:20px; border:1px dashed var(--line); color:var(--muted); min-height:56px; }
-    form { padding:12px; display:grid; grid-template-columns:auto 1fr auto; gap:10px; } input { width:100%; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } button { border:0; border-radius:18px; padding:13px 18px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); }
+    form { padding:12px; display:grid; grid-template-columns:auto 1fr auto auto; gap:10px; } input { width:100%; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } button { border:0; border-radius:18px; padding:13px 18px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @media (max-width:700px) { main{padding:12px} header{display:block}.status{margin-top:12px} form{grid-template-columns:1fr 1fr} input{grid-column:1/-1; min-height:48px}.msg{max-width:94%} }
   </style>
 </head>
@@ -30,13 +30,14 @@
     <form id="form">
       <button id="mic" type="button" disabled>🎙️ 按住说话</button>
       <input id="text" autocomplete="off" placeholder="输入消息，或使用麦克风实时说话…" />
-      <button id="send" type="submit">连接</button>
+      <button id="send" type="submit" disabled>发送</button>
+      <button id="connect" type="button">连接</button>
     </form>
   </main>
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const chat = $('chat'), caption = $('caption'), statusEl = $('status'), dot = $('dot'), mic = $('mic'), text = $('text'), send = $('send');
+    const chat = $('chat'), caption = $('caption'), statusEl = $('status'), dot = $('dot'), mic = $('mic'), text = $('text'), send = $('send'), connectBtn = $('connect');
     let ws, audioCtx, micStream, processor, source, playbackTime = 0, connected = false, recording = false;
 
     function setStatus(label, state = '') { statusEl.textContent = label; dot.className = `dot ${state}`; }
@@ -47,17 +48,17 @@
     async function connect() {
       if (connected) return;
       ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
-      setStatus('连接中…', 'wait'); send.disabled = true;
-      ws.onopen = async () => { connected = true; await ensureAudio(); setStatus('初始化…', 'wait'); caption.textContent = '正在初始化 Gemini Live 会话…'; };
+      setStatus('连接中…', 'wait'); connectBtn.disabled = true;
+      ws.onopen = async () => { connected = true; await ensureAudio(); setStatus('初始化…', 'wait'); connectBtn.textContent = '断开连接'; connectBtn.classList.add('off'); connectBtn.disabled = false; caption.textContent = '正在初始化 Gemini Live 会话…'; };
       ws.onmessage = (event) => handleMessage(JSON.parse(event.data));
       ws.onerror = () => setStatus('连接错误', '');
-      ws.onclose = () => { connected = recording = false; stopMic(); setStatus('已断开', ''); send.textContent = '连接'; send.disabled = false; mic.disabled = true; };
+      ws.onclose = () => { connected = recording = false; stopMic(); setStatus('已断开', ''); connectBtn.textContent = '连接'; connectBtn.classList.remove('off'); connectBtn.disabled = false; send.disabled = true; mic.disabled = true; };
     }
 
     function handleMessage(msg) {
       console.log('handleMessage:', msg);
       if (msg.workerStatus) { caption.textContent = msg.workerStatus.message; return; }
-      if (msg.setupComplete) { setStatus('已连接', 'ok'); send.textContent = '发送'; send.disabled = false; mic.disabled = false; caption.textContent = '可以开始对话了。'; return; }
+      if (msg.setupComplete) { setStatus('已连接', 'ok'); send.disabled = false; mic.disabled = false; caption.textContent = '可以开始对话了。'; return; }
       const content = msg.serverContent;
       if (!content) return;
       if (content.inputTranscription?.text) { caption.textContent = `我：${content.inputTranscription.text}`; add('我', content.inputTranscription.text); }
@@ -85,7 +86,8 @@
       ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64(new Uint8Array(pcm.buffer)), mimeType: 'audio/pcm;rate=16000' } } }));
     }
 
-    $('form').onsubmit = async (e) => { e.preventDefault(); if (!connected) return connect(); const value = text.value.trim(); if (!value) return; ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } })); add('我', value); text.value = ''; };
+    $('form').onsubmit = async (e) => { e.preventDefault(); if (!connected) return; const value = text.value.trim(); if (!value) return; ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } })); add('我', value); text.value = ''; };
+    connectBtn.onclick = () => connected ? ws.close(1000, 'User disconnected') : connect();
     mic.onpointerdown = startMic; mic.onpointerup = stopMic; mic.onpointercancel = stopMic; mic.onpointerleave = () => recording && stopMic();
   </script>
 </body>
