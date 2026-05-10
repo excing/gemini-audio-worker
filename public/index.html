@@ -55,6 +55,7 @@
     }
 
     function handleMessage(msg) {
+      console.log('handleMessage:', msg);
       if (msg.workerStatus) { caption.textContent = msg.workerStatus.message; return; }
       if (msg.setupComplete) { setStatus('已连接', 'ok'); send.textContent = '发送'; send.disabled = false; mic.disabled = false; caption.textContent = '可以开始对话了。'; return; }
       const content = msg.serverContent;
