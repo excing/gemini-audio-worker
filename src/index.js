@@ -45,25 +45,11 @@ export default {
 
     sendClientStatus({ type: 'info', message: '开始连接...' });
 
-    // 4. 当与 Gemini 的连接建立时，发送 Setup 初始化消息
+    // 4. 当与 Gemini 的连接建立时，通知前端发送 Setup 初始化消息
     geminiWs.addEventListener('open', () => {
       console.log('Connected to Gemini');
-      const setupMessage = {
-        setup: {
-          model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
-          generationConfig: {
-            responseModalities: ['AUDIO'],
-          },
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
-          systemInstruction: {
-            parts: [{ text: 'You are a concise, friendly Chinese voice assistant.' }]
-          },
-        },
-      };
-      geminiWs.send(JSON.stringify(setupMessage));
       geminiReady = true;
-      sendClientStatus({ type: 'gemini_open', message: 'Gemini 连接已建立，setup 已发送' });
+      sendClientStatus({ type: 'gemini_open', message: 'Gemini 连接已建立，请发送 setup' });
     });
 
     // 5. 消息透传：前端 -> Worker -> Gemini

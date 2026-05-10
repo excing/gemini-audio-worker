@@ -10,110 +10,214 @@
     main { width:min(1040px,100%); min-height:min(760px,100vh); padding:28px; display:grid; gap:18px; grid-template-rows:auto 1fr auto; }
     header, .card, form { border:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06)); box-shadow:0 24px 80px rgba(0,0,0,.35); backdrop-filter:blur(24px); border-radius:28px; }
     header { padding:22px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; } h1 { margin:0; font-size:clamp(24px,4vw,42px); letter-spacing:-.04em; } p { margin:.35rem 0 0; color:var(--muted); } .status { display:flex; gap:9px; align-items:center; white-space:nowrap; color:var(--muted); } .dot { width:11px; height:11px; border-radius:99px; background:var(--bad); box-shadow:0 0 22px currentColor; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); }
-    .card { min-height:420px; padding:20px; overflow:hidden; display:grid; grid-template-rows:1fr auto; } #chat { overflow:auto; padding:4px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; } .group { max-width:82%; display:flex; flex-direction:column; gap:4px; animation:pop .18s ease-out; } .group.user { align-self:flex-end; align-items:flex-end; } .group.ai { align-self:flex-start; align-items:flex-start; } .role { padding:0 6px; font-size:12px; color:rgba(255,255,255,.68); } .msg { padding:10px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); } .user .msg { background:linear-gradient(135deg,var(--brand),#23b8d5); } .group .msg + .msg { margin-top:0; } .live { margin-top:14px; padding:14px 16px; border-radius:20px; border:1px dashed var(--line); color:var(--muted); min-height:56px; }
-    form { padding:12px; display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:10px; } .input-wrap { flex:1 1 auto; min-width:120px; } .actions { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; } input { width:100%; min-height:48px; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } button { flex:0 0 auto; min-width:48px; min-height:48px; border:0; border-radius:18px; padding:0 14px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-size:20px; font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); }
-    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @media (max-width:700px) { main{padding:12px} header{display:block}.status{margin-top:12px}.group{max-width:94%} }
+    .card { min-height:420px; padding:20px; overflow:hidden; display:grid; grid-template-rows:1fr auto; } #chat { overflow:auto; padding:4px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; } .group { max-width:82%; display:flex; flex-direction:column; gap:4px; animation:pop .18s ease-out; } .group.user { align-self:flex-end; align-items:flex-end; } .group.ai { align-self:flex-start; align-items:flex-start; } .role { padding:0 6px; font-size:12px; color:rgba(255,255,255,.68); } .msg { padding:10px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); white-space:pre-wrap; } .user .msg { background:linear-gradient(135deg,var(--brand),#23b8d5); } .live { margin-top:14px; padding:14px 16px; border-radius:20px; border:1px dashed var(--line); color:var(--muted); min-height:56px; }
+    form { padding:12px; display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:10px; } .input-wrap { flex:1 1 auto; min-width:120px; } .actions { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; } input, textarea, select { width:100%; min-height:48px; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } textarea { min-height:120px; padding:12px 16px; resize:vertical; } button { flex:0 0 auto; min-width:48px; min-height:48px; border:0; border-radius:18px; padding:0 14px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-size:20px; font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); } .ghost { background:rgba(255,255,255,.12); border:1px solid var(--line); } dialog { width:min(680px,calc(100% - 24px)); border:1px solid var(--line); border-radius:28px; padding:0; color:var(--text); background:rgba(12,16,28,.96); box-shadow:0 28px 90px rgba(0,0,0,.55); backdrop-filter:blur(24px); } dialog::backdrop { background:rgba(0,0,0,.58); backdrop-filter:blur(6px); } .modal { padding:22px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:24px; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:13px; } label.full { grid-column:1/-1; } .checks { display:flex; flex-wrap:wrap; gap:12px; color:var(--muted); } .checks label { display:flex; align-items:center; gap:8px; } input[type=checkbox] { width:auto; min-height:0; } .modal-actions { display:flex; justify-content:flex-end; gap:10px; }
+    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @media (max-width:700px) { main{padding:12px} header{display:block}.status{margin-top:12px}.group{max-width:94%}.grid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
-  <main>
-    <header>
-      <div><h1>Gemini 语音对话</h1><p>支持文字、麦克风输入、AI 语音输出和实时字幕。</p></div>
-      <div class="status"><span id="dot" class="dot"></span><span id="status">未连接</span></div>
-    </header>
+  <div id="app">
+    <main>
+      <header>
+        <div><h1>Gemini 语音对话</h1><p>支持文字、麦克风输入、AI 语音输出和实时字幕。</p></div>
+        <div class="status"><span class="dot" :class="statusKind"></span><span>{{ statusText }}</span></div>
+      </header>
 
-    <section class="card">
-      <div id="chat"></div>
-      <div id="caption" class="live">字幕会显示在这里。点击“连接”开始。</div>
-    </section>
+      <section class="card">
+        <div id="chat" ref="chatEl">
+          <div v-for="(message, index) in messages" :key="index" class="group" :class="message.role === '我' ? 'user' : 'ai'">
+            <div class="role">{{ message.role }}</div>
+            <div class="msg">{{ message.text }}</div>
+          </div>
+        </div>
+        <div class="live">{{ caption }}</div>
+      </section>
 
-    <form id="form">
-      <button id="connect" type="button" title="连接">🔌</button>
-      <div class="input-wrap"><input id="text" autocomplete="off" placeholder="输入消息，或使用麦克风实时说话…" /></div>
-      <div class="actions">
-        <button id="mic" type="button" title="按住说话" disabled>🎙️</button>
-        <button id="send" type="submit" title="发送" disabled>➤</button>
+      <form @submit.prevent="sendText">
+        <button id="connect" type="button" :title="connected ? '断开连接' : '连接'" :class="{ off: connected }" :disabled="connecting" @click="toggleConnection">{{ connected ? '⏻' : '🔌' }}</button>
+        <div class="input-wrap"><input v-model="text" autocomplete="off" placeholder="输入消息，或使用麦克风实时说话…" /></div>
+        <div class="actions">
+          <button class="ghost" type="button" title="配置" @click="openSettings">⚙️</button>
+          <button id="mic" type="button" title="按住说话" :class="{ recording }" :disabled="!connected" @pointerdown="startMic" @pointerup="stopMic" @pointercancel="stopMic" @pointerleave="stopMicIfRecording">{{ recording ? '🛑' : '🎙️' }}</button>
+          <button type="submit" title="发送" :disabled="!connected">➤</button>
+        </div>
+      </form>
+    </main>
+
+    <dialog ref="settingsDialog" @click="closeSettingsOnBackdrop">
+      <div class="modal">
+        <div><h2>会话配置</h2><p>这些设置会保存在浏览器本地，下次连接时生效。</p></div>
+        <div class="grid">
+          <label>模型<input v-model="draftConfig.model" /></label>
+          <label>语音<input v-model="draftConfig.voiceName" /></label>
+          <label>响应类型<select v-model="draftConfig.responseModality"><option value="AUDIO">AUDIO</option><option value="TEXT">TEXT</option></select></label>
+          <label class="full">系统提示词<textarea v-model="draftConfig.systemInstruction"></textarea></label>
+        </div>
+        <div class="checks">
+          <label><input type="checkbox" v-model="draftConfig.inputAudioTranscription" />输入转写</label>
+          <label><input type="checkbox" v-model="draftConfig.outputAudioTranscription" />输出转写</label>
+        </div>
+        <div class="modal-actions">
+          <button class="ghost" type="button" @click="closeSettings">取消</button>
+          <button type="button" @click="saveSettings">保存</button>
+        </div>
       </div>
-    </form>
-  </main>
+    </dialog>
+  </div>
 
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script>
-    const $ = (id) => document.getElementById(id);
-    const chat = $('chat'), caption = $('caption'), statusEl = $('status'), dot = $('dot'), mic = $('mic'), text = $('text'), send = $('send'), connectBtn = $('connect');
-    let ws, audioCtx, micStream, processor, source, playbackTime = 0, connected = false, recording = false;
-    let lastGroup, inputDraft = '', outputDraft = '';
+    const { createApp, nextTick } = Vue;
 
-    function setStatus(label, state = '') { statusEl.textContent = label; dot.className = `dot ${state}`; }
-    function add(role, content) {
-      if (!content.trim()) return;
-      const type = role === '我' ? 'user' : 'ai';
-      if (!lastGroup || lastGroup.dataset.role !== role) {
-        lastGroup = document.createElement('div');
-        lastGroup.className = `group ${type}`;
-        lastGroup.dataset.role = role;
-        lastGroup.innerHTML = `<span class="role">${role}</span>`;
-        chat.append(lastGroup);
-      }
-      const el = document.createElement('div');
-      el.className = 'msg';
-      el.textContent = content.trim();
-      lastGroup.append(el);
-      chat.scrollTop = chat.scrollHeight;
-    }
-    function addTranscript(role, text, flush = false) {
-      const isUser = role === '我';
-      let draft = (isUser ? inputDraft : outputDraft) + text;
-      const parts = draft.match(/[^。！？!?；;\n]+[。！？!?；;\n]+|[^。！？!?；;\n]+$/g) || [];
-      const pending = !flush && parts.length && !/[。！？!?；;\n]$/.test(parts.at(-1)) ? parts.pop() : '';
-      parts.forEach(part => add(role, part));
-      if (isUser) inputDraft = pending; else outputDraft = pending;
-    }
-    function escapeHtml(s) { return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-    function b64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return btoa(s); }
-
-    async function connect() {
-      if (connected) return;
-      ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
-      setStatus('连接中…', 'wait'); connectBtn.disabled = true;
-      ws.onopen = async () => { connected = true; await ensureAudio(); setStatus('初始化…', 'wait'); connectBtn.textContent = '⏻'; connectBtn.title = '断开连接'; connectBtn.classList.add('off'); connectBtn.disabled = false; caption.textContent = '正在初始化 Gemini Live 会话…'; };
-      ws.onmessage = (event) => handleMessage(JSON.parse(event.data));
-      ws.onerror = () => setStatus('连接错误', '');
-      ws.onclose = () => { connected = recording = false; stopMic(); setStatus('已断开', ''); connectBtn.textContent = '🔌'; connectBtn.title = '连接'; connectBtn.classList.remove('off'); connectBtn.disabled = false; send.disabled = true; mic.disabled = true; };
-    }
-
-    function handleMessage(msg) {
-      if (msg.workerStatus) { caption.textContent = msg.workerStatus.message; return; }
-      if (msg.setupComplete) { setStatus('已连接', 'ok'); send.disabled = false; mic.disabled = false; caption.textContent = '可以开始对话了。'; return; }
-      const content = msg.serverContent;
-      if (!content) return;
-      if (content.inputTranscription?.text) { caption.textContent = `我：${inputDraft}${content.inputTranscription.text}`; addTranscript('我', content.inputTranscription.text); }
-      if (content.outputTranscription?.text) { caption.textContent = `Gemini：${outputDraft}${content.outputTranscription.text}`; addTranscript('Gemini', content.outputTranscription.text); }
-      for (const part of content.modelTurn?.parts || []) if (part.inlineData?.data) playPcm(part.inlineData.data, part.inlineData.mimeType);
-      if (content.turnComplete) { addTranscript('我', '', true); addTranscript('Gemini', '', true); caption.textContent = '本轮回复完成。'; lastGroup = null; inputDraft = outputDraft = ''; }
-    }
-
-    async function ensureAudio() { audioCtx ||= new AudioContext(); if (audioCtx.state !== 'running') await audioCtx.resume(); playbackTime = Math.max(playbackTime, audioCtx.currentTime); }
-    function playPcm(data, mime = 'audio/pcm;rate=24000') {
-      ensureAudio(); const rate = +(mime.match(/rate=(\d+)/)?.[1] || 24000), raw = atob(data), samples = raw.length / 2, buffer = audioCtx.createBuffer(1, samples, rate), out = buffer.getChannelData(0);
-      for (let i = 0; i < samples; i++) { const lo = raw.charCodeAt(i*2), hi = raw.charCodeAt(i*2+1); let v = (hi << 8) | lo; if (v & 0x8000) v -= 0x10000; out[i] = v / 32768; }
-      const node = audioCtx.createBufferSource(); node.buffer = buffer; node.connect(audioCtx.destination); playbackTime = Math.max(playbackTime, audioCtx.currentTime); node.start(playbackTime); playbackTime += buffer.duration;
-    }
-
-    async function startMic() {
-      if (!connected || recording) return; await ensureAudio(); micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-      source = audioCtx.createMediaStreamSource(micStream); processor = audioCtx.createScriptProcessor(4096, 1, 1); source.connect(processor); processor.connect(audioCtx.destination); recording = true; mic.classList.add('recording'); mic.textContent = '🛑'; mic.title = '松开发送'; caption.textContent = '正在聆听…';
-      processor.onaudioprocess = (e) => sendPcm16k(e.inputBuffer.getChannelData(0), audioCtx.sampleRate);
-    }
-    function stopMic() { if (recording && connected && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } })); processor?.disconnect(); source?.disconnect(); micStream?.getTracks().forEach(t => t.stop()); processor = source = micStream = null; recording = false; mic.classList.remove('recording'); mic.textContent = '🎙️'; mic.title = '按住说话'; }
-    function sendPcm16k(input, inRate) {
-      if (!connected || ws.readyState !== WebSocket.OPEN) return; const ratio = inRate / 16000, len = Math.floor(input.length / ratio), pcm = new Int16Array(len);
-      for (let i = 0; i < len; i++) { const s = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)])); pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff; }
-      ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64(new Uint8Array(pcm.buffer)), mimeType: 'audio/pcm;rate=16000' } } }));
-    }
-
-    $('form').onsubmit = async (e) => { e.preventDefault(); if (!connected) return; const value = text.value.trim(); if (!value) return; ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } })); lastGroup = null; add('我', value); lastGroup = null; text.value = ''; };
-    connectBtn.onclick = () => connected ? ws.close(1000, 'User disconnected') : connect();
-    mic.onpointerdown = startMic; mic.onpointerup = stopMic; mic.onpointercancel = stopMic; mic.onpointerleave = () => recording && stopMic();
+    createApp({
+      data() {
+        const defaultConfig = {
+          model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
+          voiceName: 'Kore',
+          systemInstruction: 'You are a concise, friendly Chinese voice assistant.',
+          responseModality: 'AUDIO',
+          inputAudioTranscription: true,
+          outputAudioTranscription: true,
+        };
+        return {
+          defaultConfig,
+          config: defaultConfig,
+          draftConfig: { ...defaultConfig },
+          ws: null,
+          audioCtx: null,
+          playbackTime: 0,
+          micStream: null,
+          source: null,
+          processor: null,
+          connected: false,
+          connecting: false,
+          recording: false,
+          statusText: '未连接',
+          statusKind: '',
+          caption: '字幕会显示在这里。点击“连接”开始。',
+          text: '',
+          messages: [],
+        };
+      },
+      mounted() {
+        this.config = this.loadConfig();
+        this.draftConfig = { ...this.config };
+      },
+      methods: {
+        loadConfig() {
+          try { return { ...this.defaultConfig, ...JSON.parse(localStorage.getItem('geminiSetupConfig') || '{}') }; }
+          catch { return { ...this.defaultConfig }; }
+        },
+        saveSettings() {
+          this.config = { ...this.draftConfig };
+          localStorage.setItem('geminiSetupConfig', JSON.stringify(this.config));
+          this.closeSettings();
+          this.caption = '配置已保存，下次连接时生效。';
+        },
+        openSettings() { this.draftConfig = { ...this.loadConfig() }; this.$refs.settingsDialog.showModal(); },
+        closeSettings() { this.$refs.settingsDialog.close(); },
+        closeSettingsOnBackdrop(event) { if (event.target === this.$refs.settingsDialog) this.closeSettings(); },
+        setStatus(text, kind = '') { this.statusText = text; this.statusKind = kind; },
+        setupMessage() {
+          const setup = {
+            model: this.config.model,
+            generationConfig: { responseModalities: [this.config.responseModality] },
+            systemInstruction: { parts: [{ text: this.config.systemInstruction }] },
+          };
+          if (this.config.responseModality === 'AUDIO') setup.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voiceName } } };
+          if (this.config.inputAudioTranscription) setup.inputAudioTranscription = {};
+          if (this.config.outputAudioTranscription) setup.outputAudioTranscription = {};
+          return { setup };
+        },
+        toggleConnection() { this.connected ? this.ws?.close(1000, 'User disconnected') : this.connect(); },
+        async connect() {
+          if (this.connected || this.connecting) return;
+          this.config = this.loadConfig();
+          this.ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+          this.connecting = true;
+          this.setStatus('连接中…', 'wait');
+          this.ws.onopen = async () => { this.connected = true; this.connecting = false; await this.ensureAudio(); this.setStatus('初始化…', 'wait'); this.caption = '正在初始化 Gemini Live 会话…'; };
+          this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
+          this.ws.onerror = () => this.setStatus('连接错误');
+          this.ws.onclose = () => { this.stopMic(); this.connected = false; this.connecting = false; this.setStatus('已断开'); };
+        },
+        handleMessage(msg) {
+          if (msg.workerStatus) {
+            this.caption = msg.workerStatus.message;
+            if (msg.workerStatus.type === 'gemini_open') this.ws.send(JSON.stringify(this.setupMessage()));
+            return;
+          }
+          if (msg.setupComplete) { this.setStatus('已连接', 'ok'); this.caption = '可以开始对话了。'; return; }
+          const content = msg.serverContent;
+          if (!content) return;
+          if (content.inputTranscription?.text) { this.caption = `我：${content.inputTranscription.text}`; this.addMessage('我', content.inputTranscription.text); }
+          if (content.outputTranscription?.text) { this.caption = `Gemini：${content.outputTranscription.text}`; this.addMessage('Gemini', content.outputTranscription.text); }
+          for (const part of content.modelTurn?.parts || []) {
+            if (part.text) this.addMessage('Gemini', part.text);
+            if (part.inlineData?.data) this.playPcm(part.inlineData.data, part.inlineData.mimeType);
+          }
+          if (content.turnComplete) this.caption = '本轮回复完成。';
+        },
+        addMessage(role, text) {
+          if (!text) return;
+          this.messages.push({ role, text });
+          nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
+        },
+        async ensureAudio() {
+          this.audioCtx ||= new AudioContext();
+          if (this.audioCtx.state !== 'running') await this.audioCtx.resume();
+          this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
+        },
+        async playPcm(data, mime = 'audio/pcm;rate=24000') {
+          await this.ensureAudio();
+          const rate = +(mime.match(/rate=(\d+)/)?.[1] || 24000);
+          const raw = atob(data);
+          const samples = raw.length / 2;
+          const buffer = this.audioCtx.createBuffer(1, samples, rate);
+          const out = buffer.getChannelData(0);
+          for (let i = 0; i < samples; i++) { const lo = raw.charCodeAt(i * 2), hi = raw.charCodeAt(i * 2 + 1); let value = (hi << 8) | lo; if (value & 0x8000) value -= 0x10000; out[i] = value / 32768; }
+          const node = this.audioCtx.createBufferSource();
+          node.buffer = buffer; node.connect(this.audioCtx.destination);
+          this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
+          node.start(this.playbackTime); this.playbackTime += buffer.duration;
+        },
+        async startMic() {
+          if (!this.connected || this.recording) return;
+          await this.ensureAudio();
+          this.micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+          this.source = this.audioCtx.createMediaStreamSource(this.micStream);
+          this.processor = this.audioCtx.createScriptProcessor(4096, 1, 1);
+          this.source.connect(this.processor); this.processor.connect(this.audioCtx.destination);
+          this.recording = true; this.caption = '正在聆听…';
+          this.processor.onaudioprocess = (event) => this.sendPcm16k(event.inputBuffer.getChannelData(0), this.audioCtx.sampleRate);
+        },
+        stopMicIfRecording() { if (this.recording) this.stopMic(); },
+        stopMic() {
+          if (this.recording && this.connected && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
+          this.processor?.disconnect(); this.source?.disconnect(); this.micStream?.getTracks().forEach((track) => track.stop());
+          this.processor = this.source = this.micStream = null; this.recording = false;
+        },
+        sendPcm16k(input, inRate) {
+          if (!this.connected || this.ws?.readyState !== WebSocket.OPEN) return;
+          const ratio = inRate / 16000;
+          const pcm = new Int16Array(Math.floor(input.length / ratio));
+          for (let i = 0; i < pcm.length; i++) { const sample = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)])); pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff; }
+          this.ws.send(JSON.stringify({ realtimeInput: { audio: { data: this.b64(new Uint8Array(pcm.buffer)), mimeType: 'audio/pcm;rate=16000' } } }));
+        },
+        b64(bytes) {
+          let binary = '';
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          return btoa(binary);
+        },
+        sendText() {
+          const value = this.text.trim();
+          if (!this.connected || !value) return;
+          this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
+          this.addMessage('我', value);
+          this.text = '';
+        },
+      },
+    }).mount('#app');
   </script>
 </body>
 </html>
