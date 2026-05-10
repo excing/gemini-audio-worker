@@ -10,7 +10,7 @@
     main { width:min(1040px,100%); min-height:min(760px,100vh); padding:28px; display:grid; gap:18px; grid-template-rows:auto 1fr auto; }
     header, .card, form { border:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06)); box-shadow:0 24px 80px rgba(0,0,0,.35); backdrop-filter:blur(24px); border-radius:28px; }
     header { padding:22px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; } h1 { margin:0; font-size:clamp(24px,4vw,42px); letter-spacing:-.04em; } p { margin:.35rem 0 0; color:var(--muted); } .status { display:flex; gap:9px; align-items:center; white-space:nowrap; color:var(--muted); } .dot { width:11px; height:11px; border-radius:99px; background:var(--bad); box-shadow:0 0 22px currentColor; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); }
-    .card { min-height:420px; padding:20px; overflow:hidden; display:grid; grid-template-rows:1fr auto; } #chat { overflow:auto; padding:4px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; } .group { max-width:82%; display:flex; flex-direction:column; gap:4px; animation:pop .18s ease-out; } .group.user { align-self:flex-end; align-items:flex-end; } .group.ai { align-self:flex-start; align-items:flex-start; } .role { padding:0 6px; font-size:12px; color:rgba(255,255,255,.68); } .msg { padding:10px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); white-space:pre-wrap; } .user .msg { background:linear-gradient(135deg,var(--brand),#23b8d5); } .live { margin-top:14px; padding:14px 16px; border-radius:20px; border:1px dashed var(--line); color:var(--muted); min-height:56px; }
+    .card { min-height:420px; padding:20px; overflow:hidden; display:grid; grid-template-rows:1fr auto; } #chat { overflow:auto; padding:4px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; } .group { max-width:82%; display:flex; flex-direction:column; gap:4px; animation:pop .18s ease-out; } .group.user { align-self:flex-end; align-items:flex-end; } .group.ai { align-self:flex-start; align-items:flex-start; } .role { padding:0 6px; font-size:12px; color:rgba(255,255,255,.68); } .msg { padding:10px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); white-space:pre-wrap; } .user .msg { background:linear-gradient(135deg,var(--brand),#23b8d5); } .group .msg + .msg { margin-top:0; } .live { margin-top:14px; padding:14px 16px; border-radius:20px; border:1px dashed var(--line); color:var(--muted); min-height:56px; }
     form { padding:12px; display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:10px; } .input-wrap { flex:1 1 auto; min-width:120px; } .actions { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; } input, textarea, select { width:100%; min-height:48px; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } textarea { min-height:120px; padding:12px 16px; resize:vertical; } button { flex:0 0 auto; min-width:48px; min-height:48px; border:0; border-radius:18px; padding:0 14px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-size:20px; font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); } .ghost { background:rgba(255,255,255,.12); border:1px solid var(--line); } dialog { width:min(680px,calc(100% - 24px)); border:1px solid var(--line); border-radius:28px; padding:0; color:var(--text); background:rgba(12,16,28,.96); box-shadow:0 28px 90px rgba(0,0,0,.55); backdrop-filter:blur(24px); } dialog::backdrop { background:rgba(0,0,0,.58); backdrop-filter:blur(6px); } .modal { padding:22px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:24px; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:13px; } label.full { grid-column:1/-1; } .checks { display:flex; flex-wrap:wrap; gap:12px; color:var(--muted); } .checks label { display:flex; align-items:center; gap:8px; } input[type=checkbox] { width:auto; min-height:0; } .modal-actions { display:flex; justify-content:flex-end; gap:10px; }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @media (max-width:700px) { main{padding:12px} header{display:block}.status{margin-top:12px}.group{max-width:94%}.grid{grid-template-columns:1fr} }
   </style>
@@ -25,9 +25,9 @@
 
       <section class="card">
         <div id="chat" ref="chatEl">
-          <div v-for="(message, index) in messages" :key="index" class="group" :class="message.role === '我' ? 'user' : 'ai'">
-            <div class="role">{{ message.role }}</div>
-            <div class="msg">{{ message.text }}</div>
+          <div v-for="(group, index) in messageGroups" :key="index" class="group" :class="group.role === '我' ? 'user' : 'ai'">
+            <div class="role">{{ group.role }}</div>
+            <div v-for="(message, messageIndex) in group.messages" :key="messageIndex" class="msg">{{ message }}</div>
           </div>
         </div>
         <div class="live">{{ caption }}</div>
@@ -96,7 +96,9 @@
           statusKind: '',
           caption: '字幕会显示在这里。点击“连接”开始。',
           text: '',
-          messages: [],
+          messageGroups: [],
+          inputDraft: '',
+          outputDraft: '',
         };
       },
       mounted() {
@@ -152,17 +154,31 @@
           if (msg.setupComplete) { this.setStatus('已连接', 'ok'); this.caption = '可以开始对话了。'; return; }
           const content = msg.serverContent;
           if (!content) return;
-          if (content.inputTranscription?.text) { this.caption = `我：${content.inputTranscription.text}`; this.addMessage('我', content.inputTranscription.text); }
-          if (content.outputTranscription?.text) { this.caption = `Gemini：${content.outputTranscription.text}`; this.addMessage('Gemini', content.outputTranscription.text); }
+          if (content.inputTranscription?.text) { this.caption = `我：${this.inputDraft}${content.inputTranscription.text}`; this.addTranscript('我', content.inputTranscription.text); }
+          if (content.outputTranscription?.text) { this.caption = `Gemini：${this.outputDraft}${content.outputTranscription.text}`; this.addTranscript('Gemini', content.outputTranscription.text); }
           for (const part of content.modelTurn?.parts || []) {
-            if (part.text) this.addMessage('Gemini', part.text);
+            if (part.text) this.addTranscript('Gemini', part.text);
             if (part.inlineData?.data) this.playPcm(part.inlineData.data, part.inlineData.mimeType);
           }
-          if (content.turnComplete) this.caption = '本轮回复完成。';
+          if (content.turnComplete) {
+            this.addTranscript('我', '', true);
+            this.addTranscript('Gemini', '', true);
+            this.caption = '本轮回复完成。';
+          }
+        },
+        addTranscript(role, text, flush = false) {
+          const draftKey = role === '我' ? 'inputDraft' : 'outputDraft';
+          const draft = this[draftKey] + text;
+          const parts = draft.match(/[^。！？!?；;\n]+[。！？!?；;\n]+|[^。！？!?；;\n]+$/g) || [];
+          const pending = !flush && parts.length && !/[。！？!?；;\n]$/.test(parts.at(-1)) ? parts.pop() : '';
+          parts.forEach((part) => this.addMessage(role, part.trim()));
+          this[draftKey] = pending;
         },
         addMessage(role, text) {
-          if (!text) return;
-          this.messages.push({ role, text });
+          if (!text.trim()) return;
+          const lastGroup = this.messageGroups.at(-1);
+          if (lastGroup?.role === role) lastGroup.messages.push(text.trim());
+          else this.messageGroups.push({ role, messages: [text.trim()] });
           nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
         },
         async ensureAudio() {
