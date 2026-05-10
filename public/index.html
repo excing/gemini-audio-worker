@@ -121,10 +121,16 @@
         setupMessage() {
           const setup = {
             model: this.config.model,
-            generationConfig: { responseModalities: [this.config.responseModality] },
+            generationConfig: {
+              responseModalities: [this.config.responseModality],
+              contextWindowCompression: {
+                  triggerTokens: '131072',
+                  slidingWindow: { targetTokens: '52428' },
+              },
+            },
             systemInstruction: { parts: [{ text: this.config.systemInstruction }] },
           };
-          if (this.config.responseModality === 'AUDIO' && this.config.voiceName) setup.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voiceName } } };
+          if (this.config.responseModality === 'AUDIO' && this.config.voiceName) setup.generationConfig.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voiceName } } };
           if (this.config.inputAudioTranscription) setup.inputAudioTranscription = {};
           if (this.config.outputAudioTranscription) setup.outputAudioTranscription = {};
           return { setup };
