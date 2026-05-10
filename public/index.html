@@ -48,8 +48,16 @@
       <div class="modal">
         <div><h2>会话配置</h2><p>这些设置会保存在浏览器本地，下次连接时生效。</p></div>
         <div class="grid">
-          <label>模型<input v-model="draftConfig.model" /></label>
-          <label>语音<input v-model="draftConfig.voiceName" /></label>
+          <label>模型<select v-model="draftConfig.model">
+            <option v-for="model in models" :key="model.value" :value="model.value">
+              {{ model.name }}
+            </option>
+          </select></label>
+          <label>语音<select v-model="draftConfig.voiceName">
+            <option v-for="voice in voices" :key="voice.name" :value="voice.name === 'No Voice' ? '' : voice.name">
+              {{ voice.name }} - {{ voice.characteristics }}
+            </option>
+          </select></label>
           <label>响应类型<select v-model="draftConfig.responseModality"><option value="AUDIO">AUDIO</option><option value="TEXT">TEXT</option></select></label>
           <label class="full">系统提示词<textarea v-model="draftConfig.systemInstruction"></textarea></label>
         </div>
@@ -69,6 +77,144 @@
   <script>
     const { createApp, nextTick } = Vue;
 
+    const models = [
+      {
+        "name": "Gemini 3.1 Flash Live Preview",
+        "value": "models/gemini-3.1-flash-live-preview"
+      },
+      {
+        "name": "Gemini 2.5 Flash Native Preview",
+        "value": "models/gemini-2.5-flash-native-audio-preview-12-2025"
+      }
+    ]
+
+    const voices = [
+      {
+        "name": "No Voice",
+        "characteristics": "Default"
+      },
+      {
+        "name": "Zephyr",
+        "characteristics": "Bright, Higher pitch"
+      },
+      {
+        "name": "Puck",
+        "characteristics": "Upbeat, Middle pitch"
+      },
+      {
+        "name": "Charon",
+        "characteristics": "Informative, Lower pitch"
+      },
+      {
+        "name": "Kore",
+        "characteristics": "Firm, Middle pitch"
+      },
+      {
+        "name": "Fenrir",
+        "characteristics": "Excitable, Lower middle pitch"
+      },
+      {
+        "name": "Leda",
+        "characteristics": "Youthful, Higher pitch"
+      },
+      {
+        "name": "Orus",
+        "characteristics": "Firm, Lower middle pitch"
+      },
+      {
+        "name": "Aoede",
+        "characteristics": "Breezy, Middle pitch"
+      },
+      {
+        "name": "Callirrhoe",
+        "characteristics": "Easy-going, Middle pitch"
+      },
+      {
+        "name": "Autonoe",
+        "characteristics": "Bright, Middle pitch"
+      },
+      {
+        "name": "Enceladus",
+        "characteristics": "Breathy, Lower pitch"
+      },
+      {
+        "name": "Iapetus",
+        "characteristics": "Clear, Lower middle pitch"
+      },
+      {
+        "name": "Umbriel",
+        "characteristics": "Easy-going, Lower middle pitch"
+      },
+      {
+        "name": "Algieba",
+        "characteristics": "Smooth, Lower pitch"
+      },
+      {
+        "name": "Despina",
+        "characteristics": "Smooth, Middle pitch"
+      },
+      {
+        "name": "Erinome",
+        "characteristics": "Clear, Middle pitch"
+      },
+      {
+        "name": "Algenib",
+        "characteristics": "Gravelly, Lower pitch"
+      },
+      {
+        "name": "Rasalgethi",
+        "characteristics": "Informative, Middle pitch"
+      },
+      {
+        "name": "Laomedeia",
+        "characteristics": "Upbeat, Higher pitch"
+      },
+      {
+        "name": "Achernar",
+        "characteristics": "Soft, Higher pitch"
+      },
+      {
+        "name": "Alnilam",
+        "characteristics": "Firm, Lower middle pitch"
+      },
+      {
+        "name": "Schedar",
+        "characteristics": "Even, Lower middle pitch"
+      },
+      {
+        "name": "Gacrux",
+        "characteristics": "Mature, Middle pitch"
+      },
+      {
+        "name": "Pulcherrima",
+        "characteristics": "Forward, Middle pitch"
+      },
+      {
+        "name": "Achird",
+        "characteristics": "Friendly, Lower middle pitch"
+      },
+      {
+        "name": "Zubenelgenubi",
+        "characteristics": "Casual, Lower middle pitch"
+      },
+      {
+        "name": "Vindemiatrix",
+        "characteristics": "Gentle, Middle pitch"
+      },
+      {
+        "name": "Sadachbia",
+        "characteristics": "Lively, Lower pitch"
+      },
+      {
+        "name": "Sadaltager",
+        "characteristics": "Knowledgeable, Middle pitch"
+      },
+      {
+        "name": "Sulafat",
+        "characteristics": "Warm, Middle pitch"
+      }
+    ];
+
     createApp({
       data() {
         const defaultConfig = {
@@ -81,6 +227,8 @@
         };
         return {
           defaultConfig,
+          models,
+          voices,
           config: defaultConfig,
           draftConfig: { ...defaultConfig },
           ws: null,
