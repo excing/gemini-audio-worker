@@ -123,10 +123,6 @@
             model: this.config.model,
             generationConfig: {
               responseModalities: [this.config.responseModality],
-              contextWindowCompression: {
-                  triggerTokens: '131072',
-                  slidingWindow: { targetTokens: '52428' },
-              },
             },
             systemInstruction: { parts: [{ text: this.config.systemInstruction }] },
           };
