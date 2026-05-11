@@ -7,12 +7,12 @@
   <style>
     :root { color-scheme: dark; --bg:#080b13; --panel:rgba(255,255,255,.08); --line:rgba(255,255,255,.14); --text:#f7f8ff; --muted:#aab2c8; --brand:#7c5cff; --ok:#38d996; --warn:#ffca5c; --bad:#ff6b7a; }
     * { box-sizing: border-box; } body { margin:0; height:100dvh; overflow:hidden; display:grid; place-items:center; font:16px/1.5 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background:radial-gradient(circle at 20% 10%,#4530a8 0 18rem,transparent 32rem),radial-gradient(circle at 80% 20%,#0b7b86 0 16rem,transparent 31rem),var(--bg); }
-    #app { width:100%; height:100%; } main { width:min(768px,100%); height:100%; margin:0 auto; padding:28px; display:grid; gap:18px; grid-template-rows:auto minmax(0,1fr) auto; }
+    #app { width:100%; height:100%; } main { width:min(768px,100%); height:100dvh; margin:0 auto; padding:28px; display:grid; gap:18px; grid-template-rows:auto minmax(0,1fr) auto; }
     header, .card, form { border:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06)); box-shadow:0 24px 80px rgba(0,0,0,.35); backdrop-filter:blur(24px); border-radius:28px; }
     header { min-height:68px; padding:10px 14px 10px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-radius:24px; } .titlebar-title { min-width:0; } .role-select { min-width:min(360px,48vw); min-height:48px; font-size:20px; font-weight:750; letter-spacing:-.03em; } .role-select .new-role { color:var(--brand); font-weight:800; } p { margin:.15rem 0 0; color:var(--muted); font-size:14px; } .titlebar-actions { display:flex; align-items:center; gap:10px; } .dot { width:15px; height:15px; border-radius:99px; background:var(--bad); box-shadow:0 0 22px currentColor; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .status-dot { position:absolute; top:-3px; right:-3px; border:2px solid rgba(42,35,100,.95); }
-    .card { min-height:0; padding:20px; overflow:hidden; position:relative; display:grid; grid-template-rows:minmax(0,1fr); } .view-toggle { position:absolute; top:14px; right:14px; z-index:2; background:rgba(255,255,255,.12); border:1px solid var(--line); } #chat { min-height:0; overflow:auto; padding:4px 56px 4px 4px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; } .group { max-width:82%; display:flex; flex-direction:column; gap:4px; animation:pop .18s ease-out; } .group.user { align-self:flex-end; align-items:flex-end; } .group.ai { align-self:flex-start; align-items:flex-start; } .role { padding:0 6px; font-size:12px; color:rgba(255,255,255,.68); } .msg { padding:10px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); white-space:pre-wrap; } .user .msg { background:linear-gradient(135deg,var(--brand),#23b8d5); } .group .msg + .msg { margin-top:0; } .live { min-height:0; overflow:auto; padding:64px 20px 20px; border-radius:20px; border:1px var(--line); color:var(--text); font-size:clamp(24px,4vw,44px); line-height:1.35; display:flex; align-items:center; justify-content:center; text-align:center; white-space:pre-wrap; }
+    .card { min-height:0; padding:20px; overflow:hidden; position:relative; display:grid; grid-template-rows:minmax(0,1fr); } .view-toggle { position:absolute; top:14px; right:14px; z-index:2; background:rgba(255,255,255,.12); border:1px solid var(--line); } #chat { min-height:0; overflow:auto; padding:4px 56px 4px 4px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; } .group { max-width:82%; display:flex; flex-direction:column; gap:4px; animation:pop .18s ease-out; } .group.user { align-self:flex-end; align-items:flex-end; } .group.ai { align-self:flex-start; align-items:flex-start; } .role { padding:0 6px; font-size:12px; color:rgba(255,255,255,.68); } .msg { padding:10px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); white-space:pre-wrap; } .user .msg { background:linear-gradient(135deg,var(--brand),#23b8d5); } .group .msg + .msg { margin-top:0; } .live { min-height:0; overflow:auto; padding:64px 20px 20px; border-radius:20px; border:1px var(--line); color:var(--text); font-size:clamp(24px,4vw,44px); line-height:1.35; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; white-space:pre-wrap; } .live-role { font-size:14px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; opacity:.8; } .live-body { max-width:100%; } .live-user { color:#56e5ff; } .live-ai { color:#bba9ff; } .live-status { color:var(--warn); } .live-waiting { color:var(--muted); } .wait-icon { display:inline-block; font-size:clamp(48px,10vw,92px); animation:breathe 1.7s ease-in-out infinite; filter:drop-shadow(0 0 28px rgba(255,255,255,.22)); }
     form { padding:12px; display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:10px; } .input-wrap { flex:1 1 auto; min-width:120px; } .actions { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; } input, textarea, select { width:100%; min-height:48px; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } textarea { min-height:120px; padding:12px 16px; resize:vertical; } button { flex:0 0 auto; min-width:48px; min-height:48px; border:0; border-radius:18px; padding:0 14px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-size:20px; font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect { position:relative; } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); } .ghost { background:rgba(255,255,255,.12); border:1px solid var(--line); } dialog { width:min(680px,calc(100% - 24px)); border:1px solid var(--line); border-radius:28px; padding:0; color:var(--text); background:rgba(12,16,28,.96); box-shadow:0 28px 90px rgba(0,0,0,.55); backdrop-filter:blur(24px); } dialog::backdrop { background:rgba(0,0,0,.58); backdrop-filter:blur(6px); } .modal { padding:22px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:24px; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:13px; } label.full { grid-column:1/-1; } .modal-actions { display:flex; justify-content:flex-end; gap:10px; }
-    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @media (max-width:700px) { main{padding:12px} header{padding:10px; gap:10px}.titlebar-title p{display:none}.titlebar-actions{gap:8px}.group{max-width:94%}.grid{grid-template-columns:1fr} }
+    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes breathe { 0%,100% { transform:scale(.92); opacity:.48; } 50% { transform:scale(1.08); opacity:1; } } @media (max-width:700px) { main{padding:12px} header{padding:10px; gap:10px}.titlebar-title p{display:none}.titlebar-actions{gap:8px}.group{max-width:94%}.grid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
@@ -39,7 +39,15 @@
             <div v-for="(message, messageIndex) in group.messages" :key="messageIndex" class="msg">{{ message }}</div>
           </div>
         </div>
-        <div class="live" v-show="viewMode === 'caption'">{{ caption }}</div>
+        <div class="live" :class="`live-${caption.kind}`" v-show="viewMode === 'caption'">
+          <template v-if="caption.kind === 'waiting'">
+            <span class="wait-icon" aria-label="等待用户输入">{{ caption.icon }}</span>
+          </template>
+          <template v-else>
+            <div class="live-role">{{ caption.role }}</div>
+            <div class="live-body">{{ caption.text }}</div>
+          </template>
+        </div>
       </section>
 
       <form @submit.prevent="sendText">
@@ -247,7 +255,7 @@
           recording: false,
           statusText: '未连接',
           statusKind: '',
-          caption: '点击 🔌 开始',
+          caption: { kind: 'status', role: '状态', text: '点击 🔌 开始', icon: '💭' },
           viewMode: 'caption',
           text: '',
           messageGroups: [],
@@ -298,7 +306,7 @@
           this.saveRoles();
           localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
           this.closeSettings();
-          this.caption = `角色「${role.roleName}」已保存，下次连接时生效。`;
+          this.setCaption('status', '状态', `角色「${role.roleName}」已保存，下次连接时生效。`);
         },
         openSettings() { this.draftConfig = { ...this.loadConfig() }; this.$refs.settingsDialog.showModal(); },
         selectRole() {
@@ -311,11 +319,13 @@
           localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
           this.config = this.loadConfig();
           this.draftConfig = { ...this.config };
-          this.caption = `已切换到角色「${this.config.roleName}」。`;
+          this.setCaption('status', '状态', `已切换到角色「${this.config.roleName}」。`);
         },
         closeSettings() { this.$refs.settingsDialog.close(); },
         closeSettingsOnBackdrop(event) { if (event.target === this.$refs.settingsDialog) this.closeSettings(); },
         setStatus(text, kind = '') { this.statusText = text; this.statusKind = kind; },
+        setCaption(kind, role = '', text = '', icon = '💭') { this.caption = { kind, role, text, icon }; },
+        showWaitingForUser() { this.setCaption('waiting', '', '', '💭'); },
         toggleViewMode() { this.viewMode = this.viewMode === 'chat' ? 'caption' : 'chat'; },
         setupMessage() {
           const setup = {
@@ -337,30 +347,30 @@
           this.ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
           this.connecting = true;
           this.setStatus('连接中…', 'wait');
-          this.ws.onopen = async () => { this.connected = true; this.connecting = false; await this.ensureAudio(); this.setStatus('初始化…', 'wait'); this.caption = '正在初始化 Gemini Live 会话…'; };
+          this.ws.onopen = async () => { this.connected = true; this.connecting = false; await this.ensureAudio(); this.setStatus('初始化…', 'wait'); this.setCaption('status', '状态', '正在初始化 Gemini Live 会话…'); };
           this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
           this.ws.onerror = () => this.setStatus('连接错误');
-          this.ws.onclose = () => { this.stopMic(); this.connected = false; this.connecting = false; this.setStatus('已断开'); };
+          this.ws.onclose = () => { this.stopMic(); this.connected = false; this.connecting = false; this.setStatus('已断开'); this.setCaption('status', '状态', '已断开'); };
         },
         handleMessage(msg) {
           if (msg.workerStatus) {
-            this.caption = msg.workerStatus.message;
+            this.setCaption('status', '状态', msg.workerStatus.message);
             if (msg.workerStatus.type === 'gemini_open') this.ws.send(JSON.stringify(this.setupMessage()));
             return;
           }
-          if (msg.setupComplete) { this.setStatus('已连接', 'ok'); this.caption = '可以开始对话了。'; return; }
+          if (msg.setupComplete) { this.setStatus('已连接', 'ok'); this.showWaitingForUser(); return; }
           const content = msg.serverContent;
           if (!content) return;
-          if (content.inputTranscription?.text) { this.caption = `我：${this.inputDraft}${content.inputTranscription.text}`; this.addTranscript('我', content.inputTranscription.text); }
-          if (content.outputTranscription?.text) { this.caption = `Gemini：${this.outputDraft}${content.outputTranscription.text}`; this.addTranscript('Gemini', content.outputTranscription.text); }
+          if (content.inputTranscription?.text) { this.setCaption('user', '我', `${this.inputDraft}${content.inputTranscription.text}`); this.addTranscript('我', content.inputTranscription.text); }
+          if (content.outputTranscription?.text) { this.setCaption('ai', 'Gemini', `${this.outputDraft}${content.outputTranscription.text}`); this.addTranscript('Gemini', content.outputTranscription.text); }
           for (const part of content.modelTurn?.parts || []) {
-            if (part.text) this.addTranscript('Gemini', part.text);
+            if (part.text) { this.setCaption('ai', 'Gemini', `${this.outputDraft}${part.text}`); this.addTranscript('Gemini', part.text); }
             if (part.inlineData?.data) this.playPcm(part.inlineData.data, part.inlineData.mimeType);
           }
           if (content.turnComplete) {
             this.addTranscript('我', '', true);
             this.addTranscript('Gemini', '', true);
-            this.caption = '本轮回复完成。';
+            this.showWaitingForUser();
           }
         },
         addTranscript(role, text, flush = false) {
@@ -403,7 +413,7 @@
           this.source = this.audioCtx.createMediaStreamSource(this.micStream);
           this.processor = this.audioCtx.createScriptProcessor(4096, 1, 1);
           this.source.connect(this.processor); this.processor.connect(this.audioCtx.destination);
-          this.recording = true; this.caption = '正在聆听…';
+          this.recording = true; this.setCaption('user', '我', '正在聆听…');
           this.processor.onaudioprocess = (event) => this.sendPcm16k(event.inputBuffer.getChannelData(0), this.audioCtx.sampleRate);
         },
         stopMicIfRecording() { if (this.recording) this.stopMic(); },
@@ -411,6 +421,7 @@
           if (this.recording && this.connected && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
           this.processor?.disconnect(); this.source?.disconnect(); this.micStream?.getTracks().forEach((track) => track.stop());
           this.processor = this.source = this.micStream = null; this.recording = false;
+          if (this.connected) this.setCaption('user', '我', '正在提交语音…');
         },
         sendPcm16k(input, inRate) {
           if (!this.connected || this.ws?.readyState !== WebSocket.OPEN) return;
@@ -429,6 +440,7 @@
           if (!this.connected || !value) return;
           this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
           this.addMessage('我', value);
+          this.setCaption('user', '我', value);
           this.text = '';
         },
       },
