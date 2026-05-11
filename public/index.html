@@ -58,7 +58,7 @@
       <form @submit.prevent="sendText">
         <div class="input-wrap"><input v-model="text" autocomplete="off" placeholder="输入消息，或使用麦克风实时说话…" /></div>
         <div class="actions">
-          <button id="mic" type="button" title="按住说话" :class="{ recording }" :disabled="!connected" @pointerdown="startMic" @pointerup="stopMic" @pointercancel="stopMic" @pointerleave="stopMicIfRecording">{{ recording ? '🛑' : '🎙️' }}</button>
+          <button id="mic" type="button" :title="micStatus === 'recording' ? '点击结束录音' : '点击开始录音'" :class="{ recording: micStatus === 'recording' }" :disabled="!connected || micStatus === 'starting'" @click="toggleMic">{{ micStatus === 'recording' ? '🛑' : '🎙️' }}</button>
           <button type="submit" title="发送" :disabled="!connected">➤</button>
         </div>
       </form>
@@ -378,7 +378,7 @@
           processor: null,
           connected: false,
           connecting: false,
-          recording: false,
+          micStatus: 'idle',
           statusText: '未连接',
           statusKind: '',
           caption: { kind: 'status', role: '状态', text: '点击 🔌 开始', icon: '💭' },
@@ -591,22 +591,29 @@
           node.start(startTime); this.playbackTime += buffer.duration;
         },
         async startMic() {
-          if (!this.connected || this.recording) return;
-          this.interruptAiPlayback();
-          await this.ensureAudio();
-          this.micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-          this.source = this.audioCtx.createMediaStreamSource(this.micStream);
-          this.processor = this.audioCtx.createScriptProcessor(4096, 1, 1);
-          this.source.connect(this.processor); this.processor.connect(this.audioCtx.destination);
-          this.recording = true; this.setCaption('user', '我', '正在聆听…');
-          this.processor.onaudioprocess = (event) => this.sendPcm16k(event.inputBuffer.getChannelData(0), this.audioCtx.sampleRate);
+          if (!this.connected || this.micStatus !== 'idle') return;
+          this.micStatus = 'starting';
+          try {
+            this.interruptAiPlayback();
+            await this.ensureAudio();
+            this.micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+            this.source = this.audioCtx.createMediaStreamSource(this.micStream);
+            this.processor = this.audioCtx.createScriptProcessor(4096, 1, 1);
+            this.source.connect(this.processor); this.processor.connect(this.audioCtx.destination);
+            this.micStatus = 'recording'; this.setCaption('user', '我', '正在聆听…');
+            this.processor.onaudioprocess = (event) => this.sendPcm16k(event.inputBuffer.getChannelData(0), this.audioCtx.sampleRate);
+          } catch (error) {
+            this.stopMic();
+            this.setCaption('status', '状态', `无法开始录音：${error.message || error}`);
+          }
         },
-        stopMicIfRecording() { if (this.recording) this.stopMic(); },
+        toggleMic() { this.micStatus === 'recording' ? this.stopMic() : this.startMic(); },
         stopMic() {
-          if (this.recording && this.connected && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
+          const wasRecording = this.micStatus === 'recording';
+          if (wasRecording && this.connected && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
           this.processor?.disconnect(); this.source?.disconnect(); this.micStream?.getTracks().forEach((track) => track.stop());
-          this.processor = this.source = this.micStream = null; this.recording = false;
-          if (this.connected) this.setCaption('user', '我', '正在提交语音…');
+          this.processor = this.source = this.micStream = null; this.micStatus = 'idle';
+          if (wasRecording && this.connected) this.setCaption('user', '我', '正在提交语音…');
         },
         sendPcm16k(input, inRate) {
           if (!this.connected || this.ws?.readyState !== WebSocket.OPEN) return;
