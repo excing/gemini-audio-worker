@@ -373,6 +373,7 @@
           audioGeneration: 0,
           captionTimers: [],
           pendingAiCaption: '',
+          aiAudioScheduledThisTurn: false,
           micStream: null,
           source: null,
           processor: null,
@@ -481,6 +482,7 @@
           this.audioGeneration += 1;
           this.clearCaptionTimers();
           this.pendingAiCaption = '';
+          this.aiAudioScheduledThisTurn = false;
           this.audioNodes.forEach((node) => { try { node.stop(); } catch {} });
           this.audioNodes = [];
           if (this.audioCtx) this.playbackTime = this.audioCtx.currentTime;
@@ -534,6 +536,7 @@
           if (!content) return;
           if (content.interrupted) {
             this.interruptAiPlayback();
+            this.aiAudioScheduledThisTurn = false;
             this.scheduleWaitingAfterAudio();
             return;
           }
@@ -547,13 +550,19 @@
               this.pendingAiCaption = `${this.outputDraft}${part.text}`;
               this.addTranscript('Gemini', part.text);
             }
-            if (part.inlineData?.data) this.playPcm(part.inlineData.data, part.inlineData.mimeType, this.pendingAiCaption);
+            if (part.inlineData?.data) {
+              this.aiAudioScheduledThisTurn = true;
+              this.playPcm(part.inlineData.data, part.inlineData.mimeType, this.pendingAiCaption);
+            }
           }
           if (content.turnComplete) {
+            const textOnlyAiCaption = !this.aiAudioScheduledThisTurn && this.pendingAiCaption;
             this.addTranscript('我', '', true);
             this.addTranscript('Gemini', '', true);
+            if (textOnlyAiCaption) this.setCaption('ai', 'Gemini', textOnlyAiCaption);
             this.pendingAiCaption = '';
-            this.scheduleWaitingAfterAudio();
+            this.aiAudioScheduledThisTurn = false;
+            if (!textOnlyAiCaption) this.scheduleWaitingAfterAudio();
           }
         },
         addTranscript(role, text, flush = false) {
