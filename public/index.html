@@ -6,38 +6,45 @@
   <title>Gemini 语音对话</title>
   <style>
     :root { color-scheme: dark; --bg:#080b13; --panel:rgba(255,255,255,.08); --line:rgba(255,255,255,.14); --text:#f7f8ff; --muted:#aab2c8; --brand:#7c5cff; --ok:#38d996; --warn:#ffca5c; --bad:#ff6b7a; }
-    * { box-sizing: border-box; } body { margin:0; min-height:100vh; display:grid; place-items:center; font:16px/1.5 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background:radial-gradient(circle at 20% 10%,#4530a8 0 18rem,transparent 32rem),radial-gradient(circle at 80% 20%,#0b7b86 0 16rem,transparent 31rem),var(--bg); }
-    main { width:min(1040px,100%); min-height:min(760px,100vh); padding:28px; display:grid; gap:18px; grid-template-rows:auto 1fr auto; }
+    * { box-sizing: border-box; } body { margin:0; height:100dvh; overflow:hidden; display:grid; place-items:center; font:16px/1.5 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background:radial-gradient(circle at 20% 10%,#4530a8 0 18rem,transparent 32rem),radial-gradient(circle at 80% 20%,#0b7b86 0 16rem,transparent 31rem),var(--bg); }
+    #app { width:100%; height:100%; } main { width:min(768px,100%); height:100%; margin:0 auto; padding:28px; display:grid; gap:18px; grid-template-rows:auto minmax(0,1fr) auto; }
     header, .card, form { border:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06)); box-shadow:0 24px 80px rgba(0,0,0,.35); backdrop-filter:blur(24px); border-radius:28px; }
-    header { padding:22px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; } h1 { margin:0; font-size:clamp(24px,4vw,42px); letter-spacing:-.04em; } p { margin:.35rem 0 0; color:var(--muted); } .status { display:flex; gap:9px; align-items:center; white-space:nowrap; color:var(--muted); } .dot { width:11px; height:11px; border-radius:99px; background:var(--bad); box-shadow:0 0 22px currentColor; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); }
-    .card { min-height:420px; padding:20px; overflow:hidden; display:grid; grid-template-rows:1fr auto; } #chat { overflow:auto; padding:4px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; } .group { max-width:82%; display:flex; flex-direction:column; gap:4px; animation:pop .18s ease-out; } .group.user { align-self:flex-end; align-items:flex-end; } .group.ai { align-self:flex-start; align-items:flex-start; } .role { padding:0 6px; font-size:12px; color:rgba(255,255,255,.68); } .msg { padding:10px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); white-space:pre-wrap; } .user .msg { background:linear-gradient(135deg,var(--brand),#23b8d5); } .group .msg + .msg { margin-top:0; } .live { margin-top:14px; padding:14px 16px; border-radius:20px; border:1px dashed var(--line); color:var(--muted); min-height:56px; }
-    form { padding:12px; display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:10px; } .input-wrap { flex:1 1 auto; min-width:120px; } .actions { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; } input, textarea, select { width:100%; min-height:48px; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } textarea { min-height:120px; padding:12px 16px; resize:vertical; } button { flex:0 0 auto; min-width:48px; min-height:48px; border:0; border-radius:18px; padding:0 14px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-size:20px; font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); } .ghost { background:rgba(255,255,255,.12); border:1px solid var(--line); } dialog { width:min(680px,calc(100% - 24px)); border:1px solid var(--line); border-radius:28px; padding:0; color:var(--text); background:rgba(12,16,28,.96); box-shadow:0 28px 90px rgba(0,0,0,.55); backdrop-filter:blur(24px); } dialog::backdrop { background:rgba(0,0,0,.58); backdrop-filter:blur(6px); } .modal { padding:22px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:24px; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:13px; } label.full { grid-column:1/-1; } .checks { display:flex; flex-wrap:wrap; gap:12px; color:var(--muted); } .checks label { display:flex; align-items:center; gap:8px; } input[type=checkbox] { width:auto; min-height:0; } .modal-actions { display:flex; justify-content:flex-end; gap:10px; }
-    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @media (max-width:700px) { main{padding:12px} header{display:block}.status{margin-top:12px}.group{max-width:94%}.grid{grid-template-columns:1fr} }
+    header { min-height:68px; padding:10px 14px 10px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-radius:24px; } .titlebar-title { min-width:0; } .role-select { min-width:min(360px,48vw); min-height:48px; font-size:20px; font-weight:750; letter-spacing:-.03em; } .role-select .new-role { color:var(--brand); font-weight:800; } p { margin:.15rem 0 0; color:var(--muted); font-size:14px; } .titlebar-actions { display:flex; align-items:center; gap:10px; } .dot { width:15px; height:15px; border-radius:99px; background:var(--bad); box-shadow:0 0 22px currentColor; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .status-dot { position:absolute; top:-3px; right:-3px; border:2px solid rgba(42,35,100,.95); }
+    .card { min-height:0; padding:20px; overflow:hidden; position:relative; display:grid; grid-template-rows:minmax(0,1fr); } .view-toggle { position:absolute; top:14px; right:14px; z-index:2; background:rgba(255,255,255,.12); border:1px solid var(--line); } #chat { min-height:0; overflow:auto; padding:4px 56px 4px 4px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; } .group { max-width:82%; display:flex; flex-direction:column; gap:4px; animation:pop .18s ease-out; } .group.user { align-self:flex-end; align-items:flex-end; } .group.ai { align-self:flex-start; align-items:flex-start; } .role { padding:0 6px; font-size:12px; color:rgba(255,255,255,.68); } .msg { padding:10px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); white-space:pre-wrap; } .user .msg { background:linear-gradient(135deg,var(--brand),#23b8d5); } .group .msg + .msg { margin-top:0; } .live { min-height:0; overflow:auto; padding:64px 20px 20px; border-radius:20px; border:1px var(--line); color:var(--text); font-size:clamp(24px,4vw,44px); line-height:1.35; display:flex; align-items:center; justify-content:center; text-align:center; white-space:pre-wrap; }
+    form { padding:12px; display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:10px; } .input-wrap { flex:1 1 auto; min-width:120px; } .actions { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; } input, textarea, select { width:100%; min-height:48px; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } textarea { min-height:120px; padding:12px 16px; resize:vertical; } button { flex:0 0 auto; min-width:48px; min-height:48px; border:0; border-radius:18px; padding:0 14px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-size:20px; font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect { position:relative; } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); } .ghost { background:rgba(255,255,255,.12); border:1px solid var(--line); } dialog { width:min(680px,calc(100% - 24px)); border:1px solid var(--line); border-radius:28px; padding:0; color:var(--text); background:rgba(12,16,28,.96); box-shadow:0 28px 90px rgba(0,0,0,.55); backdrop-filter:blur(24px); } dialog::backdrop { background:rgba(0,0,0,.58); backdrop-filter:blur(6px); } .modal { padding:22px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:24px; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:13px; } label.full { grid-column:1/-1; } .modal-actions { display:flex; justify-content:flex-end; gap:10px; }
+    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @media (max-width:700px) { main{padding:12px} header{padding:10px; gap:10px}.titlebar-title p{display:none}.titlebar-actions{gap:8px}.group{max-width:94%}.grid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
   <div id="app">
     <main>
       <header>
-        <div><h1>Gemini 语音对话</h1><p>支持文字、麦克风输入、AI 语音输出和实时字幕。</p></div>
-        <div class="status"><span class="dot" :class="statusKind"></span><span>{{ statusText }}</span></div>
+        <div class="titlebar-title">
+          <select class="role-select" v-model="selectedRoleId" @change="selectRole">
+            <option class="new-role" value="__new__">＋ 新建角色</option>
+            <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+          </select>
+        </div>
+        <div class="titlebar-actions">
+          <button id="connect" type="button" :title="statusText" :class="{ off: connected }" :disabled="connecting" @click="toggleConnection"><span class="dot status-dot" :class="statusKind"></span>{{ connected ? '⏻' : '🔌' }}</button>
+          <button class="ghost" type="button" title="配置" @click="openSettings">⚙️</button>
+        </div>
       </header>
 
       <section class="card">
-        <div id="chat" ref="chatEl">
+        <button class="view-toggle" type="button" :title="viewMode === 'chat' ? '切换到字幕' : '切换到消息'" @click="toggleViewMode">{{ viewMode === 'chat' ? '💬' : '🗯️' }}</button>
+        <div id="chat" ref="chatEl" v-show="viewMode === 'chat'">
           <div v-for="(group, index) in messageGroups" :key="index" class="group" :class="group.role === '我' ? 'user' : 'ai'">
             <div class="role">{{ group.role }}</div>
             <div v-for="(message, messageIndex) in group.messages" :key="messageIndex" class="msg">{{ message }}</div>
           </div>
         </div>
-        <div class="live">{{ caption }}</div>
+        <div class="live" v-show="viewMode === 'caption'">{{ caption }}</div>
       </section>
 
       <form @submit.prevent="sendText">
-        <button id="connect" type="button" :title="connected ? '断开连接' : '连接'" :class="{ off: connected }" :disabled="connecting" @click="toggleConnection">{{ connected ? '⏻' : '🔌' }}</button>
         <div class="input-wrap"><input v-model="text" autocomplete="off" placeholder="输入消息，或使用麦克风实时说话…" /></div>
         <div class="actions">
-          <button class="ghost" type="button" title="配置" @click="openSettings">⚙️</button>
           <button id="mic" type="button" title="按住说话" :class="{ recording }" :disabled="!connected" @pointerdown="startMic" @pointerup="stopMic" @pointercancel="stopMic" @pointerleave="stopMicIfRecording">{{ recording ? '🛑' : '🎙️' }}</button>
           <button type="submit" title="发送" :disabled="!connected">➤</button>
         </div>
@@ -46,8 +53,9 @@
 
     <dialog ref="settingsDialog" @click="closeSettingsOnBackdrop">
       <div class="modal">
-        <div><h2>会话配置</h2><p>这些设置会保存在浏览器本地，下次连接时生效。</p></div>
+        <div><h2>会话配置</h2></div>
         <div class="grid">
+          <label class="full">角色名<input v-model="draftConfig.roleName" placeholder="例如：中文助理" /></label>
           <label>模型<select v-model="draftConfig.model">
             <option v-for="model in models" :key="model.value" :value="model.value">
               {{ model.name }}
@@ -60,10 +68,6 @@
           </select></label>
           <label>响应类型<select v-model="draftConfig.responseModality"><option value="AUDIO">AUDIO</option><option value="TEXT">TEXT</option></select></label>
           <label class="full">系统提示词<textarea v-model="draftConfig.systemInstruction"></textarea></label>
-        </div>
-        <div class="checks">
-          <label><input type="checkbox" v-model="draftConfig.inputAudioTranscription" />输入转写</label>
-          <label><input type="checkbox" v-model="draftConfig.outputAudioTranscription" />输出转写</label>
         </div>
         <div class="modal-actions">
           <button class="ghost" type="button" @click="closeSettings">取消</button>
@@ -218,17 +222,18 @@
     createApp({
       data() {
         const defaultConfig = {
+          roleName: 'Gemini 语音对话',
           model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
           voiceName: 'Kore',
           systemInstruction: 'You are a concise, friendly Chinese voice assistant.',
           responseModality: 'AUDIO',
-          inputAudioTranscription: true,
-          outputAudioTranscription: true,
         };
         return {
           defaultConfig,
           models,
           voices,
+          roles: [],
+          selectedRoleId: '',
           config: defaultConfig,
           draftConfig: { ...defaultConfig },
           ws: null,
@@ -242,7 +247,8 @@
           recording: false,
           statusText: '未连接',
           statusKind: '',
-          caption: '字幕会显示在这里。点击“连接”开始。',
+          caption: '点击 🔌 开始',
+          viewMode: 'caption',
           text: '',
           messageGroups: [],
           inputDraft: '',
@@ -250,24 +256,67 @@
         };
       },
       mounted() {
+        this.roles = this.loadRoles();
+        this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.roles[0]?.id || '';
         this.config = this.loadConfig();
         this.draftConfig = { ...this.config };
       },
       methods: {
+        createDefaultRole() {
+          return { ...this.defaultConfig, id: `role-${Date.now()}`, roleName: this.defaultConfig.roleName };
+        },
+        normalizeRole(role) {
+          const normalized = { ...this.defaultConfig, ...role };
+          normalized.id ||= `role-${Date.now()}`;
+          normalized.roleName = (normalized.roleName || normalized.name || this.defaultConfig.roleName).trim();
+          normalized.name = normalized.roleName;
+          return normalized;
+        },
+        loadRoles() {
+          try {
+            const roles = JSON.parse(localStorage.getItem('geminiRoles') || '[]').map((role) => this.normalizeRole(role));
+            if (roles.length) return roles;
+          } catch {}
+          let legacyConfig = {};
+          try { legacyConfig = JSON.parse(localStorage.getItem('geminiSetupConfig') || '{}'); } catch {}
+          const legacy = this.normalizeRole({ ...legacyConfig, id: `role-${Date.now()}` });
+          localStorage.setItem('geminiRoles', JSON.stringify([legacy]));
+          return [legacy];
+        },
+        saveRoles() { localStorage.setItem('geminiRoles', JSON.stringify(this.roles)); },
         loadConfig() {
-          try { return { ...this.defaultConfig, ...JSON.parse(localStorage.getItem('geminiSetupConfig') || '{}') }; }
-          catch { return { ...this.defaultConfig }; }
+          return { ...this.defaultConfig, ...(this.roles.find((role) => role.id === this.selectedRoleId) || this.roles[0] || {}) };
         },
         saveSettings() {
-          this.config = { ...this.draftConfig };
-          localStorage.setItem('geminiSetupConfig', JSON.stringify(this.config));
+          const roleName = (this.draftConfig.roleName || '').trim() || '未命名角色';
+          const role = this.normalizeRole({ ...this.draftConfig, id: this.selectedRoleId || `role-${Date.now()}`, roleName });
+          const index = this.roles.findIndex((item) => item.id === role.id);
+          if (index >= 0) this.roles.splice(index, 1, role);
+          else this.roles.push(role);
+          this.selectedRoleId = role.id;
+          this.config = { ...role };
+          this.saveRoles();
+          localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
           this.closeSettings();
-          this.caption = '配置已保存，下次连接时生效。';
+          this.caption = `角色「${role.roleName}」已保存，下次连接时生效。`;
         },
         openSettings() { this.draftConfig = { ...this.loadConfig() }; this.$refs.settingsDialog.showModal(); },
+        selectRole() {
+          if (this.selectedRoleId === '__new__') {
+            this.draftConfig = this.createDefaultRole();
+            this.selectedRoleId = '';
+            this.$refs.settingsDialog.showModal();
+            return;
+          }
+          localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
+          this.config = this.loadConfig();
+          this.draftConfig = { ...this.config };
+          this.caption = `已切换到角色「${this.config.roleName}」。`;
+        },
         closeSettings() { this.$refs.settingsDialog.close(); },
         closeSettingsOnBackdrop(event) { if (event.target === this.$refs.settingsDialog) this.closeSettings(); },
         setStatus(text, kind = '') { this.statusText = text; this.statusKind = kind; },
+        toggleViewMode() { this.viewMode = this.viewMode === 'chat' ? 'caption' : 'chat'; },
         setupMessage() {
           const setup = {
             model: this.config.model,
@@ -277,8 +326,8 @@
             systemInstruction: { parts: [{ text: this.config.systemInstruction }] },
           };
           if (this.config.responseModality === 'AUDIO' && this.config.voiceName) setup.generationConfig.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voiceName } } };
-          if (this.config.inputAudioTranscription) setup.inputAudioTranscription = {};
-          if (this.config.outputAudioTranscription) setup.outputAudioTranscription = {};
+          setup.inputAudioTranscription = {};
+          setup.outputAudioTranscription = {};
           return { setup };
         },
         toggleConnection() { this.connected ? this.ws?.close(1000, 'User disconnected') : this.connect(); },
