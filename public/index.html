@@ -532,6 +532,11 @@
           if (msg.setupComplete) { this.setStatus('已连接', 'ok'); this.showWaitingForUser(); return; }
           const content = msg.serverContent;
           if (!content) return;
+          if (content.interrupted) {
+            this.interruptAiPlayback();
+            this.scheduleWaitingAfterAudio();
+            return;
+          }
           if (content.inputTranscription?.text) { this.setCaption('user', '我', `${this.inputDraft}${content.inputTranscription.text}`); this.addTranscript('我', content.inputTranscription.text); }
           if (content.outputTranscription?.text) {
             this.pendingAiCaption = `${this.outputDraft}${content.outputTranscription.text}`;
