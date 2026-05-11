@@ -618,7 +618,6 @@
           if (wasRecording && this.connected && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
           this.processor?.disconnect(); this.source?.disconnect(); this.micStream?.getTracks().forEach((track) => track.stop());
           this.processor = this.source = this.micStream = null; this.micStatus = 'idle';
-          if (wasRecording && this.connected) this.setCaption('user', '我', '正在提交语音…');
         },
         sendPcm16k(input, inRate) {
           if (!this.connected || this.ws?.readyState !== WebSocket.OPEN) return;
