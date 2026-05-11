@@ -231,7 +231,7 @@
       data() {
         const defaultConfig = {
           roleName: 'Gemini 语音对话',
-          model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
+          model: 'models/gemini-3.1-flash-live-preview',
           voiceName: 'Kore',
           systemInstruction: 'You are a concise, friendly Chinese voice assistant.',
           responseModality: 'AUDIO',
@@ -247,6 +247,10 @@
           ws: null,
           audioCtx: null,
           playbackTime: 0,
+          audioNodes: [],
+          audioGeneration: 0,
+          captionTimers: [],
+          pendingAiCaption: '',
           micStream: null,
           source: null,
           processor: null,
@@ -324,8 +328,31 @@
         closeSettings() { this.$refs.settingsDialog.close(); },
         closeSettingsOnBackdrop(event) { if (event.target === this.$refs.settingsDialog) this.closeSettings(); },
         setStatus(text, kind = '') { this.statusText = text; this.statusKind = kind; },
-        setCaption(kind, role = '', text = '', icon = '💭') { this.caption = { kind, role, text, icon }; },
+        setCaption(kind, role = '', text = '', icon = '💭') { this.caption = { kind, role, text: text.trim(), icon }; },
         showWaitingForUser() { this.setCaption('waiting', '', '', '💭'); },
+        clearCaptionTimers() {
+          this.captionTimers.forEach((timer) => clearTimeout(timer));
+          this.captionTimers = [];
+        },
+        interruptAiPlayback() {
+          this.audioGeneration += 1;
+          this.clearCaptionTimers();
+          this.pendingAiCaption = '';
+          this.audioNodes.forEach((node) => { try { node.stop(); } catch {} });
+          this.audioNodes = [];
+          if (this.audioCtx) this.playbackTime = this.audioCtx.currentTime;
+        },
+        scheduleCaptionAt(kind, role, text, audioTime, icon = '💭', generation = this.audioGeneration) {
+          const delay = Math.max(0, ((audioTime || this.audioCtx?.currentTime || 0) - (this.audioCtx?.currentTime || 0)) * 1000);
+          const timer = setTimeout(() => {
+            if (generation === this.audioGeneration) this.setCaption(kind, role, text, icon);
+          }, delay);
+          this.captionTimers.push(timer);
+        },
+        scheduleWaitingAfterAudio() {
+          const audioTime = Math.max(this.playbackTime, this.audioCtx?.currentTime || 0) + 0.1;
+          this.scheduleCaptionAt('waiting', '', '', audioTime, '💭');
+        },
         toggleViewMode() { this.viewMode = this.viewMode === 'chat' ? 'caption' : 'chat'; },
         setupMessage() {
           const setup = {
@@ -346,11 +373,12 @@
           this.config = this.loadConfig();
           this.ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
           this.connecting = true;
+          this.interruptAiPlayback();
           this.setStatus('连接中…', 'wait');
           this.ws.onopen = async () => { this.connected = true; this.connecting = false; await this.ensureAudio(); this.setStatus('初始化…', 'wait'); this.setCaption('status', '状态', '正在初始化 Gemini Live 会话…'); };
           this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
           this.ws.onerror = () => this.setStatus('连接错误');
-          this.ws.onclose = () => { this.stopMic(); this.connected = false; this.connecting = false; this.setStatus('已断开'); this.setCaption('status', '状态', '已断开'); };
+          this.ws.onclose = () => { this.interruptAiPlayback(); this.stopMic(); this.connected = false; this.connecting = false; this.setStatus('已断开'); this.setCaption('status', '状态', '已断开'); };
         },
         handleMessage(msg) {
           if (msg.workerStatus) {
@@ -362,15 +390,22 @@
           const content = msg.serverContent;
           if (!content) return;
           if (content.inputTranscription?.text) { this.setCaption('user', '我', `${this.inputDraft}${content.inputTranscription.text}`); this.addTranscript('我', content.inputTranscription.text); }
-          if (content.outputTranscription?.text) { this.setCaption('ai', 'Gemini', `${this.outputDraft}${content.outputTranscription.text}`); this.addTranscript('Gemini', content.outputTranscription.text); }
+          if (content.outputTranscription?.text) {
+            this.pendingAiCaption = `${this.outputDraft}${content.outputTranscription.text}`;
+            this.addTranscript('Gemini', content.outputTranscription.text);
+          }
           for (const part of content.modelTurn?.parts || []) {
-            if (part.text) { this.setCaption('ai', 'Gemini', `${this.outputDraft}${part.text}`); this.addTranscript('Gemini', part.text); }
-            if (part.inlineData?.data) this.playPcm(part.inlineData.data, part.inlineData.mimeType);
+            if (part.text) {
+              this.pendingAiCaption = `${this.outputDraft}${part.text}`;
+              this.addTranscript('Gemini', part.text);
+            }
+            if (part.inlineData?.data) this.playPcm(part.inlineData.data, part.inlineData.mimeType, this.pendingAiCaption);
           }
           if (content.turnComplete) {
             this.addTranscript('我', '', true);
             this.addTranscript('Gemini', '', true);
-            this.showWaitingForUser();
+            this.pendingAiCaption = '';
+            this.scheduleWaitingAfterAudio();
           }
         },
         addTranscript(role, text, flush = false) {
@@ -393,8 +428,10 @@
           if (this.audioCtx.state !== 'running') await this.audioCtx.resume();
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
         },
-        async playPcm(data, mime = 'audio/pcm;rate=24000') {
+        async playPcm(data, mime = 'audio/pcm;rate=24000', captionText = '') {
+          const generation = this.audioGeneration;
           await this.ensureAudio();
+          if (generation !== this.audioGeneration) return;
           const rate = +(mime.match(/rate=(\d+)/)?.[1] || 24000);
           const raw = atob(data);
           const samples = raw.length / 2;
@@ -404,10 +441,15 @@
           const node = this.audioCtx.createBufferSource();
           node.buffer = buffer; node.connect(this.audioCtx.destination);
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
-          node.start(this.playbackTime); this.playbackTime += buffer.duration;
+          const startTime = this.playbackTime;
+          if (captionText) this.scheduleCaptionAt('ai', 'Gemini', captionText, startTime, '💭', generation);
+          node.onended = () => { this.audioNodes = this.audioNodes.filter((item) => item !== node); };
+          this.audioNodes.push(node);
+          node.start(startTime); this.playbackTime += buffer.duration;
         },
         async startMic() {
           if (!this.connected || this.recording) return;
+          this.interruptAiPlayback();
           await this.ensureAudio();
           this.micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
           this.source = this.audioCtx.createMediaStreamSource(this.micStream);
@@ -438,6 +480,7 @@
         sendText() {
           const value = this.text.trim();
           if (!this.connected || !value) return;
+          this.interruptAiPlayback();
           this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
           this.addMessage('我', value);
           this.setCaption('user', '我', value);
