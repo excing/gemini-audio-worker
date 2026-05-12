@@ -31,6 +31,20 @@ const nativeToolDeclarations = [
     description: '启用 Gemini 原生 Google Maps 工具。',
     tool: { googleMaps: {} },
   },
+  {
+    name: 'domainCheckMcp',
+    description: '启用 Instant Domain Search MCP，用于查询域名可用性、批量搜索和生成域名变体。',
+    tool: {
+      mcpServers: [
+        {
+          name: 'instantDomainSearch',
+          streamableHttpTransport: {
+            url: 'https://api.instantdomainsearch.com/mcp',
+          },
+        },
+      ],
+    },
+  },
 ];
 
 const availableToolDeclarations = [
@@ -85,6 +99,10 @@ const injectTools = (message) => {
 };
 
 const executeToolCalls = async (functionCalls, enabledToolNames) => {
+  console.log('exec tool call');
+  console.log(functionCalls);
+  
+  
   const functionResponses = [];
   const enabledToolSet = new Set(enabledToolNames);
 
