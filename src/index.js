@@ -184,9 +184,8 @@ export default {
 
     // 4. 当与 Gemini 的连接建立时，通知前端发送 Setup 初始化消息
     geminiWs.addEventListener('open', () => {
-      console.log('Connected to Gemini');
       geminiReady = true;
-      sendClientStatus({ type: 'gemini_open', message: 'Gemini 连接已建立，请发送 setup' });
+      sendClientStatus({ type: 'gemini_open', message: 'Gemini 连接已建立，正在初始化...' });
     });
 
     // 5. 消息转发：前端 -> Worker -> Gemini，并在 setup 中注入 tools
@@ -239,22 +238,20 @@ export default {
     });
 
     geminiWs.addEventListener('error', (event) => {
-      console.log('Gemini WebSocket error', event);
-      sendClientStatus({ type: 'error', message: `Gemini WebSocket 发生错误: ${event}` });
+      sendClientStatus({ type: 'gemini_error', message: `Gemini 发生错误: ${event.error?.message || event.error?.stack}` });
     });
 
     // 处理关闭事件
-    server.addEventListener('close', () => geminiWs.close());
+    server.addEventListener('close', () => { if (geminiReady) geminiWs.close(); });
     geminiWs.addEventListener('close', (event) => {
-      const message = `Gemini 连接关闭 code=${event.code || 'unknown'} reason=${event.reason || '无'}`;
-      console.log(message);
       sendClientStatus({
-        type: geminiReady ? 'gemini_close' : 'error',
-        message,
+        type: geminiReady ? 'gemini_close' : 'gemini_error',
+        message: `Gemini 连接关闭 code=${event.code || 'unknown'} reason=${event.reason || '无'}`,
         code: event.code,
         reason: event.reason,
       });
-      server.close(1011, message.slice(0, 120));
+      geminiReady = false;
+      server.close(event.code, event.reason);
     });
 
     // 返回 101 Switching Protocols
