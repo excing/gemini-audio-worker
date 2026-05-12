@@ -24,6 +24,34 @@ const toolDeclarations = [
   },
 ];
 
+const nativeToolDeclarations = [
+  {
+    name: 'googleSearch',
+    description: '启用 Gemini 原生 Google 搜索工具。',
+    tool: { googleSearch: {} },
+  },
+  {
+    name: 'codeExecution',
+    description: '启用 Gemini 原生代码执行工具。',
+    tool: { codeExecution: {} },
+  },
+  {
+    name: 'urlContext',
+    description: '启用 Gemini 原生 URL 上下文工具。',
+    tool: { urlContext: {} },
+  },
+  {
+    name: 'googleMaps',
+    description: '启用 Gemini 原生 Google Maps 工具。',
+    tool: { googleMaps: {} },
+  },
+];
+
+const availableToolDeclarations = [
+  ...toolDeclarations,
+  ...nativeToolDeclarations.map(({ name, description }) => ({ name, description })),
+];
+
 const toolHandlers = {
   get_current_time: async ({ timezone = 'Asia/Shanghai' } = {}) => {
     const now = new Date();
@@ -53,7 +81,7 @@ const getEnabledToolNames = (autoLoadTools) => {
 
   const value = autoLoadTools.trim();
   if (!value) return [];
-  if (value === '*') return Object.keys(toolHandlers);
+  if (value === '*') return availableToolDeclarations.map((tool) => tool.name);
 
   return value
     .split(',')
@@ -70,10 +98,18 @@ const injectTools = (message) => {
   if (!enabledToolNames.length) return message;
 
   const enabledDeclarations = toolDeclarations.filter((tool) => enabledToolNames.includes(tool.name));
-  if (!enabledDeclarations.length) return message;
+  const enabledNativeTools = nativeToolDeclarations
+    .filter((tool) => enabledToolNames.includes(tool.name))
+    .map(({ tool }) => tool);
+
+  if (!enabledDeclarations.length && !enabledNativeTools.length) return message;
 
   const existingTools = Array.isArray(message.setup.tools) ? message.setup.tools : [];
-  message.setup.tools = [...existingTools, { functionDeclarations: enabledDeclarations }];
+  message.setup.tools = [
+    ...existingTools,
+    ...enabledNativeTools,
+    ...(enabledDeclarations.length ? [{ functionDeclarations: enabledDeclarations }] : []),
+  ];
 
   return message;
 };
@@ -110,7 +146,7 @@ const executeToolCalls = async (functionCalls, enabledToolNames) => {
 
 const handleApiRequest = (request, env, ctx, pathname) => {
   if (pathname === '/api/tool-declarations') {
-    return Response.json(toolDeclarations);
+    return Response.json(availableToolDeclarations);
   }
 
   return Response.json({ error: "Not Found" }, { status: 404 });
