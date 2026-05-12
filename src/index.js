@@ -144,24 +144,10 @@ const executeToolCalls = async (functionCalls, enabledToolNames) => {
   return { toolResponse: { functionResponses } };
 };
 
-const handleApiRequest = (request, env, ctx, pathname) => {
-  if (pathname === '/api/tool-declarations') {
-    return Response.json(availableToolDeclarations);
-  }
-
-  return Response.json({ error: "Not Found" }, { status: 404 });
-};
-
 export default {
   async fetch(request, env, ctx) {
     const upgradeHeader = request.headers.get('Upgrade');
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
-      const url = new URL(request.url);
-      // 关键判断：所有 /api 开头的请求都交给 handleApiRouter
-      if (url.pathname.startsWith("/api")) {
-        return handleApiRequest(request, env, ctx, url.pathname);
-      }
-
       return env.ASSETS.fetch(request);
     }
 
