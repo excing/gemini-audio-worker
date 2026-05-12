@@ -141,8 +141,8 @@ window.DEFAULT_ROLES = [
     id: "role-gemili-audio-chat",
     roleName: "Gemini 语音对话",
     name: "Gemini 语音对话",
-    model: "models/gemini-3.1-flash-live-preview",
     voiceName: "Kore",
+    autoLoadTools: 'get_weather',
     systemInstruction: "You are a concise, friendly Chinese voice assistant."
   },
   {
@@ -151,7 +151,7 @@ window.DEFAULT_ROLES = [
     name: "智能搜索",
     model: "models/gemini-2.5-flash-native-audio-preview-12-2025",
     voiceName: "Rasalgethi",
-    autoLoadTools: "googleSearch,codeExecution,googleMaps",
+    autoLoadTools: "googleSearch,codeExecution,googleMaps,get_weather",
     systemInstruction: "你是智能搜索助手。目标是快速、准确、全面地回答用户问题，优先使用最新网络信息。直接给出核心答案和关键事实；复杂问题用清晰要点列表；必要时提供多角度对比或数据来源。对于时效性强、争议性或专业领域内容，标注信息时间并建议进一步验证。避免废话和无关寒暄，优先用中文回复。"
   },
   {
@@ -159,7 +159,7 @@ window.DEFAULT_ROLES = [
     roleName: '快问快答',
     name: '快问快答',
     voiceName: 'Orus',
-    autoLoadTools: 'codeExecution,urlContext',
+    autoLoadTools: 'codeExecution,urlContext,get_weather',
     systemInstruction: '你是快问快答助手。目标是在最短时间内给出准确、直接、可执行的答案。优先用 1 到 3 句话回答；复杂问题用简短要点。若信息不足，先给合理假设并说明；若问题涉及最新信息、法律、医疗、金融等高风险内容，提醒需要核验或咨询专业人士。避免寒暄和冗长铺垫。',
   },
   {
@@ -344,6 +344,23 @@ window.SYSTEM_TOOLS = [
         timezone: {
           type: 'string',
           description: 'IANA 时区名称，例如 Asia/Shanghai 或 America/New_York。',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_weather',
+    description: '查询 wttr.in 提供的天气信息。',
+    parameters: {
+      type: 'object',
+      properties: {
+        location: {
+          type: 'string',
+          description: '要查询的地点，例如 Beijing、Shanghai、London。留空则查询当前 IP 所在位置。',
+        },
+        lang: {
+          type: 'string',
+          description: '可选语言代码，例如 zh-cn 或 en。',
         },
       },
     },
