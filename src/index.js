@@ -48,23 +48,47 @@ const parseJson = (data) => {
   }
 };
 
+const getEnabledToolNames = (autoLoadTools) => {
+  if (typeof autoLoadTools !== 'string') return [];
+
+  const value = autoLoadTools.trim();
+  if (!value) return [];
+  if (value === '*') return Object.keys(toolHandlers);
+
+  return value
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name, index, names) => name && names.indexOf(name) === index);
+};
+
 const injectTools = (message) => {
   if (!message?.setup) return message;
 
+  const enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools);
+  delete message.setup.autoLoadTools;
+
+  if (!enabledToolNames.length) return message;
+
+  const enabledDeclarations = toolDeclarations.filter((tool) => enabledToolNames.includes(tool.name));
+  if (!enabledDeclarations.length) return message;
+
   const existingTools = Array.isArray(message.setup.tools) ? message.setup.tools : [];
-  message.setup.tools = [...existingTools, { functionDeclarations: toolDeclarations }];
+  message.setup.tools = [...existingTools, { functionDeclarations: enabledDeclarations }];
 
   return message;
 };
 
-const executeToolCalls = async (functionCalls) => {
+const executeToolCalls = async (functionCalls, enabledToolNames) => {
   const functionResponses = [];
+  const enabledToolSet = new Set(enabledToolNames);
 
   for (const call of functionCalls) {
     const handler = toolHandlers[call.name];
     let response;
 
-    if (!handler) {
+    if (!enabledToolSet.has(call.name)) {
+      response = { error: `Tool is not enabled: ${call.name}` };
+    } else if (!handler) {
       response = { error: `Unknown tool: ${call.name}` };
     } else {
       try {
@@ -118,6 +142,7 @@ export default {
     const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${env.GEMINI_API_KEY}`;
     const geminiWs = new WebSocket(geminiUrl);
     let geminiReady = false;
+    let enabledToolNames = [];
 
     sendClientStatus({ type: 'info', message: '开始连接...' });
 
@@ -133,6 +158,7 @@ export default {
       if (geminiWs.readyState === WebSocket.OPEN) {
         const message = typeof event.data === 'string' ? parseJson(event.data) : null;
         if (message?.setup) {
+          enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools);
           geminiWs.send(JSON.stringify(injectTools(message)));
         } else {
           geminiWs.send(event.data);
@@ -159,7 +185,7 @@ export default {
           const message = typeof rawData === 'string' ? parseJson(rawData) : null;
           const functionCalls = message?.toolCall?.functionCalls;
           if (Array.isArray(functionCalls) && functionCalls.length) {
-            const toolResponse = await executeToolCalls(functionCalls);
+            const toolResponse = await executeToolCalls(functionCalls, enabledToolNames);
             if (geminiWs.readyState === WebSocket.OPEN) {
               geminiWs.send(JSON.stringify(toolResponse));
             }
