@@ -8,6 +8,82 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
+const toolDeclarations = [
+  {
+    name: 'get_current_time',
+    description: '获取当前服务器时间。',
+    parameters: {
+      type: 'object',
+      properties: {
+        timezone: {
+          type: 'string',
+          description: 'IANA 时区名称，例如 Asia/Shanghai 或 America/New_York。',
+        },
+      },
+    },
+  },
+];
+
+const toolHandlers = {
+  get_current_time: async ({ timezone = 'Asia/Shanghai' } = {}) => {
+    const now = new Date();
+
+    return {
+      iso: now.toISOString(),
+      timezone,
+      formatted: new Intl.DateTimeFormat('zh-CN', {
+        dateStyle: 'full',
+        timeStyle: 'long',
+        timeZone: timezone,
+      }).format(now),
+    };
+  },
+};
+
+const parseJson = (data) => {
+  try {
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+};
+
+const injectTools = (message) => {
+  if (!message?.setup) return message;
+
+  const existingTools = Array.isArray(message.setup.tools) ? message.setup.tools : [];
+  message.setup.tools = [...existingTools, { functionDeclarations: toolDeclarations }];
+
+  return message;
+};
+
+const executeToolCalls = async (functionCalls) => {
+  const functionResponses = [];
+
+  for (const call of functionCalls) {
+    const handler = toolHandlers[call.name];
+    let response;
+
+    if (!handler) {
+      response = { error: `Unknown tool: ${call.name}` };
+    } else {
+      try {
+        response = await handler(call.args || {});
+      } catch (error) {
+        response = { error: error.message || String(error) };
+      }
+    }
+
+    functionResponses.push({
+      id: call.id,
+      name: call.name,
+      response,
+    });
+  }
+
+  return { toolResponse: { functionResponses } };
+};
+
 export default {
   async fetch(request, env) {
     const upgradeHeader = request.headers.get('Upgrade');
@@ -52,10 +128,15 @@ export default {
       sendClientStatus({ type: 'gemini_open', message: 'Gemini 连接已建立，请发送 setup' });
     });
 
-    // 5. 消息透传：前端 -> Worker -> Gemini
+    // 5. 消息转发：前端 -> Worker -> Gemini，并在 setup 中注入 tools
     server.addEventListener('message', (event) => {
       if (geminiWs.readyState === WebSocket.OPEN) {
-        geminiWs.send(event.data);
+        const message = typeof event.data === 'string' ? parseJson(event.data) : null;
+        if (message?.setup) {
+          geminiWs.send(JSON.stringify(injectTools(message)));
+        } else {
+          geminiWs.send(event.data);
+        }
       } else {
         sendClientStatus({
           type: 'warning',
@@ -64,17 +145,28 @@ export default {
       }
     });
 
-    // 6. 消息透传：Gemini -> Worker -> 前端
+    // 6. 消息转发：Gemini -> Worker -> 前端，并处理 toolCall
     geminiWs.addEventListener('message', async (event) => {
       if (server.readyState === WebSocket.OPEN) {
         try {
-        let rawData = event.data;
+          let rawData = event.data;
 
-        // Check if the data is a Blob
-        if (rawData instanceof Blob) {
-          rawData = await rawData.text(); // Convert Blob to string
-        }
-        server.send(rawData);
+          // Check if the data is a Blob
+          if (rawData instanceof Blob) {
+            rawData = await rawData.text(); // Convert Blob to string
+          }
+
+          const message = typeof rawData === 'string' ? parseJson(rawData) : null;
+          const functionCalls = message?.toolCall?.functionCalls;
+          if (Array.isArray(functionCalls) && functionCalls.length) {
+            const toolResponse = await executeToolCalls(functionCalls);
+            if (geminiWs.readyState === WebSocket.OPEN) {
+              geminiWs.send(JSON.stringify(toolResponse));
+            }
+            return;
+          }
+
+          server.send(rawData);
         } catch (error) {
           sendClientStatus({
             type: 'warning',
