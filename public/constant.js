@@ -138,6 +138,14 @@ window.APP_VOICES = [
 
 window.DEFAULT_ROLES = [
   {
+    id: "role-gemili-audio-chat",
+    roleName: "Gemini 语音对话",
+    name: "Gemini 语音对话",
+    model: "models/gemini-3.1-flash-live-preview",
+    voiceName: "Kore",
+    systemInstruction: "You are a concise, friendly Chinese voice assistant."
+  },
+  {
     id: "role-smart-search",
     roleName: "智能搜索",
     name: "智能搜索",

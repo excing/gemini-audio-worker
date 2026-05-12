@@ -22,7 +22,7 @@
         <div class="titlebar-title">
           <select class="role-select" v-model="selectedRoleId" @change="selectRole">
             <option class="new-role" value="__new__">＋ 新建角色</option>
-            <optgroup label="User">
+            <optgroup label="User" v-if="roles.length > 0">
               <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
             </optgroup>
             <optgroup label="System">
@@ -176,7 +176,7 @@
       },
       mounted() {
         this.roles = this.loadRoles();
-        this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.roles[0]?.id || '';
+        this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.roles[0]?.id || this.default_roles[0]?.id || '';
         this.config = this.loadConfig();
         this.draftConfig = { ...this.config };
       },
