@@ -10,19 +10,6 @@
 
 const toolDeclarations = [
   {
-    name: 'get_current_time',
-    description: '获取当前服务器时间。',
-    parameters: {
-      type: 'object',
-      properties: {
-        timezone: {
-          type: 'string',
-          description: 'IANA 时区名称，例如 Asia/Shanghai 或 America/New_York。',
-        },
-      },
-    },
-  },
-  {
     name: 'get_weather',
     description: '查询 wttr.in 提供的天气信息。',
     parameters: {
@@ -70,19 +57,6 @@ const availableToolDeclarations = [
 ];
 
 const toolHandlers = {
-  get_current_time: async ({ timezone = 'Asia/Shanghai' } = {}) => {
-    const now = new Date();
-
-    return {
-      iso: now.toISOString(),
-      timezone,
-      formatted: new Intl.DateTimeFormat('zh-CN', {
-        dateStyle: 'full',
-        timeStyle: 'long',
-        timeZone: timezone,
-      }).format(now),
-    };
-  },
   get_weather: async ({ location = '', lang = 'zh-cn' } = {}) => {
     const queryLocation = String(location || '').trim();
     const queryLang = String(lang || '').trim();
