@@ -31,7 +31,7 @@
           </select>
         </div>
         <div class="titlebar-actions">
-          <button id="connect" type="button" :title="statusText" :class="{ off: connected }" :disabled="connecting" @click="toggleConnection"><span class="dot status-dot" :class="statusKind"></span>{{ connected ? '⏻' : '🔌' }}</button>
+          <button id="connect" type="button" :title="statusText" :class="{ off: connected }" :disabled="isConnecting" @click="toggleConnection"><span class="dot status-dot" :class="statusKind"></span>{{ connected ? '⏻' : '🔌' }}</button>
           <button class="ghost" type="button" title="配置" @click="openSettings">⚙️</button>
         </div>
       </header>
@@ -59,8 +59,8 @@
         <button class="ghost" type="button" :title="interactionMode === 'turn' ? '回合模式：AI 完成后自动聆听，AI 回复时自动停麦' : '实时模式：点击麦克风开始/结束录音'" @click="toggleInteractionMode">{{ interactionMode === 'turn' ? '🔁' : '✋' }}</button>
         <div class="input-wrap"><input v-model="text" autocomplete="off" placeholder="输入消息，或使用麦克风实时说话…" /></div>
         <div class="actions">
-          <button id="mic" type="button" :title="voiceEnabled ? '关闭用户语音功能' : '开启用户语音功能'" :class="{ recording: voiceEnabled }" :disabled="!connected || micStatus === 'starting'" @click="toggleVoiceEnabled">{{ voiceEnabled ? '🛑' : '🎙️' }}</button>
-          <button type="submit" title="发送" :disabled="!connected">➤</button>
+          <button id="mic" type="button" :title="voiceEnabled ? '关闭用户语音功能' : '开启用户语音功能'" :class="{ recording: voiceEnabled }" :disabled="!canToggleVoice" @click="toggleVoiceEnabled">{{ voiceEnabled ? '🛑' : '🎙️' }}</button>
+          <button type="submit" title="发送" :disabled="!canSendText">➤</button>
         </div>
       </form>
     </main>
@@ -160,7 +160,6 @@
           source: null,
           processor: null,
           connected: false,
-          connecting: false,
           micStatus: 'idle',
           statusText: '未连接',
           statusKind: '',
@@ -184,6 +183,18 @@
       computed: {
         canDeleteRole() {
           return !!this.selectedRoleId && this.selectedRoleId !== '__new__' && !default_roles.some((role) => role.id === this.selectedRoleId);
+        },
+        isConnecting() {
+          return !this.connected && this.statusKind === 'wait';
+        },
+        isSessionReady() {
+          return this.connected && this.statusKind === 'ok';
+        },
+        canToggleVoice() {
+          return this.isSessionReady && this.micStatus !== 'starting';
+        },
+        canSendText() {
+          return this.isSessionReady && !!this.text.trim();
         },
       },
       methods: {
@@ -316,7 +327,7 @@
           this.setCaption('status', '状态', this.interactionMode === 'turn'
             ? (this.voiceEnabled ? '已开启回合模式。AI 完成后会自动聆听。' : '已开启回合模式，但用户语音未开启。当前仅支持文字输入。')
             : (this.voiceEnabled ? '已切换到实时模式。用户语音将保持开启。' : '已切换到实时模式。当前仅支持文字输入。'));
-          if (this.voiceEnabled && this.interactionMode === 'turn' && this.connected && this.micStatus === 'idle' && !this.audioNodes.length) this.startMic({ interruptAi: false });
+          if (this.voiceEnabled && this.interactionMode === 'turn' && this.isSessionReady && this.micStatus === 'idle' && !this.audioNodes.length) this.startMic({ interruptAi: false });
         },
         toggleVoiceEnabled() {
           this.voiceEnabled = !this.voiceEnabled;
@@ -330,7 +341,7 @@
           this.setCaption('status', '状态', this.interactionMode === 'turn'
             ? '已开启用户语音功能，正在进入回合模式。'
             : '已开启用户语音功能，正在进入实时模式。');
-          if (this.connected && this.micStatus === 'idle' && !this.audioNodes.length) this.startMic({ interruptAi: this.interactionMode === 'manual' });
+          if (this.isSessionReady && this.micStatus === 'idle' && !this.audioNodes.length) this.startMic({ interruptAi: this.interactionMode === 'manual' });
         },
         setupMessage() {
           const setup = {
@@ -348,16 +359,15 @@
         },
         toggleConnection() { this.connected ? this.ws?.close(1000, 'User disconnected') : this.connect(); },
         async connect() {
-          if (this.connected || this.connecting) return;
+          if (this.connected || this.isConnecting) return;
           this.config = this.loadConfig();
           this.ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
-          this.connecting = true;
           this.interruptAiPlayback();
           this.setStatus('连接中…', 'wait');
-          this.ws.onopen = async () => { this.connected = true; this.connecting = false; await this.ensureAudio(); this.setStatus('初始化…', 'wait'); this.setCaption('status', '状态', '正在初始化 Gemini Live 会话…'); };
+          this.ws.onopen = async () => { this.connected = true; await this.ensureAudio(); this.setStatus('初始化…', 'wait'); this.setCaption('status', '状态', '正在初始化 Gemini Live 会话…'); };
           this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
           this.ws.onerror = () => this.setStatus('连接错误');
-          this.ws.onclose = () => { this.interruptAiPlayback(); this.stopMic(); this.connected = false; this.connecting = false; this.setStatus('已断开'); this.setCaption('status', '状态', '已断开'); };
+          this.ws.onclose = () => { this.interruptAiPlayback(); this.stopMic(); this.connected = false; this.setStatus('已断开'); this.setCaption('status', '状态', '已断开'); };
         },
         handleMessage(msg) {
           if (msg.workerStatus) {
@@ -449,7 +459,7 @@
         },
         async startMic(options = {}) {
           const { interruptAi = true } = options;
-          if (!this.connected || !this.voiceEnabled || this.micStatus !== 'idle') return;
+          if (!this.isSessionReady || !this.voiceEnabled || this.micStatus !== 'idle') return;
           this.micStatus = 'starting';
           try {
             if (interruptAi) this.interruptAiPlayback();
@@ -473,7 +483,7 @@
           this.processor = this.source = this.micStream = null; this.micStatus = 'idle';
         },
         sendPcm16k(input, inRate) {
-          if (!this.connected || this.ws?.readyState !== WebSocket.OPEN) return;
+          if (!this.isSessionReady || this.ws?.readyState !== WebSocket.OPEN) return;
           const ratio = inRate / 16000;
           const pcm = new Int16Array(Math.floor(input.length / ratio));
           for (let i = 0; i < pcm.length; i++) { const sample = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)])); pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff; }
@@ -486,7 +496,7 @@
         },
         sendText() {
           const value = this.text.trim();
-          if (!this.connected || !value) return;
+          if (!this.canSendText) return;
           this.interruptAiPlayback();
           this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
           this.addMessage('我', value);
