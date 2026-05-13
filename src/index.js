@@ -284,9 +284,19 @@ export default {
           const message = typeof rawData === 'string' ? parseJson(rawData) : null;
           const functionCalls = message?.toolCall?.functionCalls;
           if (Array.isArray(functionCalls) && functionCalls.length) {
-            const toolResponse = await executeToolCalls(functionCalls, enabledToolNames, mcpToolHandlers);
-            if (geminiWs.readyState === WebSocket.OPEN) {
-              geminiWs.send(JSON.stringify(toolResponse));
+            const allToolHandlers = { ...toolHandlers, ...mcpToolHandlers };
+            const workerFunctionCalls = functionCalls.filter((call) => allToolHandlers[call.name]);
+
+            if (workerFunctionCalls.length) {
+              const toolResponse = await executeToolCalls(workerFunctionCalls, enabledToolNames, mcpToolHandlers);
+              if (geminiWs.readyState === WebSocket.OPEN) {
+                geminiWs.send(JSON.stringify(toolResponse));
+              }
+            }
+
+            const browserFunctionCalls = functionCalls.filter((call) => !allToolHandlers[call.name]);
+            if (browserFunctionCalls.length) {
+              server.send(JSON.stringify({ toolCall: { functionCalls: browserFunctionCalls } }));
             }
             return;
           }

@@ -119,6 +119,7 @@
   </div>
 
   <script src="./constant.js"></script>
+  <script src="./tools.js"></script>
   <script src="https://unpkg.com/vue@3.5.34/dist/vue.global.prod.js"></script>
   <script>
     const { createApp, nextTick } = Vue;
@@ -127,6 +128,7 @@
     const voices = window.APP_VOICES || [];
 
     const default_roles = window.DEFAULT_ROLES || [];
+    const browserTools = window.BROWSER_TOOLS || { declarations: [], handlers: {} };
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
 
@@ -225,10 +227,17 @@
         loadCachedToolDeclarations() {
           try {
             const cachedTools = JSON.parse(localStorage.getItem(TOOL_CACHE_KEY) || '[]');
-            return Array.isArray(cachedTools) ? cachedTools : [];
+            return this.mergeToolDeclarations(browserTools.declarations, Array.isArray(cachedTools) ? cachedTools : []);
           } catch {
-            return [];
+            return this.mergeToolDeclarations(browserTools.declarations);
           }
+        },
+        mergeToolDeclarations(...toolGroups) {
+          const toolMap = new Map();
+          toolGroups.flat().filter(Boolean).forEach((tool) => {
+            if (tool?.name && !toolMap.has(tool.name)) toolMap.set(tool.name, tool);
+          });
+          return [...toolMap.values()];
         },
         async loadToolDeclarations({ force = false } = {}) {
           if (this.toolsLoading) return;
@@ -237,8 +246,8 @@
             const response = await fetch('/api/tools');
             const data = await response.json();
             if (Array.isArray(data.tools)) {
-              this.toolDeclarations = data.tools;
-              localStorage.setItem(TOOL_CACHE_KEY, JSON.stringify(data.tools));
+              this.toolDeclarations = this.mergeToolDeclarations(browserTools.declarations, data.tools);
+              localStorage.setItem(TOOL_CACHE_KEY, JSON.stringify(this.toolDeclarations));
             }
             if (data.error) console.warn('Load MCP tools failed:', data.error);
           } catch (error) {
@@ -382,9 +391,38 @@
           };
           if (this.config.responseModality === 'AUDIO' && this.config.voiceName) setup.generationConfig.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voiceName } } };
           setup.autoLoadTools = this.config.autoLoadTools || '';
+          const browserToolNames = this.selectedBrowserToolNames(setup.autoLoadTools);
+          const browserToolDeclarations = browserTools.declarations.filter((tool) => browserToolNames.includes(tool.name));
+          if (browserToolDeclarations.length) setup.tools = [{ functionDeclarations: browserToolDeclarations }];
           setup.inputAudioTranscription = {};
           setup.outputAudioTranscription = {};
           return { setup };
+        },
+        selectedBrowserToolNames(autoLoadTools) {
+          const browserToolNames = browserTools.declarations.map((tool) => tool.name);
+          const value = (autoLoadTools || '').trim();
+          if (!value) return [];
+          if (value === '*') return browserToolNames;
+          const selectedNames = value.split(',').map((name) => name.trim()).filter(Boolean);
+          return browserToolNames.filter((name) => selectedNames.includes(name));
+        },
+        async handleBrowserToolCalls(functionCalls) {
+          const functionResponses = [];
+          for (const call of functionCalls) {
+            const handler = browserTools.handlers?.[call.name];
+            let response;
+            if (!handler) {
+              response = { error: `Unknown browser tool: ${call.name}` };
+            } else {
+              try {
+                response = await handler(call.args || {});
+              } catch (error) {
+                response = { error: error.message || String(error) };
+              }
+            }
+            functionResponses.push({ id: call.id, name: call.name, response });
+          }
+          if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ toolResponse: { functionResponses } }));
         },
         toggleConnection() { this.connected ? this.ws?.close(1000, 'User disconnected') : this.connect(); },
         async connect() {
@@ -408,6 +446,11 @@
             this.setStatus('已连接', 'ok');
             this.showWaitingForUser();
             if (this.voiceEnabled) this.startMic({ interruptAi: false });
+            return;
+          }
+          const browserFunctionCalls = (msg.toolCall?.functionCalls || []).filter((call) => browserTools.handlers?.[call.name]);
+          if (browserFunctionCalls.length) {
+            this.handleBrowserToolCalls(browserFunctionCalls);
             return;
           }
           const content = msg.serverContent;
