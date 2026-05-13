@@ -312,7 +312,6 @@ export default {
         reason: event.reason,
       });
       geminiReady = false;
-      server.close(event.code, event.reason);
     });
 
     // 返回 101 Switching Protocols

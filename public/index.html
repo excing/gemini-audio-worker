@@ -396,12 +396,11 @@
           this.ws.onopen = async () => { this.connected = true; await this.ensureAudio(); this.setStatus('初始化…', 'wait'); this.setCaption('status', '状态', '正在初始化 Gemini Live 会话…'); };
           this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
           this.ws.onerror = () => this.setStatus('连接错误');
-          this.ws.onclose = (event) => { this.interruptAiPlayback(); this.stopMic(); this.connected = false; this.setStatus('已断开'); this.setCaption('status', '状态', event.code == 1000 ? '已关闭' : `连接关闭 code=${event.code || 'unknown'} reason=${event.reason || '无'}`); console.log(event);
-           };
+          this.ws.onclose = (event) => { this.interruptAiPlayback(); this.stopMic(); this.connected = false; this.setStatus('已断开'); this.setCaption('status', '状态', event.code == 1000 ? '已关闭' : `连接关闭 code=${event.code || 'unknown'} reason=${event.reason || '无'}`); };
         },
         handleMessage(msg) {
           if (msg.workerStatus) {
-            if (msg.workerStatus.type !== 'gemini_close') this.setCaption('status', '状态', msg.workerStatus.message);
+            if (msg.workerStatus.type === 'gemini_close') this.ws?.close(1000, 'User disconnected');
             if (msg.workerStatus.type === 'gemini_open') this.ws.send(JSON.stringify(this.setupMessage()));
             return;
           }
