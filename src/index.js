@@ -115,10 +115,6 @@ const injectTools = (message, mcpToolDeclarations = []) => {
     ...(enabledDeclarations.length ? [{ functionDeclarations: enabledDeclarations }] : []),
   ];
 
-  console.log('-----------------------');
-  console.log('-----------------------');
-  console.log(JSON.stringify(message, null, 2));
-
   return message;
 };
 
