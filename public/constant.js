@@ -151,7 +151,7 @@ window.DEFAULT_ROLES = [
     name: "智能搜索",
     model: "models/gemini-2.5-flash-native-audio-preview-12-2025",
     voiceName: "Rasalgethi",
-    autoLoadTools: "googleSearch,codeExecution,googleMaps,get_weather",
+    autoLoadTools: "webSearch,codeExecution,googleMaps,get_weather",
     systemInstruction: "你是智能搜索助手。目标是快速、准确、全面地回答用户问题，优先使用最新网络信息。直接给出核心答案和关键事实；复杂问题用清晰要点列表；必要时提供多角度对比或数据来源。对于时效性强、争议性或专业领域内容，标注信息时间并建议进一步验证。避免废话和无关寒暄，优先用中文回复。"
   },
   {
