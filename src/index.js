@@ -9,6 +9,7 @@
  */
 
 import { toolDeclarations, toolHandlers } from './tools.js';
+import { createMcpToolRegistry } from './mcp-client.js';
 
 const nativeToolDeclarations = [
   {
@@ -33,8 +34,9 @@ const nativeToolDeclarations = [
   },
 ];
 
-const availableToolDeclarations = [
+const getAvailableToolDeclarations = (mcpToolDeclarations = []) => [
   ...toolDeclarations,
+  ...mcpToolDeclarations,
   ...nativeToolDeclarations.map(({ name, description }) => ({ name, description })),
 ];
 
@@ -46,28 +48,60 @@ const parseJson = (data) => {
   }
 };
 
-const getEnabledToolNames = (autoLoadTools) => {
+const getEnabledToolNames = (autoLoadTools, mcpToolDeclarations = []) => {
   if (typeof autoLoadTools !== 'string') return [];
 
   const value = autoLoadTools.trim();
   if (!value) return [];
-  if (value === '*') return availableToolDeclarations.map((tool) => tool.name);
+  if (value === '*') return getAvailableToolDeclarations(mcpToolDeclarations).map((tool) => tool.name);
 
-  return value
+  const requestedNames = value
     .split(',')
     .map((name) => name.trim())
     .filter((name, index, names) => name && names.indexOf(name) === index);
+
+  return requestedNames.flatMap((name) => {
+    const mcpServerPrefix = `${name}__`;
+    const matchedMcpTools = mcpToolDeclarations
+      .filter((tool) => tool.name.startsWith(mcpServerPrefix))
+      .map((tool) => tool.name);
+
+    return matchedMcpTools.length ? matchedMcpTools : [name];
+  });
 };
 
-const injectTools = (message) => {
+const parseMcpServersConfig = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = parseJson(value);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') return [parsed];
+    return value
+      .split(',')
+      .map((url) => url.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === 'object') return [value];
+  return [];
+};
+
+const getMcpServersConfig = (message, env) => [
+  ...parseMcpServersConfig(env.MCP_SERVERS),
+  ...parseMcpServersConfig(message?.setup?.mcpServers),
+];
+
+const injectTools = (message, mcpToolDeclarations = []) => {
   if (!message?.setup) return message;
 
-  const enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools);
+  const enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools, mcpToolDeclarations);
   delete message.setup.autoLoadTools;
+  delete message.setup.mcpServers;
 
   if (!enabledToolNames.length) return message;
 
-  const enabledDeclarations = toolDeclarations.filter((tool) => enabledToolNames.includes(tool.name));
+  const allFunctionDeclarations = [...toolDeclarations, ...mcpToolDeclarations];
+  const enabledDeclarations = allFunctionDeclarations.filter((tool) => enabledToolNames.includes(tool.name));
   const enabledNativeTools = nativeToolDeclarations
     .filter((tool) => enabledToolNames.includes(tool.name))
     .map(({ tool }) => tool);
@@ -81,19 +115,24 @@ const injectTools = (message) => {
     ...(enabledDeclarations.length ? [{ functionDeclarations: enabledDeclarations }] : []),
   ];
 
+  console.log('-----------------------');
+  console.log('-----------------------');
+  console.log(JSON.stringify(message, null, 2));
+
   return message;
 };
 
-const executeToolCalls = async (functionCalls, enabledToolNames) => {
-  console.log('exec tool call');
-  console.log(functionCalls);
-  
-  
+const executeToolCalls = async (functionCalls, enabledToolNames, mcpToolHandlers = {}) => {
+  console.log('-----------------------');
+  console.log('-----------------------');
+  console.log(JSON.stringify(functionCalls, null, 2));
+
   const functionResponses = [];
   const enabledToolSet = new Set(enabledToolNames);
+  const allToolHandlers = { ...toolHandlers, ...mcpToolHandlers };
 
   for (const call of functionCalls) {
-    const handler = toolHandlers[call.name];
+    const handler = allToolHandlers[call.name];
     let response;
 
     if (!enabledToolSet.has(call.name)) {
@@ -107,6 +146,11 @@ const executeToolCalls = async (functionCalls, enabledToolNames) => {
         response = { error: error.message || String(error) };
       }
     }
+
+    console.log('-----------------------');
+    console.log('-----------------------');
+
+    console.log(JSON.stringify(response, null, 2));
 
     functionResponses.push({
       id: call.id,
@@ -153,6 +197,8 @@ export default {
     const geminiWs = new WebSocket(geminiUrl);
     let geminiReady = false;
     let enabledToolNames = [];
+    let mcpToolDeclarations = [];
+    let mcpToolHandlers = {};
 
     sendClientStatus({ type: 'info', message: '开始连接...' });
 
@@ -163,12 +209,25 @@ export default {
     });
 
     // 5. 消息转发：前端 -> Worker -> Gemini，并在 setup 中注入 tools
-    server.addEventListener('message', (event) => {
+    server.addEventListener('message', async (event) => {
       if (geminiWs.readyState === WebSocket.OPEN) {
         const message = typeof event.data === 'string' ? parseJson(event.data) : null;
         if (message?.setup) {
-          enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools);
-          geminiWs.send(JSON.stringify(injectTools(message)));
+          try {
+            const mcpServers = getMcpServersConfig(message, env);
+            const mcpRegistry = await createMcpToolRegistry(mcpServers);
+            mcpToolDeclarations = mcpRegistry.declarations;
+            mcpToolHandlers = mcpRegistry.handlers;
+            enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools, mcpToolDeclarations);
+            geminiWs.send(JSON.stringify(injectTools(message, mcpToolDeclarations)));
+          } catch (error) {
+            sendClientStatus({
+              type: 'warning',
+              message: `MCP 初始化失败: ${error.message || error}`,
+            });
+            enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools, []);
+            geminiWs.send(JSON.stringify(injectTools(message, [])));
+          }
         } else {
           geminiWs.send(event.data);
         }
@@ -194,7 +253,7 @@ export default {
           const message = typeof rawData === 'string' ? parseJson(rawData) : null;
           const functionCalls = message?.toolCall?.functionCalls;
           if (Array.isArray(functionCalls) && functionCalls.length) {
-            const toolResponse = await executeToolCalls(functionCalls, enabledToolNames);
+            const toolResponse = await executeToolCalls(functionCalls, enabledToolNames, mcpToolHandlers);
             if (geminiWs.readyState === WebSocket.OPEN) {
               geminiWs.send(JSON.stringify(toolResponse));
             }
