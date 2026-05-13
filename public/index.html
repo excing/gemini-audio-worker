@@ -86,6 +86,7 @@
             <div class="tool-picker-head">
               <span>工具快捷选择</span>
               <div class="tool-actions">
+                <button class="ghost" type="button" :disabled="toolsLoading" @click="refreshToolDeclarations">{{ toolsLoading ? '刷新中' : '刷新' }}</button>
                 <button class="ghost" type="button" @click="setAllTools">全部</button>
                 <button class="ghost" type="button" @click="clearTools">清空</button>
               </div>
@@ -127,7 +128,7 @@
 
     const default_roles = window.DEFAULT_ROLES || [];
 
-    const system_tools = window.SYSTEM_TOOLS || [];
+    const TOOL_CACHE_KEY = 'geminiToolDeclarations';
 
     createApp({
       data() {
@@ -171,7 +172,8 @@
           messageGroups: [],
           inputDraft: '',
           outputDraft: '',
-          toolDeclarations: system_tools,
+          toolDeclarations: this.loadCachedToolDeclarations(),
+          toolsLoading: false,
         };
       },
       mounted() {
@@ -179,6 +181,7 @@
         this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.roles[0]?.id || this.default_roles[0]?.id || '';
         this.config = this.loadConfig();
         this.draftConfig = { ...this.config };
+        this.loadToolDeclarations();
       },
       computed: {
         canDeleteRole() {
@@ -219,6 +222,32 @@
         loadConfig() {
           return { ...this.defaultConfig, ...([...this.roles, ...this.default_roles].find((role) => role.id === this.selectedRoleId) || this.roles[0] || {}) };
         },
+        loadCachedToolDeclarations() {
+          try {
+            const cachedTools = JSON.parse(localStorage.getItem(TOOL_CACHE_KEY) || '[]');
+            return Array.isArray(cachedTools) ? cachedTools : [];
+          } catch {
+            return [];
+          }
+        },
+        async loadToolDeclarations({ force = false } = {}) {
+          if (this.toolsLoading) return;
+          this.toolsLoading = true;
+          try {
+            const response = await fetch('/api/tools');
+            const data = await response.json();
+            if (Array.isArray(data.tools)) {
+              this.toolDeclarations = data.tools;
+              localStorage.setItem(TOOL_CACHE_KEY, JSON.stringify(data.tools));
+            }
+            if (data.error) console.warn('Load MCP tools failed:', data.error);
+          } catch (error) {
+            console.warn('Load tools failed:', error);
+          } finally {
+            this.toolsLoading = false;
+          }
+        },
+        refreshToolDeclarations() { this.loadToolDeclarations(); },
         selectedToolNames() {
           const value = (this.draftConfig.autoLoadTools || '').trim();
           if (!value) return [];

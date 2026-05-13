@@ -165,6 +165,26 @@ const executeToolCalls = async (functionCalls, enabledToolNames, mcpToolHandlers
 export default {
   async fetch(request, env, ctx) {
     const upgradeHeader = request.headers.get('Upgrade');
+    const url = new URL(request.url);
+
+    if (url.pathname === '/api/tools') {
+      try {
+        const mcpRegistry = await createMcpToolRegistry(parseMcpServersConfig(env.MCP_SERVERS));
+        return Response.json(
+          { tools: getAvailableToolDeclarations(mcpRegistry.declarations) },
+          { headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' } },
+        );
+      } catch (error) {
+        return Response.json(
+          {
+            tools: getAvailableToolDeclarations([]),
+            error: error.message || String(error),
+          },
+          { headers: { 'Cache-Control': 'no-store' } },
+        );
+      }
+    }
+
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
       return env.ASSETS.fetch(request);
     }
