@@ -359,20 +359,4 @@ window.SYSTEM_TOOLS = [
     name: 'googleMaps',
     description: '启用 Gemini 原生 Google Maps 工具。',
   },
-  {
-    name: 'domainCheckMcp',
-    description: '查询域名可用性、批量搜索和生成域名变体。',
-  },
-  {
-    name: 'search_domains',
-    description: '本地工具：搜索域名可用性和建议。',
-  },
-  {
-    name: 'generate_domain_variations',
-    description: '本地工具：生成域名前后缀变体。',
-  },
-  {
-    name: 'check_domain_availability',
-    description: '本地工具：通过 DNS 检查指定域名可用性。',
-  },
 ];
