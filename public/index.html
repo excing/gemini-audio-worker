@@ -490,6 +490,8 @@
           const { interruptAi = true } = options;
           if (!this.isSessionReady || !this.voiceEnabled || this.micStatus !== 'idle') return;
           this.micStatus = 'starting';
+          const playCue = new Audio('/speech_start.mp3');
+          try { await playCue.play(); } catch {}
           try {
             if (interruptAi) this.interruptAiPlayback();
             await this.ensureAudio();
