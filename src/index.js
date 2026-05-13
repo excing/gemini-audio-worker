@@ -11,27 +11,30 @@
 import { toolDeclarations, toolHandlers } from './tools.js';
 import { createMcpToolRegistry } from './mcp-client.js';
 
+// 受支持的工具概览
+// 仅支持 google search 和函数调用
 const nativeToolDeclarations = [
   {
     name: 'googleSearch',
     description: '启用 Gemini 原生 Google 搜索工具。',
     tool: { googleSearch: {} },
   },
-  {
-    name: 'codeExecution',
-    description: '启用 Gemini 原生代码执行工具。',
-    tool: { codeExecution: {} },
-  },
-  {
-    name: 'urlContext',
-    description: '启用 Gemini 原生 URL 上下文工具。',
-    tool: { urlContext: {} },
-  },
-  {
-    name: 'googleMaps',
-    description: '启用 Gemini 原生 Google Maps 工具。',
-    tool: { googleMaps: {} },
-  },
+  // https://ai.google.dev/gemini-api/docs/live-api/tools?hl=zh-CN#tools-overview
+  // {
+  //   name: 'codeExecution',
+  //   description: '启用 Gemini 原生代码执行工具。',
+  //   tool: { codeExecution: {} },
+  // },
+  // {
+  //   name: 'urlContext',
+  //   description: '启用 Gemini 原生 URL 上下文工具。',
+  //   tool: { urlContext: {} },
+  // },
+  // {
+  //   name: 'googleMaps',
+  //   description: '启用 Gemini 原生 Google Maps 工具。',
+  //   tool: { googleMaps: {} },
+  // },
 ];
 
 const getAvailableToolDeclarations = (mcpToolDeclarations = []) => [
@@ -114,6 +117,10 @@ const injectTools = (message, mcpToolDeclarations = []) => {
     ...enabledNativeTools,
     ...(enabledDeclarations.length ? [{ functionDeclarations: enabledDeclarations }] : []),
   ];
+
+  console.log('-----------------------');
+  console.log('-----------------------');
+  console.log(JSON.stringify(message, null, 2));
 
   return message;
 };

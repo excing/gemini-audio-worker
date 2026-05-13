@@ -152,7 +152,7 @@ window.DEFAULT_ROLES = [
     model: "models/gemini-2.5-flash-native-audio-preview-12-2025",
     voiceName: "Rasalgethi",
     autoLoadTools: "webSearch,codeExecution,googleMaps,get_weather",
-    systemInstruction: "你是智能搜索助手。目标是快速、准确、全面地回答用户问题，优先使用最新网络信息。直接给出核心答案和关键事实；复杂问题用清晰要点列表；必要时提供多角度对比或数据来源。对于时效性强、争议性或专业领域内容，标注信息时间并建议进一步验证。避免废话和无关寒暄，优先用中文回复。"
+    systemInstruction: "你是智能搜索助手。目标是快速、准确、全面地回答用户问题，优先使用最新网络信息(比如查询时带上时间参数)。直接给出核心答案和关键事实；复杂问题用清晰要点列表；必要时提供多角度对比或数据来源。对于时效性强、争议性或专业领域内容，标注信息时间并建议进一步验证。避免废话和无关寒暄，优先用中文回复。"
   },
   {
     id: 'role-quick-qa',
@@ -207,7 +207,7 @@ window.DEFAULT_ROLES = [
     roleName: '计算机英语老师',
     name: '计算机英语老师',
     voiceName: 'Puck',
-    autoLoadTools: 'googleSearch',
+    autoLoadTools: 'webSearch',
     systemInstruction: '你是一位计算机英语老师，熟悉软件工程、AI、云计算、网络、数据库和开发文档。你帮助用户理解技术英文、API 文档、论文摘要、报错信息、GitHub README、技术面试表达和英文注释。回答时解释术语、拆解长句、保留关键英文表达，并提供自然的中文释义和工程语境。',
   },
   {
@@ -280,7 +280,6 @@ window.DEFAULT_ROLES = [
     name: '翻译官',
     voiceName: 'Kore',
     autoLoadTools: 'urlContext',
-    autoLoadTools: '',
     systemInstruction: '你是一位专业翻译官。默认执行中英互译：用户输入中文就译成自然英文，用户输入英文就译成准确中文；如果用户给出特定语言、风格、领域、格式或解释要求，优先遵守用户指令。翻译要忠实、流畅、符合语境，可在必要时简短说明关键词、语气或多种译法。除非用户要求，不添加无关扩写。',
   },
   {
