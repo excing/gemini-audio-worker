@@ -18,6 +18,37 @@
     },
   };
 
+  const renderPageDeclaration = {
+    name: 'renderPage',
+    description: '在页面内创建沙箱 iframe，实时渲染 HTML/CSS/JavaScript。iframe 使用独立 opaque origin，并仅允许脚本执行。',
+    parameters: {
+      type: 'object',
+      properties: {
+        html: {
+          type: 'string',
+          description: '完整 HTML 文档或 HTML 片段。',
+        },
+        css: {
+          type: 'string',
+          description: '可选 CSS，会注入到 head 中。',
+        },
+        js: {
+          type: 'string',
+          description: '可选 JavaScript，会注入到 body 末尾的 script 中。',
+        },
+        title: {
+          type: 'string',
+          description: '预览标题，默认“实时页面预览”。',
+        },
+        height: {
+          type: 'number',
+          description: 'iframe 高度像素值，默认 420，范围 160 到 900。',
+        },
+      },
+      required: ['html'],
+    },
+  };
+
   const serializeValue = (value) => {
     if (typeof value === 'undefined') return 'undefined';
     if (typeof value === 'string') return value;
@@ -70,8 +101,67 @@
     worker.postMessage(String(code));
   });
 
+  const escapeClosingScript = (value = '') => String(value).replace(/<\/script/gi, '<\\/script');
+
+  const buildPreviewDocument = ({ html = '', css = '', js = '' } = {}) => {
+    const source = String(html || '');
+    if (/<!doctype html>|<html[\s>]/i.test(source)) {
+      return source
+        .replace(/<\/head>/i, `<style>${css || ''}</style></head>`)
+        .replace(/<\/body>/i, `<script>${escapeClosingScript(js)}</script></body>`);
+    }
+
+    return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>${css || ''}</style>
+</head>
+<body>
+${source}
+<script>${escapeClosingScript(js)}</script>
+</body>
+</html>`;
+  };
+
+  const ensurePreviewHost = () => {
+    let host = document.getElementById('tool-preview-host');
+    if (!host) {
+      host = document.createElement('section');
+      host.id = 'tool-preview-host';
+      host.className = 'tool-preview-host';
+      document.querySelector('main')?.appendChild(host);
+    }
+    return host;
+  };
+
+  const renderPage = ({ html = '', css = '', js = '', title = '实时页面预览', height = 420 } = {}) => {
+    const host = ensurePreviewHost();
+    const frameHeight = Math.max(160, Math.min(Number(height) || 420, 900));
+    host.innerHTML = `
+      <div class="tool-preview-head">
+        <strong></strong>
+        <button class="ghost tool-preview-close" type="button" title="关闭预览">×</button>
+      </div>
+      <iframe title="工具渲染页面预览" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
+    `;
+    host.querySelector('strong').textContent = title || '实时页面预览';
+    host.querySelector('.tool-preview-close').addEventListener('click', () => host.remove());
+    const iframe = host.querySelector('iframe');
+    iframe.style.height = `${frameHeight}px`;
+    iframe.srcdoc = buildPreviewDocument({ html, css, js });
+    return {
+      ok: true,
+      message: '页面已在浏览器沙箱 iframe 中渲染。',
+      sandbox: 'allow-scripts',
+      origin: 'opaque',
+      height: frameHeight,
+    };
+  };
+
   window.BROWSER_TOOLS = {
-    declarations: [codeExecutionDeclaration],
-    handlers: { codeExecution },
+    declarations: [codeExecutionDeclaration, renderPageDeclaration],
+    handlers: { codeExecution, renderPage },
   };
 })();
