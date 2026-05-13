@@ -162,6 +162,9 @@ const executeToolCalls = async (functionCalls, enabledToolNames, mcpToolHandlers
   return { toolResponse: { functionResponses } };
 };
 
+// 利用 cf workers 的 Isolate 为 availableToolDeclarations 提供一级缓存
+const availableToolDeclarations = [];
+
 export default {
   async fetch(request, env, ctx) {
     const upgradeHeader = request.headers.get('Upgrade');
@@ -169,9 +172,14 @@ export default {
 
     if (url.pathname === '/api/tools') {
       try {
-        const mcpRegistry = await createMcpToolRegistry(parseMcpServersConfig(env.MCP_SERVERS));
+        if (availableToolDeclarations.length == 0) {
+          const mcpRegistry = await createMcpToolRegistry(parseMcpServersConfig(env.MCP_SERVERS));
+          availableToolDeclarations.push(
+            ...getAvailableToolDeclarations(mcpRegistry.declarations).map(({ name, description }) => { return { name, description } }),
+          );
+        }
         return Response.json(
-          { tools: getAvailableToolDeclarations(mcpRegistry.declarations) },
+          { tools: availableToolDeclarations },
           { headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' } },
         );
       } catch (error) {
