@@ -11,6 +11,24 @@
 import { toolDeclarations, toolHandlers } from './tools.js';
 import { createMcpToolRegistry, getMcpServersConfig } from './mcp-client.js';
 
+const seeyouGemini = {
+  name: 'see_you_later',
+  description: '断开和用户的连接. 当用户有表示“再见, 拜拜, goodbye, see you, see you later"之类的想法时, 调用该工具, 主动断开和用户的连接.',
+  parameters: {
+    type: 'object',
+    properties: {
+      message: {
+        type: 'string',
+        description: '结束语, 可选. 可以是带给用户的最后一句话, 也可以是其他断开连接的原因.',
+      },
+    },
+  },
+}
+
+const runtimeTools = [{
+  functionDeclarations: [seeyouGemini]
+}];
+
 const getAvailableToolDeclarations = (mcpToolDeclarations = []) => [
   ...toolDeclarations,
   ...mcpToolDeclarations,
@@ -55,7 +73,10 @@ const injectTools = (message, mcpToolDeclarations = []) => {
   delete message.setup.autoLoadTools;
   delete message.setup.mcpServers;
 
-  if (!enabledToolNames.length) return message;
+  if (!enabledToolNames.length) {
+    message.setup.tools = runtimeTools;
+    return message;
+  }
 
   const allFunctionDeclarations = [...toolDeclarations, ...mcpToolDeclarations];
   const enabledDeclarations = allFunctionDeclarations.filter((tool) => enabledToolNames.includes(tool.name));
@@ -70,6 +91,7 @@ const injectTools = (message, mcpToolDeclarations = []) => {
 
   const existingTools = Array.isArray(message.setup.tools) ? message.setup.tools : [];
   message.setup.tools = [
+    ...runtimeTools,
     ...existingTools,
     ...enabledNativeTools,
     ...(enabledDeclarations.length ? [{ functionDeclarations: enabledDeclarations }] : []),
@@ -247,6 +269,29 @@ export default {
           const message = typeof rawData === 'string' ? parseJson(rawData) : null;
           const functionCalls = message?.toolCall?.functionCalls;
           if (Array.isArray(functionCalls) && functionCalls.length) {
+            const seeyoulaterAt = functionCalls.findIndex(call => call.name === seeyouGemini.name);
+            if (seeyoulaterAt !== -1 && geminiWs.readyState === WebSocket.OPEN) {
+              console.log('-----------------^_^ see you later -----------------');
+
+              geminiWs.send(JSON.stringify({
+                toolResponse: {
+                  functionResponses: [{
+                    id: functionCalls[seeyoulaterAt].id,
+                    name: functionCalls[seeyoulaterAt].name,
+                    response: "Done",
+                  }]
+                }
+              }));
+              geminiWs.close(1000);
+              sendClientStatus({
+                type: 'gemini_close',
+                message: `再见`,
+                code: 1000,
+                reason: functionCalls[seeyoulaterAt].args,
+              });
+              functionCalls.splice(seeyoulaterAt, 1);
+            }
+
             const allToolHandlers = { ...toolHandlers, ...mcpToolHandlers };
             const workerFunctionCalls = functionCalls.filter((call) => allToolHandlers[call.name]);
 
