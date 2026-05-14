@@ -85,33 +85,19 @@
     worker.postMessage(String(code));
   });
 
-  const ensurePreviewHost = () => {
-    let host = document.getElementById('tool-preview-host');
-    if (!host) {
-      host = document.createElement('section');
-      host.id = 'tool-preview-host';
-      host.className = 'tool-preview-host';
-      document.querySelector('main')?.appendChild(host);
-    }
-    return host;
-  };
-
   const renderPage = ({ html = '' } = {}) => {
-    const host = ensurePreviewHost();
-    host.innerHTML = `
-      <div class="tool-preview-head">
-        <strong>实时页面预览</strong>
-        <button class="ghost tool-preview-close" type="button" title="关闭预览">×</button>
-      </div>
-      <iframe title="工具渲染页面预览" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
-    `;
-    host.querySelector('.tool-preview-close').addEventListener('click', () => host.remove());
-    const iframe = host.querySelector('iframe');
-    iframe.style.height = '100%';
-    iframe.srcdoc = String(html || '');
+    const renderId = `render-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    window.dispatchEvent(new CustomEvent('browser-tool-render-page', {
+      detail: {
+        id: renderId,
+        html: String(html || ''),
+        title: '页面渲染',
+      },
+    }));
     return {
       ok: true,
-      message: '页面已在浏览器沙箱 iframe 中渲染。',
+      render_id: renderId,
+      message: '页面已渲染，并已加入消息列表。',
       sandbox: 'allow-scripts',
       origin: 'opaque',
     };

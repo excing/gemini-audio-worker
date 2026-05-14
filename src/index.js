@@ -270,7 +270,7 @@ export default {
           if (Array.isArray(functionCalls) && functionCalls.length) {
             const seeyoulaterAt = functionCalls.findIndex(call => call.name === seeyouGemini.name);
             if (seeyoulaterAt !== -1 && geminiWs.readyState === WebSocket.OPEN) {
-              console.log('-----------------^_^ see you later -----------------');
+              console.log('-----------------^_^ see you later ^_^-----------------');
 
               geminiWs.send(JSON.stringify({
                 toolResponse: {
