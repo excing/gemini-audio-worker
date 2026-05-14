@@ -18,7 +18,7 @@ export const toolDeclarations = [
   },
   {
     name: 'webSearch',
-    description: '使用 DuckDuckGo HTML 搜索网页信息，返回标题、链接、摘要和可用的结果时间。',
+    description: '联网搜索网页信息，返回标题、链接、摘要和可用的结果时间。',
     parameters: {
       type: 'object',
       properties: {

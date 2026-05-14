@@ -11,36 +11,9 @@
 import { toolDeclarations, toolHandlers } from './tools.js';
 import { createMcpToolRegistry } from './mcp-client.js';
 
-// 受支持的工具概览
-// 仅支持 google search 和函数调用
-const nativeToolDeclarations = [
-  {
-    name: 'googleSearch',
-    description: '启用 Gemini 原生 Google 搜索工具。',
-    tool: { googleSearch: {} },
-  },
-  // https://ai.google.dev/gemini-api/docs/live-api/tools?hl=zh-CN#tools-overview
-  // {
-  //   name: 'codeExecution',
-  //   description: '启用 Gemini 原生代码执行工具。',
-  //   tool: { codeExecution: {} },
-  // },
-  // {
-  //   name: 'urlContext',
-  //   description: '启用 Gemini 原生 URL 上下文工具。',
-  //   tool: { urlContext: {} },
-  // },
-  // {
-  //   name: 'googleMaps',
-  //   description: '启用 Gemini 原生 Google Maps 工具。',
-  //   tool: { googleMaps: {} },
-  // },
-];
-
 const getAvailableToolDeclarations = (mcpToolDeclarations = []) => [
   ...toolDeclarations,
   ...mcpToolDeclarations,
-  ...nativeToolDeclarations.map(({ name, description }) => ({ name, description })),
 ];
 
 const parseJson = (data) => {
@@ -105,9 +78,12 @@ const injectTools = (message, mcpToolDeclarations = []) => {
 
   const allFunctionDeclarations = [...toolDeclarations, ...mcpToolDeclarations];
   const enabledDeclarations = allFunctionDeclarations.filter((tool) => enabledToolNames.includes(tool.name));
-  const enabledNativeTools = nativeToolDeclarations
-    .filter((tool) => enabledToolNames.includes(tool.name))
-    .map(({ tool }) => tool);
+  // 受支持的工具概览
+  // 仅支持 google search 和函数调用, 且 google search 仅 2.5 模型可用
+  // https://ai.google.dev/gemini-api/docs/live-api/tools?hl=zh-CN#tools-overview
+  const indexWebSearchAtBut2_5 = String(message.setup.model || '').includes('2.5') ? enabledDeclarations.findIndex(item => item.name === 'webSearch') : -1;
+  const enabledNativeTools = indexWebSearchAtBut2_5 !== -1 ? [{ googleSearch: {} }] : [];
+  if (indexWebSearchAtBut2_5 !== -1) enabledDeclarations.splice(indexWebSearchAtBut2_5, 1);
 
   if (!enabledDeclarations.length && !enabledNativeTools.length) return message;
 
