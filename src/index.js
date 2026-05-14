@@ -49,6 +49,8 @@ const getEnabledToolNames = (autoLoadTools, mcpToolDeclarations = []) => {
 const injectTools = (message, mcpToolDeclarations = []) => {
   if (!message?.setup) return message;
 
+  message.setup.model = models[message.setup.model] ?? models.default;
+
   const enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools, mcpToolDeclarations);
   delete message.setup.autoLoadTools;
   delete message.setup.mcpServers;
@@ -60,7 +62,6 @@ const injectTools = (message, mcpToolDeclarations = []) => {
   // 受支持的工具概览
   // 仅支持 google search 和函数调用, 且 google search 仅 2.5 模型可用
   // https://ai.google.dev/gemini-api/docs/live-api/tools?hl=zh-CN#tools-overview
-  message.setup.model = models[message.setup.model];
   const indexWebSearchAtBut2_5 = String(message.setup.model || '').includes('2.5') ? enabledDeclarations.findIndex(item => item.name === 'webSearch') : -1;
   const enabledNativeTools = indexWebSearchAtBut2_5 !== -1 ? [{ googleSearch: {} }] : [];
   if (indexWebSearchAtBut2_5 !== -1) enabledDeclarations.splice(indexWebSearchAtBut2_5, 1);
@@ -125,6 +126,7 @@ const executeToolCalls = async (functionCalls, enabledToolNames, mcpToolHandlers
 const availableToolDeclarations = [];
 
 const models = {
+  default: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
   "gemini-3.1-flash-preview": "models/gemini-3.1-flash-live-preview",
   "gemini-2.5-flash-preview": "models/gemini-2.5-flash-native-audio-preview-12-2025",
 }
