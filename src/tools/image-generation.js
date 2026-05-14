@@ -113,7 +113,6 @@ const formatImageGenerationResponse = (result) => {
   return {
     images,
     text: texts.join('\n').trim(),
-    nextStep: '把图片用页面渲染给用户看',
   };
 };
 
