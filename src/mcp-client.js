@@ -8,6 +8,24 @@ const parseJson = (data) => {
   }
 };
 
+const parseMcpServersConfig = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = parseJson(value);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') return [parsed];
+    return value
+      .split(',')
+      .map((url) => url.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === 'object') return [value];
+  return [];
+};
+
+export const getMcpServersConfig = (...configStr) => configStr.map(str => parseMcpServersConfig(str)).flat();
+
 const normalizeMcpServers = (servers = []) => {
   if (!Array.isArray(servers)) return [];
 

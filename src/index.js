@@ -9,7 +9,7 @@
  */
 
 import { toolDeclarations, toolHandlers } from './tools.js';
-import { createMcpToolRegistry } from './mcp-client.js';
+import { createMcpToolRegistry, getMcpServersConfig } from './mcp-client.js';
 
 const getAvailableToolDeclarations = (mcpToolDeclarations = []) => [
   ...toolDeclarations,
@@ -45,27 +45,6 @@ const getEnabledToolNames = (autoLoadTools, mcpToolDeclarations = []) => {
     return matchedMcpTools.length ? matchedMcpTools : [name];
   });
 };
-
-const parseMcpServersConfig = (value) => {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'string') {
-    const parsed = parseJson(value);
-    if (Array.isArray(parsed)) return parsed;
-    if (parsed && typeof parsed === 'object') return [parsed];
-    return value
-      .split(',')
-      .map((url) => url.trim())
-      .filter(Boolean);
-  }
-  if (typeof value === 'object') return [value];
-  return [];
-};
-
-const getMcpServersConfig = (message, env) => [
-  ...parseMcpServersConfig(env.MCP_SERVERS),
-  ...parseMcpServersConfig(message?.setup?.mcpServers),
-];
 
 const injectTools = (message, mcpToolDeclarations = []) => {
   if (!message?.setup) return message;
@@ -152,7 +131,7 @@ export default {
     if (url.pathname === '/api/tools') {
       try {
         if (availableToolDeclarations.length == 0) {
-          const mcpRegistry = await createMcpToolRegistry(parseMcpServersConfig(env.MCP_SERVERS));
+          const mcpRegistry = await createMcpToolRegistry(getMcpServersConfig(env.MCP_SERVERS));
           availableToolDeclarations.push(
             ...getAvailableToolDeclarations(mcpRegistry.declarations).map(({ name, description }) => { return { name, description } }),
           );
@@ -221,7 +200,7 @@ export default {
         const message = typeof event.data === 'string' ? parseJson(event.data) : null;
         if (message?.setup) {
           try {
-            const mcpServers = getMcpServersConfig(message, env);
+            const mcpServers = getMcpServersConfig(message.setup?.mcpServers, env.MCP_SERVERS);
             const mcpRegistry = await createMcpToolRegistry(mcpServers);
             mcpToolDeclarations = mcpRegistry.declarations;
             mcpToolHandlers = mcpRegistry.handlers;
