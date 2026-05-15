@@ -545,6 +545,14 @@
           if (msg.workerStatus) {
             if (msg.workerStatus.type === 'gemini_close') this.ws?.close(1000, 'User disconnected');
             if (msg.workerStatus.type === 'gemini_open') this.ws.send(JSON.stringify(this.setupMessage()));
+            if (msg.workerStatus.type === 'session_reconnect' || msg.workerStatus.type === 'session_resuming') {
+              this.setStatus('恢复会话…', 'wait');
+              this.setCaption('status', '状态', msg.workerStatus.message || '正在恢复 Gemini Live 会话…');
+            }
+            if (msg.workerStatus.type === 'session_reconnected') {
+              this.setStatus('恢复会话…', 'wait');
+              this.setCaption('status', '状态', 'Gemini Live 会话已重连，正在恢复上下文…');
+            }
             return;
           }
           if (msg.setupComplete) {

@@ -10,6 +10,7 @@
 
 import { toolDeclarations, toolHandlers } from './tools.js';
 import { createMcpToolRegistry, getMcpServersConfig } from './mcp-client.js';
+import { createGeminiSessionManager, parseGeminiJson } from './session-manager.js';
 
 const seeyouGemini = {
   name: 'see_you_later',
@@ -34,13 +35,7 @@ const getAvailableToolDeclarations = (mcpToolDeclarations = []) => [
   ...mcpToolDeclarations,
 ];
 
-const parseJson = (data) => {
-  try {
-    return JSON.parse(data);
-  } catch {
-    return null;
-  }
-};
+const parseJson = parseGeminiJson;
 
 const getEnabledToolNames = (autoLoadTools, mcpToolDeclarations = []) => {
   if (typeof autoLoadTools !== 'string') return [];
@@ -210,26 +205,15 @@ export default {
       });
     }
 
-    // 3. 连接到 Gemini Live API
-    // 注意：Gemini Live API 使用专门的 bidi (双向) 端点
-    const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${env.GEMINI_API_KEY}`;
-    const geminiWs = new WebSocket(geminiUrl);
-    let geminiReady = false;
     let enabledToolNames = [];
     let mcpToolDeclarations = [];
     let mcpToolHandlers = {};
 
-    sendClientStatus({ type: 'info', message: '开始连接...' });
+    let geminiSession;
 
-    // 4. 当与 Gemini 的连接建立时，通知前端发送 Setup 初始化消息
-    geminiWs.addEventListener('open', () => {
-      geminiReady = true;
-      sendClientStatus({ type: 'gemini_open', message: 'Gemini 连接已建立，正在初始化...' });
-    });
-
-    // 5. 消息转发：前端 -> Worker -> Gemini，并在 setup 中注入 tools
+    // 4. 消息转发：前端 -> Worker -> Gemini，并在 setup 中注入 tools/session 管理
     server.addEventListener('message', async (event) => {
-      if (geminiWs.readyState === WebSocket.OPEN) {
+      if (geminiSession.readyState === WebSocket.OPEN) {
         const message = typeof event.data === 'string' ? parseJson(event.data) : null;
         if (message?.setup) {
           try {
@@ -238,106 +222,91 @@ export default {
             mcpToolDeclarations = mcpRegistry.declarations;
             mcpToolHandlers = mcpRegistry.handlers;
             enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools, mcpToolDeclarations);
-            geminiWs.send(JSON.stringify(injectTools(message, mcpToolDeclarations)));
+            geminiSession.sendManagedSetup(injectTools(message, mcpToolDeclarations));
           } catch (error) {
             sendClientStatus({
               type: 'warning',
               message: `MCP 初始化失败: ${error.message || error}`,
             });
             enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools, []);
-            geminiWs.send(JSON.stringify(injectTools(message, [])));
+            geminiSession.sendManagedSetup(injectTools(message, []));
           }
         } else {
-          geminiWs.send(event.data);
+          geminiSession.send(event.data);
         }
       } else {
         sendClientStatus({
           type: 'warning',
-          message: `Gemini 尚未就绪，当前状态: ${geminiWs.readyState}`,
+          message: `Gemini 尚未就绪，当前状态: ${geminiSession.readyState}`,
         });
       }
     });
 
-    // 6. 消息转发：Gemini -> Worker -> 前端，并处理 toolCall
-    geminiWs.addEventListener('message', async (event) => {
-      if (server.readyState === WebSocket.OPEN) {
-        try {
-          let rawData = event.data;
+    // 5. 消息转发：Gemini -> Worker -> 前端，并处理 toolCall
+    geminiSession = createGeminiSessionManager({
+      apiKey: env.GEMINI_API_KEY,
+      server,
+      sendClientStatus,
+      onGeminiMessage: async (rawData, message) => {
+        if (server.readyState === WebSocket.OPEN) {
+          try {
+            const functionCalls = message?.toolCall?.functionCalls;
+            if (Array.isArray(functionCalls) && functionCalls.length) {
+              const seeyoulaterAt = functionCalls.findIndex(call => call.name === seeyouGemini.name);
+              if (seeyoulaterAt !== -1 && geminiSession.readyState === WebSocket.OPEN) {
+                console.log('-----------------^_^ see you later ^_^-----------------');
 
-          // Check if the data is a Blob
-          if (rawData instanceof Blob) {
-            rawData = await rawData.text(); // Convert Blob to string
-          }
-
-          const message = typeof rawData === 'string' ? parseJson(rawData) : null;
-          const functionCalls = message?.toolCall?.functionCalls;
-          if (Array.isArray(functionCalls) && functionCalls.length) {
-            const seeyoulaterAt = functionCalls.findIndex(call => call.name === seeyouGemini.name);
-            if (seeyoulaterAt !== -1 && geminiWs.readyState === WebSocket.OPEN) {
-              console.log('-----------------^_^ see you later ^_^-----------------');
-
-              geminiWs.send(JSON.stringify({
-                toolResponse: {
-                  functionResponses: [{
-                    id: functionCalls[seeyoulaterAt].id,
-                    name: functionCalls[seeyoulaterAt].name,
-                    response: "Done",
-                  }]
-                }
-              }));
-              geminiWs.close(1000);
-              sendClientStatus({
-                type: 'gemini_close',
-                message: `再见`,
-                code: 1000,
-                reason: functionCalls[seeyoulaterAt].args,
-              });
-              functionCalls.splice(seeyoulaterAt, 1);
-            }
-
-            const allToolHandlers = { ...toolHandlers, ...mcpToolHandlers };
-            const workerFunctionCalls = functionCalls.filter((call) => allToolHandlers[call.name]);
-
-            if (workerFunctionCalls.length) {
-              const ctx = { server, geminiWs, env }
-              const toolResponse = await executeToolCalls(ctx, workerFunctionCalls, enabledToolNames, mcpToolHandlers);
-              if (geminiWs.readyState === WebSocket.OPEN) {
-                geminiWs.send(JSON.stringify(toolResponse));
+                geminiSession.send(JSON.stringify({
+                  toolResponse: {
+                    functionResponses: [{
+                      id: functionCalls[seeyoulaterAt].id,
+                      name: functionCalls[seeyoulaterAt].name,
+                      response: "Done",
+                    }]
+                  }
+                }));
+                geminiSession.close(1000, 'see_you_later');
+                sendClientStatus({
+                  type: 'gemini_close',
+                  message: `再见`,
+                  code: 1000,
+                  reason: functionCalls[seeyoulaterAt].args,
+                });
+                functionCalls.splice(seeyoulaterAt, 1);
               }
+
+              const allToolHandlers = { ...toolHandlers, ...mcpToolHandlers };
+              const workerFunctionCalls = functionCalls.filter((call) => allToolHandlers[call.name]);
+
+              if (workerFunctionCalls.length) {
+                const ctx = { server, geminiWs: geminiSession, env }
+                const toolResponse = await executeToolCalls(ctx, workerFunctionCalls, enabledToolNames, mcpToolHandlers);
+                if (geminiSession.readyState === WebSocket.OPEN) {
+                  geminiSession.send(JSON.stringify(toolResponse));
+                }
+              }
+
+              const browserFunctionCalls = functionCalls.filter((call) => !allToolHandlers[call.name]);
+              if (browserFunctionCalls.length) {
+                server.send(JSON.stringify({ toolCall: { functionCalls: browserFunctionCalls } }));
+              }
+              return;
             }
 
-            const browserFunctionCalls = functionCalls.filter((call) => !allToolHandlers[call.name]);
-            if (browserFunctionCalls.length) {
-              server.send(JSON.stringify({ toolCall: { functionCalls: browserFunctionCalls } }));
-            }
-            return;
+            server.send(rawData);
+          } catch (error) {
+            sendClientStatus({
+              type: 'warning',
+              message: `Gemini message: ${error.message || error}`,
+            });
           }
-
-          server.send(rawData);
-        } catch (error) {
-          sendClientStatus({
-            type: 'warning',
-            message: `Gemini message: ${error.message || error}`,
-          });
         }
-      }
-    });
-
-    geminiWs.addEventListener('error', (event) => {
-      sendClientStatus({ type: 'gemini_error', message: `Gemini 发生错误: ${event.error?.message || event.error?.stack}` });
+      },
     });
 
     // 处理关闭事件
-    server.addEventListener('close', () => { if (geminiReady) geminiWs.close(); });
-    geminiWs.addEventListener('close', (event) => {
-      sendClientStatus({
-        type: geminiReady ? 'gemini_close' : 'gemini_error',
-        message: `Gemini 连接关闭 code=${event.code || 'unknown'} reason=${event.reason || '无'}`,
-        code: event.code,
-        reason: event.reason,
-      });
-      geminiReady = false;
-    });
+    server.addEventListener('close', () => geminiSession.close());
+    geminiSession.start();
 
     // 返回 101 Switching Protocols
     return new Response(null, {
