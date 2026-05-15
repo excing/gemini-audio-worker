@@ -107,7 +107,7 @@ const injectTools = (message, mcpToolDeclarations = []) => {
   return message;
 };
 
-const executeToolCalls = async (functionCalls, enabledToolNames, mcpToolHandlers = {}, env = {}) => {
+const executeToolCalls = async (ctx, functionCalls, enabledToolNames, mcpToolHandlers = {}) => {
   console.log('-----------------------');
   console.log('-----------------------');
   console.log(JSON.stringify(functionCalls, null, 2));
@@ -126,7 +126,7 @@ const executeToolCalls = async (functionCalls, enabledToolNames, mcpToolHandlers
       response = { error: `Unknown tool: ${call.name}` };
     } else {
       try {
-        response = await handler(call.args || {}, env);
+        response = await handler(call.args || {}, ctx);
       } catch (error) {
         response = { error: error.message || String(error) };
       }
@@ -298,7 +298,8 @@ export default {
             const workerFunctionCalls = functionCalls.filter((call) => allToolHandlers[call.name]);
 
             if (workerFunctionCalls.length) {
-              const toolResponse = await executeToolCalls(workerFunctionCalls, enabledToolNames, mcpToolHandlers, env);
+              const ctx = { server, geminiWs, env }
+              const toolResponse = await executeToolCalls(ctx, workerFunctionCalls, enabledToolNames, mcpToolHandlers);
               if (geminiWs.readyState === WebSocket.OPEN) {
                 geminiWs.send(JSON.stringify(toolResponse));
               }

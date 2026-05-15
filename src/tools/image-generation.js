@@ -116,7 +116,7 @@ const formatImageGenerationResponse = (result) => {
   };
 };
 
-const handler = async ({ prompt = '', images = [], mime_type = 'image/png' } = {}, env = {}) => {
+const handler = async ({ prompt = '', images = [], mime_type = 'image/png' } = {}, { server, geminiWs, env }) => {
   const textPrompt = String(prompt || '').trim();
   if (!textPrompt) {
     throw new Error('imageGeneration prompt 不能为空');
@@ -138,6 +138,9 @@ const handler = async ({ prompt = '', images = [], mime_type = 'image/png' } = {
   for (const imageUrl of imageUrls) {
     content.push({ type: 'image_url', image_url: { url: imageUrl } });
   }
+
+  // todo 通知用户正在生成图片, 并把提示词发一份给用户
+  server.send(JSON.stringify({ systemContent: { text: prompt } }));
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -172,6 +175,8 @@ const handler = async ({ prompt = '', images = [], mime_type = 'image/png' } = {
   if (formatResult.images?.length === 0 && !formatResult.text) {
     throw new Error(`图片生成失败, 没有图片返回`);
   }
+  // todo 图片生成成功, 发送一份给客户端
+  server.send(JSON.stringify({ systemContent: { imageGeneration: formatResult } }));
   return formatResult;
 };
 
