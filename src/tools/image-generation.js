@@ -168,7 +168,11 @@ const handler = async ({ prompt = '', images = [], mime_type = 'image/png' } = {
     throw new Error(`图片请求失败: ${response.status} ${response.statusText}: ${responseText}`);
   }
 
-  return formatImageGenerationResponse(result);
+  const formatResult = formatImageGenerationResponse(result);
+  if (formatResult.images?.length === 0 && !formatResult.text) {
+    throw new Error(`图片生成失败, 没有图片返回`);
+  }
+  return formatResult;
 };
 
 export default {
