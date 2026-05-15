@@ -22,8 +22,17 @@
     .render-modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--muted); }
     .render-modal iframe { width:100%; min-height:100%; border:1px solid var(--line); border-radius:16px; background:white; }
     .render-modal-close { min-width:42px; min-height:42px; padding:0; border-radius:14px; font-size:22px; line-height:1; }
+    .system .msg { background:rgba(255,255,255,.06); border-style:dashed; color:rgba(255,255,255,.86); }
+    .image-gen-card { display:grid; gap:10px; min-width:min(320px,72vw); max-width:min(520px,76vw); text-align:left; }
+    .image-gen-title { font-size:13px; font-weight:800; color:var(--muted); }
+    .image-gen-prompt { margin:0; color:var(--text); white-space:pre-wrap; overflow-wrap:anywhere; }
+    .image-gen-status { display:flex; align-items:center; gap:10px; color:var(--warn); }
+    .image-gen-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,.24); border-top-color:var(--warn); border-radius:50%; animation:spin .8s linear infinite; }
+    .image-gen-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+    .image-gen-image { display:block; width:100%; aspect-ratio:1; object-fit:contain; border:1px solid var(--line); border-radius:12px; background:rgba(0,0,0,.22); }
+    .image-gen-text { margin:0; color:var(--muted); white-space:pre-wrap; overflow-wrap:anywhere; }
     form { padding:12px; display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:10px; } .input-wrap { flex:1 1 auto; min-width:120px; } .actions { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; } input, textarea, select { width:100%; min-height:48px; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } textarea { min-height:120px; padding:12px 16px; resize:vertical; } button { flex:0 0 auto; min-width:48px; min-height:48px; border:0; border-radius:18px; padding:0 14px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-size:20px; font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect { position:relative; } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); } .ghost { background:rgba(255,255,255,.12); border:1px solid var(--line); } .warning { background:var(--bad); border:1px solid var(--line); } dialog { width:min(680px,calc(100% - 24px)); border:1px solid var(--line); border-radius:28px; padding:0; color:var(--text); background:rgba(12,16,28,.96); box-shadow:0 28px 90px rgba(0,0,0,.55); backdrop-filter:blur(24px); } dialog::backdrop { background:rgba(0,0,0,.58); backdrop-filter:blur(6px); } .modal { padding:22px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:24px; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:13px; } label.full, .tool-picker.full { grid-column:1/-1; } .modal-actions { display:flex; justify-content: space-between; gap:10px; } .tool-picker { display:grid; gap:10px; color:var(--muted); font-size:13px; } .tool-picker-head { display:flex; align-items:center; justify-content:space-between; gap:12px; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } .tool-actions { justify-content:flex-end; } .tool-actions button { min-width:0; min-height:28px; border-radius:999px; padding:0 10px; font-size:12px; } .tool-list { align-items:center; } .tool-chip { min-width:0; min-height:34px; border-radius:999px; padding:0 12px; font-size:13px; } .tool-chip { background:rgba(255,255,255,.1); border:1px solid var(--line); font-weight:650; } .tool-chip.active { background:linear-gradient(135deg,var(--brand),#15c8b7); color:white; } .tool-hint { color:var(--muted); }
-    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes breathe { 0%,100% { transform:scale(.92); opacity:.48; } 50% { transform:scale(1.08); opacity:1; } } @media (max-width:700px) { main{padding:12px} header{padding:10px; gap:10px}.titlebar-title p{display:none}.titlebar-actions{gap:8px}.group{max-width:94%}.grid{grid-template-columns:1fr} }
+    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes breathe { 0%,100% { transform:scale(.92); opacity:.48; } 50% { transform:scale(1.08); opacity:1; } } @keyframes spin { to { transform:rotate(360deg); } } @media (max-width:700px) { main{padding:12px} header{padding:10px; gap:10px}.titlebar-title p{display:none}.titlebar-actions{gap:8px}.group{max-width:94%}.grid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
@@ -50,7 +59,7 @@
       <section class="card">
         <button class="view-toggle" type="button" :title="viewMode === 'chat' ? '切换到字幕' : '切换到消息'" @click="toggleViewMode">{{ viewMode === 'chat' ? '💬' : '🗯️' }}</button>
         <div id="chat" ref="chatEl" v-show="viewMode === 'chat'">
-          <div v-for="(group, index) in messageGroups" :key="index" class="group" :class="group.role === '我' ? 'user' : 'ai'">
+          <div v-for="(group, index) in messageGroups" :key="index" class="group" :class="group.role === '我' ? 'user' : (group.role === '系统' ? 'system' : 'ai')">
             <div class="role">{{ group.role }}</div>
             <div v-for="(message, messageIndex) in group.messages" :key="message.id || messageIndex" class="msg">
               <template v-if="message.type === 'renderPage'">
@@ -62,6 +71,30 @@
                   <div class="render-card-preview" aria-hidden="true">
                     <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" :srcdoc="message.html"></iframe>
                   </div>
+                </div>
+              </template>
+              <template v-else-if="message.type === 'imageGenerationPending'">
+                <div class="image-gen-card">
+                  <div class="image-gen-status"><span class="image-gen-spinner" aria-hidden="true"></span><span>正在生成图片</span></div>
+                  <div>
+                    <div class="image-gen-title">提示词</div>
+                    <p class="image-gen-prompt">{{ message.prompt }}</p>
+                  </div>
+                </div>
+              </template>
+              <template v-else-if="message.type === 'imageGenerationResult'">
+                <div class="image-gen-card">
+                  <div class="image-gen-title">图片生成结果</div>
+                  <div v-if="message.prompt">
+                    <div class="image-gen-title">提示词</div>
+                    <p class="image-gen-prompt">{{ message.prompt }}</p>
+                  </div>
+                  <div class="image-gen-grid" v-if="message.images?.length">
+                    <a v-for="(image, imageIndex) in message.images" :key="imageIndex" :href="image.url" target="_blank" rel="noopener noreferrer" title="打开图片">
+                      <img class="image-gen-image" :src="image.url" alt="生成图片" />
+                    </a>
+                  </div>
+                  <p class="image-gen-text" v-if="message.text">{{ message.text }}</p>
                 </div>
               </template>
               <template v-else>{{ message.text || message }}</template>
@@ -502,6 +535,10 @@
           this.ws.onclose = (event) => { this.interruptAiPlayback(); this.stopMic(); this.connected = false; this.setStatus('已断开'); this.setCaption('status', '状态', event.code == 1000 ? '已关闭' : `连接关闭 code=${event.code || 'unknown'} reason=${event.reason || '无'}`); };
         },
         handleMessage(msg) {
+          if (msg.systemContent) {
+            this.handleSystemContent(msg.systemContent);
+            return;
+          }
           if (msg.workerStatus) {
             if (msg.workerStatus.type === 'gemini_close') this.ws?.close(1000, 'User disconnected');
             if (msg.workerStatus.type === 'gemini_open') this.ws.send(JSON.stringify(this.setupMessage()));
@@ -554,6 +591,58 @@
             if (this.voiceEnabled && this.interactionMode === 'turn') this.scheduleTurnMicAfterAudio();
             else if (!textOnlyAiCaption) this.scheduleWaitingAfterAudio();
           }
+        },
+        handleSystemContent(systemContent) {
+          if (typeof systemContent.text === 'string') {
+            const prompt = systemContent.text.trim();
+            if (!prompt) return;
+            this.addMessage('系统', {
+              id: `image-generation-pending-${Date.now()}`,
+              type: 'imageGenerationPending',
+              prompt,
+            });
+            this.setCaption('status', '状态', `正在生成图片：${prompt}`);
+            if (this.viewMode !== 'chat') this.viewMode = 'chat';
+            return;
+          }
+
+          if (systemContent.imageGeneration) {
+            const result = systemContent.imageGeneration || {};
+            const images = (Array.isArray(result.images) ? result.images : [])
+              .map((image) => this.normalizeGeneratedImage(image))
+              .filter(Boolean);
+            const text = String(result.text || '').trim();
+            const message = {
+              id: `image-generation-result-${Date.now()}`,
+              type: 'imageGenerationResult',
+              images,
+              text,
+            };
+            if (!this.replacePendingImageGeneration(message)) this.addMessage('系统', message);
+            this.setCaption('status', '状态', images.length ? `图片生成完成，共 ${images.length} 张。` : '图片生成完成。');
+            if (this.viewMode !== 'chat') this.viewMode = 'chat';
+          }
+        },
+        normalizeGeneratedImage(image) {
+          if (!image) return null;
+          if (typeof image === 'string') return { url: image };
+          if (image.url) return { url: image.url };
+          if (image.b64_json) return { url: `data:image/png;base64,${image.b64_json}` };
+          return null;
+        },
+        replacePendingImageGeneration(resultMessage) {
+          for (let groupIndex = this.messageGroups.length - 1; groupIndex >= 0; groupIndex -= 1) {
+            const group = this.messageGroups[groupIndex];
+            if (group.role !== '系统') continue;
+            for (let messageIndex = group.messages.length - 1; messageIndex >= 0; messageIndex -= 1) {
+              const message = group.messages[messageIndex];
+              if (message?.type !== 'imageGenerationPending') continue;
+              group.messages.splice(messageIndex, 1, { ...resultMessage, prompt: message.prompt });
+              nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
+              return true;
+            }
+          }
+          return false;
         },
         addTranscript(role, text, flush = false) {
           const draftKey = role === '我' ? 'inputDraft' : 'outputDraft';
