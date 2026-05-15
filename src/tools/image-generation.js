@@ -61,7 +61,9 @@ const collectImageResults = (content) => {
     if (!item) return;
 
     if (typeof item === 'string') {
-      const dataUrls = item.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=_-]+/g) || [];
+      const dataUrls = item.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=_-]+/g)
+                    || item.match(/https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi)
+                    || [];
       if (dataUrls.length) {
         images.push(...dataUrls.map((url) => ({ url })));
       } else {
