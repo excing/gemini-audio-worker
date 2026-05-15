@@ -104,7 +104,6 @@
               {{ voice.name }} - {{ voice.characteristics }}
             </option>
           </select></label>
-          <label>响应类型<select v-model="draftConfig.responseModality"><option value="AUDIO">AUDIO</option><option value="TEXT">TEXT</option></select></label>
           <label>自动加载工具<input v-model="draftConfig.autoLoadTools" placeholder="留空不加载，* 加载全部，或用逗号分隔工具名" /></label>
           <div class="tool-picker full">
             <div class="tool-picker-head">
@@ -173,7 +172,6 @@
           model: 'gemini-3.1-flash-preview',
           voiceName: 'Kore',
           systemInstruction: 'You are a concise, friendly Chinese voice assistant.',
-          responseModality: 'AUDIO',
           autoLoadTools: '',
         };
         return {
@@ -427,18 +425,14 @@
         setupMessage() {
           const setup = {
             model: this.config.model,
-            generationConfig: {
-              responseModalities: [this.config.responseModality],
-            },
+            generationConfig: { },
             systemInstruction: { parts: [{ text: this.config.systemInstruction }] },
           };
-          if (this.config.responseModality === 'AUDIO' && this.config.voiceName) setup.generationConfig.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voiceName } } };
+          if (this.config.voiceName) setup.generationConfig.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voiceName } } };
           setup.autoLoadTools = this.config.autoLoadTools || '';
           const browserToolNames = this.selectedBrowserToolNames(setup.autoLoadTools);
           const browserToolDeclarations = browserTools.declarations.filter((tool) => browserToolNames.includes(tool.name));
           if (browserToolDeclarations.length) setup.tools = [{ functionDeclarations: browserToolDeclarations }];
-          setup.inputAudioTranscription = {};
-          setup.outputAudioTranscription = {};
           return { setup };
         },
         selectedBrowserToolNames(autoLoadTools) {

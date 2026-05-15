@@ -68,6 +68,9 @@ const injectTools = (message, mcpToolDeclarations = []) => {
   if (!message?.setup) return message;
 
   message.setup.model = models[message.setup.model] ?? models.default;
+  message.setup.generationConfig.responseModalities = "AUDIO";
+  message.setup.inputAudioTranscription = {};
+  message.setup.outputAudioTranscription = {};
 
   const enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools, mcpToolDeclarations);
   delete message.setup.autoLoadTools;
