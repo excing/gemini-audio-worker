@@ -1,4 +1,4 @@
-const handler = async ({ location = '', lang = 'zh-cn' } = {}) => {
+const handler = async (id, name, { location = '', lang = 'zh-cn' } = {}) => {
   const queryLocation = String(location || '').trim();
   const queryLang = String(lang || '').trim();
   const encodedLocation = queryLocation

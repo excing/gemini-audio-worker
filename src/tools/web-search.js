@@ -47,7 +47,7 @@ const parseDuckDuckGoResults = (html, maxResults) => {
   return results;
 };
 
-const handler = async ({ query, max_results = 5, region = 'wt-wt', safe_search = 'moderate', timeRange = '' } = {}) => {
+const handler = async (id, name, { query, max_results = 5, region = 'wt-wt', safe_search = 'moderate', timeRange = '' } = {}) => {
   const searchQuery = String(query || '').trim();
   if (!searchQuery) {
     throw new Error('DuckDuckGo 搜索关键词不能为空');

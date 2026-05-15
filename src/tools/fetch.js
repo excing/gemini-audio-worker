@@ -69,7 +69,7 @@ const getFetchResponseBody = async (response, responseType, maxChars) => {
   };
 };
 
-const handler = async ({ url = '', method = 'GET', headers = {}, body, redirect = 'follow', response_type = 'auto', max_chars = 50000 } = {}) => {
+const handler = async (id, name, { url = '', method = 'GET', headers = {}, body, redirect = 'follow', response_type = 'auto', max_chars = 50000 } = {}) => {
   const requestedUrl = String(url || '').trim();
   if (!requestedUrl) {
     throw new Error('fetch URL 不能为空');

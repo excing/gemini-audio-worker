@@ -224,7 +224,7 @@ export const createMcpToolRegistry = async (serversConfig = []) => {
 
       const declaration = toGeminiFunctionDeclaration(server, tool);
       declarations.push(declaration);
-      handlers[declaration.name] = async (args = {}) => {
+      handlers[declaration.name] = async (id, name, args = {}) => {
         const result = await callMcpRpc(server, 'tools/call', {
           name: tool.name,
           arguments: args,

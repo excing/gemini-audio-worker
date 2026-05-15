@@ -126,9 +126,10 @@ const executeToolCalls = async (ctx, functionCalls, enabledToolNames, mcpToolHan
       response = { error: `Unknown tool: ${call.name}` };
     } else {
       try {
-        response = await handler(call.args || {}, ctx);
+        response = await handler(call.id, call.name, call.args || {}, ctx);
       } catch (error) {
         response = { error: error.message || String(error) };
+        ctx.server.send(JSON.stringify({ systemContent: { toolCall: { id: call.id, name: call.name, error: error.message || String(error) } } }));
       }
     }
 

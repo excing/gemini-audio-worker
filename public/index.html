@@ -23,14 +23,20 @@
     .render-modal iframe { width:100%; min-height:100%; border:1px solid var(--line); border-radius:16px; background:white; }
     .render-modal-close { min-width:42px; min-height:42px; padding:0; border-radius:14px; font-size:22px; line-height:1; }
     .system .msg { background:rgba(255,255,255,.06); border-style:dashed; color:rgba(255,255,255,.86); }
-    .image-gen-card { display:grid; gap:10px; min-width:min(320px,72vw); max-width:min(520px,76vw); text-align:left; }
-    .image-gen-title { font-size:13px; font-weight:800; color:var(--muted); }
-    .image-gen-prompt { margin:0; color:var(--text); white-space:pre-wrap; overflow-wrap:anywhere; }
-    .image-gen-status { display:flex; align-items:center; gap:10px; color:var(--warn); }
-    .image-gen-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,.24); border-top-color:var(--warn); border-radius:50%; animation:spin .8s linear infinite; }
-    .image-gen-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
-    .image-gen-image { display:block; width:100%; aspect-ratio:1; object-fit:contain; border:1px solid var(--line); border-radius:12px; background:rgba(0,0,0,.22); }
-    .image-gen-text { margin:0; color:var(--muted); white-space:pre-wrap; overflow-wrap:anywhere; }
+    .tool-call-card { display:grid; gap:10px; min-width:min(320px,72vw); max-width:min(560px,76vw); text-align:left; }
+    .tool-call-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .tool-call-name { font-size:13px; font-weight:800; color:var(--muted); }
+    .tool-call-badge { flex:0 0 auto; min-height:24px; padding:2px 9px; border:1px solid var(--line); border-radius:999px; font-size:12px; font-weight:750; color:var(--muted); background:rgba(255,255,255,.08); display:inline-flex; align-items:center; gap:6px; }
+    .tool-call-badge.running { color:var(--warn); }
+    .tool-call-badge.done { color:var(--ok); }
+    .tool-call-badge.error { color:var(--bad); }
+    .tool-call-prompt, .tool-call-text, .tool-call-error { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .tool-call-prompt { color:var(--text); }
+    .tool-call-text { color:var(--muted); }
+    .tool-call-error { color:#ffd5da; }
+    .tool-call-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.24); border-top-color:var(--warn); border-radius:50%; animation:spin .8s linear infinite; }
+    .tool-call-media { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+    .tool-call-image { display:block; width:100%; aspect-ratio:1; object-fit:contain; border:1px solid var(--line); border-radius:12px; background:rgba(0,0,0,.22); }
     form { padding:12px; display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:10px; } .input-wrap { flex:1 1 auto; min-width:120px; } .actions { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; } input, textarea, select { width:100%; min-height:48px; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } textarea { min-height:120px; padding:12px 16px; resize:vertical; } button { flex:0 0 auto; min-width:48px; min-height:48px; border:0; border-radius:18px; padding:0 14px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-size:20px; font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect { position:relative; } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); } .ghost { background:rgba(255,255,255,.12); border:1px solid var(--line); } .warning { background:var(--bad); border:1px solid var(--line); } dialog { width:min(680px,calc(100% - 24px)); border:1px solid var(--line); border-radius:28px; padding:0; color:var(--text); background:rgba(12,16,28,.96); box-shadow:0 28px 90px rgba(0,0,0,.55); backdrop-filter:blur(24px); } dialog::backdrop { background:rgba(0,0,0,.58); backdrop-filter:blur(6px); } .modal { padding:22px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:24px; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:13px; } label.full, .tool-picker.full { grid-column:1/-1; } .modal-actions { display:flex; justify-content: space-between; gap:10px; } .tool-picker { display:grid; gap:10px; color:var(--muted); font-size:13px; } .tool-picker-head { display:flex; align-items:center; justify-content:space-between; gap:12px; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } .tool-actions { justify-content:flex-end; } .tool-actions button { min-width:0; min-height:28px; border-radius:999px; padding:0 10px; font-size:12px; } .tool-list { align-items:center; } .tool-chip { min-width:0; min-height:34px; border-radius:999px; padding:0 12px; font-size:13px; } .tool-chip { background:rgba(255,255,255,.1); border:1px solid var(--line); font-weight:650; } .tool-chip.active { background:linear-gradient(135deg,var(--brand),#15c8b7); color:white; } .tool-hint { color:var(--muted); }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes breathe { 0%,100% { transform:scale(.92); opacity:.48; } 50% { transform:scale(1.08); opacity:1; } } @keyframes spin { to { transform:rotate(360deg); } } @media (max-width:700px) { main{padding:12px} header{padding:10px; gap:10px}.titlebar-title p{display:none}.titlebar-actions{gap:8px}.group{max-width:94%}.grid{grid-template-columns:1fr} }
   </style>
@@ -73,28 +79,25 @@
                   </div>
                 </div>
               </template>
-              <template v-else-if="message.type === 'imageGenerationPending'">
-                <div class="image-gen-card">
-                  <div class="image-gen-status"><span class="image-gen-spinner" aria-hidden="true"></span><span>正在生成图片</span></div>
-                  <div>
-                    <div class="image-gen-title">提示词</div>
-                    <p class="image-gen-prompt">{{ message.prompt }}</p>
+              <template v-else-if="message.type === 'toolCall'">
+                <div class="tool-call-card">
+                  <div class="tool-call-head">
+                    <span class="tool-call-name">{{ toolDisplayName(message.name) }}</span>
+                    <span class="tool-call-badge" :class="message.status">
+                      <span v-if="message.status === 'running'" class="tool-call-spinner" aria-hidden="true"></span>
+                      {{ toolStatusText(message.status) }}
+                    </span>
                   </div>
-                </div>
-              </template>
-              <template v-else-if="message.type === 'imageGenerationResult'">
-                <div class="image-gen-card">
-                  <div class="image-gen-title">图片生成结果</div>
                   <div v-if="message.prompt">
-                    <div class="image-gen-title">提示词</div>
-                    <p class="image-gen-prompt">{{ message.prompt }}</p>
+                    <p class="tool-call-prompt">{{ message.prompt }}</p>
                   </div>
-                  <div class="image-gen-grid" v-if="message.images?.length">
+                  <div class="tool-call-media" v-if="message.images?.length">
                     <a v-for="(image, imageIndex) in message.images" :key="imageIndex" :href="image.url" target="_blank" rel="noopener noreferrer" title="打开图片">
-                      <img class="image-gen-image" :src="image.url" alt="生成图片" />
+                      <img class="tool-call-image" :src="image.url" alt="生成图片" />
                     </a>
                   </div>
-                  <p class="image-gen-text" v-if="message.text">{{ message.text }}</p>
+                  <p class="tool-call-text" v-if="message.text">{{ message.text }}</p>
+                  <p class="tool-call-error" v-if="message.error">{{ message.error }}</p>
                 </div>
               </template>
               <template v-else>{{ message.text || message }}</template>
@@ -593,35 +596,45 @@
           }
         },
         handleSystemContent(systemContent) {
-          if (typeof systemContent.text === 'string') {
-            const prompt = systemContent.text.trim();
-            if (!prompt) return;
-            this.addMessage('系统', {
-              id: `image-generation-pending-${Date.now()}`,
-              type: 'imageGenerationPending',
-              prompt,
-            });
-            this.setCaption('status', '状态', `正在生成图片：${prompt}`);
-            if (this.viewMode !== 'chat') this.viewMode = 'chat';
-            return;
-          }
+          const toolCall = systemContent?.toolCall;
+          if (!toolCall) return;
 
-          if (systemContent.imageGeneration) {
-            const result = systemContent.imageGeneration || {};
-            const images = (Array.isArray(result.images) ? result.images : [])
-              .map((image) => this.normalizeGeneratedImage(image))
-              .filter(Boolean);
-            const text = String(result.text || '').trim();
-            const message = {
-              id: `image-generation-result-${Date.now()}`,
-              type: 'imageGenerationResult',
-              images,
-              text,
-            };
-            if (!this.replacePendingImageGeneration(message)) this.addMessage('系统', message);
-            this.setCaption('status', '状态', images.length ? `图片生成完成，共 ${images.length} 张。` : '图片生成完成。');
-            if (this.viewMode !== 'chat') this.viewMode = 'chat';
+          const id = toolCall.id || `tool-call-${Date.now()}`;
+          const existing = this.findToolCallMessage(id);
+          const result = toolCall.result || null;
+          const images = (Array.isArray(result?.images) ? result.images : [])
+            .map((image) => this.normalizeGeneratedImage(image))
+            .filter(Boolean);
+          const nextMessage = {
+            ...(existing?.message || {}),
+            id,
+            type: 'toolCall',
+            name: toolCall.name || existing?.message?.name || 'tool',
+            status: toolCall.error ? 'error' : (result ? 'done' : 'running'),
+            prompt: typeof toolCall.prompt === 'string' ? toolCall.prompt.trim() : (existing?.message?.prompt || ''),
+            images,
+            text: String(result?.text || '').trim(),
+            error: toolCall.error ? String(toolCall.error) : '',
+          };
+
+          if (existing) existing.group.messages.splice(existing.messageIndex, 1, nextMessage);
+          else this.addMessage('系统', nextMessage);
+
+          if (this.viewMode !== 'chat') this.viewMode = 'chat';
+          if (nextMessage.status === 'running') this.setCaption('status', '状态', `正在调用${this.toolDisplayName(nextMessage.name)}…`);
+          else if (nextMessage.status === 'error') this.setCaption('status', '状态', `${this.toolDisplayName(nextMessage.name)}失败：${nextMessage.error}`);
+          else this.setCaption('status', '状态', `${this.toolDisplayName(nextMessage.name)}完成${images.length ? `，共 ${images.length} 张图片` : ''}。`);
+
+          nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
+        },
+        findToolCallMessage(id) {
+          for (let groupIndex = this.messageGroups.length - 1; groupIndex >= 0; groupIndex -= 1) {
+            const group = this.messageGroups[groupIndex];
+            if (group.role !== '系统') continue;
+            const messageIndex = group.messages.findIndex((message) => message?.type === 'toolCall' && message.id === id);
+            if (messageIndex >= 0) return { group, messageIndex, message: group.messages[messageIndex] };
           }
+          return null;
         },
         normalizeGeneratedImage(image) {
           if (!image) return null;
@@ -630,19 +643,14 @@
           if (image.b64_json) return { url: `data:image/png;base64,${image.b64_json}` };
           return null;
         },
-        replacePendingImageGeneration(resultMessage) {
-          for (let groupIndex = this.messageGroups.length - 1; groupIndex >= 0; groupIndex -= 1) {
-            const group = this.messageGroups[groupIndex];
-            if (group.role !== '系统') continue;
-            for (let messageIndex = group.messages.length - 1; messageIndex >= 0; messageIndex -= 1) {
-              const message = group.messages[messageIndex];
-              if (message?.type !== 'imageGenerationPending') continue;
-              group.messages.splice(messageIndex, 1, { ...resultMessage, prompt: message.prompt });
-              nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
-              return true;
-            }
-          }
-          return false;
+        toolDisplayName(name) {
+          if (name === 'imageGeneration') return '图片生成';
+          return name || '工具调用';
+        },
+        toolStatusText(status) {
+          if (status === 'done') return '完成';
+          if (status === 'error') return '失败';
+          return '进行中';
         },
         addTranscript(role, text, flush = false) {
           const draftKey = role === '我' ? 'inputDraft' : 'outputDraft';

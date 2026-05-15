@@ -1,6 +1,6 @@
 import { clampInteger, extractTitle, htmlToText, isAllowedFetchProtocol } from '../tool-utils.js';
 
-const handler = async ({ urls = [], url = '', max_chars = 12000 } = {}) => {
+const handler = async (id, name, { urls = [], url = '', max_chars = 12000 } = {}) => {
   const requestedUrls = (Array.isArray(urls) ? urls : [urls])
     .concat(url ? [url] : [])
     .map((item) => String(item || '').trim())
