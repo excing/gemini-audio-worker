@@ -34,8 +34,13 @@
     .dot { width:8px; height:8px; border-radius:9999px; background:transparent; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.bad { background:var(--bad); }
     .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
     .group { max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
-    .msg { padding:10px 14px; border-radius:12px; background:var(--soft); white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; } .user .msg { background:var(--text); color:var(--bg); } .system .msg { background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(245,158,11,.12)); color:var(--text); }
+    .msg { padding:10px 14px; border-radius:12px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; } .user .msg { background:var(--text); color:var(--bg); } .system .msg { background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(245,158,11,.12)); color:var(--text); }
     .progressive-text { white-space:pre-wrap; overflow-wrap:anywhere; } .progressive-text-played { color:var(--text); opacity:1; transition:opacity .2s ease-in-out, color .2s ease-in-out; } .progressive-text-pending { opacity:.42; transition:opacity .2s ease-in-out; } .user .progressive-text-played { color:var(--bg); } .caption-line { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; align-items:start; padding:4px 0; } .caption-role { min-width:34px; color:var(--muted); font-size:12px; font-weight:600; line-height:1.6; } .caption-text { min-width:0; color:var(--text); font-size:15px; line-height:1.5; } .caption-line.user .caption-text { color:var(--muted); opacity:.72; } .caption-line.ai .caption-text { color:var(--text); }
+    .thought-card summary { min-height:28px; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:13px; font-weight:700; list-style:none; }
+    .thought-card summary::-webkit-details-marker { display:none; }
+    .thought-card summary::before { content:""; width:8px; height:8px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(-45deg); transition:transform .18s ease-in-out; opacity:.72; }
+    .thought-card[open] summary::before { transform:rotate(45deg); }
+    .thought-text { margin:8px 0 0; padding:10px 12px; border-left:3px solid var(--line); border-radius:8px; background:rgba(127,127,127,.08); white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.55; }
     .empty-state { height:100%; display:grid; place-items:center; color:var(--muted); text-align:center; } .empty-state strong { display:block; color:var(--text); font-size:20px; font-weight:600; }
     .input-bar { min-height:64px; justify-content:space-between; align-items: end; padding-block:8px; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; overflow:auto; border:0; outline:none; border-radius:12px; padding:13px 14px; background:var(--hover); transition:all .2s ease-in-out; }
     .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; } .hold-record.recording { background:linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
@@ -161,6 +166,12 @@
                   <p class="tool-call-text" v-if="item.message.text">{{ item.message.text }}</p>
                   <p class="tool-call-error" v-if="item.message.error">{{ item.message.error }}</p>
                 </div>
+              </template>
+              <template v-else-if="item.message.type === 'thought'">
+                <details class="thought-card">
+                  <summary>{{ item.message.title || 'AI 思考过程' }}</summary>
+                  <div class="thought-text">{{ item.message.text }}</div>
+                </details>
               </template>
               <template v-else>
                 <progressive-text
@@ -436,7 +447,7 @@
       },
       mounted() {
         this.applyTheme();
-        this.roles = this.loadRoles();
+        this.roles = this.loadUserRoles();
         this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.allRoles[0].id;
         window.addEventListener('browser-tool-render-page', this.handleRenderedPage);
         this.loadToolDeclarations();
@@ -451,7 +462,7 @@
       },
       computed: {
         allRoles() {
-          return [...this.roles, ...this.default_roles];
+          return [...this.roles, ...(this.default_roles.map(role => this.normalizeRole(role)))];
         },
         currentRole() {
           return this.getRoleById(this.selectedRoleId);
@@ -618,7 +629,7 @@
           normalized.name = (normalized.name || this.defaultConfig.name).trim();
           return normalized;
         },
-        loadRoles() {
+        loadUserRoles() {
           try {
             const roles = JSON.parse(localStorage.getItem('geminiRoles') || '[]').map((role) => this.normalizeRole(role));
             if (roles.length) return roles;
@@ -894,8 +905,12 @@
           }
           for (const part of content.modelTurn?.parts || []) {
             if (part.text) {
-              this.addTranscript('Gemini', part.text);
-              this.pendingAiCaption += part.text;
+              if (part.thought) {
+                this.addThought(part.text);
+              } else {
+                this.addTranscript('Gemini', part.text);
+                this.pendingAiCaption += part.text;
+              }
             }
             if (part.inlineData?.data) {
               this.aiAudioScheduledThisTurn = true;
@@ -959,6 +974,16 @@
           if (status === 'done') return '完成';
           if (status === 'error') return '失败';
           return '进行中';
+        },
+        addThought(text) {
+          if (!text) return;
+          const lastItem = this.messageGroups.at(-1);
+          if (lastItem?.role === 'Gemini' && lastItem.message?.type === 'thought') {
+            lastItem.message.text += text;
+            nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
+            return;
+          }
+          this.addMessage('Gemini', { type: 'thought', text, title: 'AI 思考过程' });
         },
         addCaption(role, text) {
           if (!text) return;
