@@ -5,12 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gemini 语音对话</title>
   <style>
-    :root { color-scheme: dark; --bg:#080b13; --panel:rgba(255,255,255,.08); --line:rgba(255,255,255,.14); --text:#f7f8ff; --muted:#aab2c8; --brand:#7c5cff; --ok:#38d996; --warn:#ffca5c; --bad:#ff6b7a; }
-    * { box-sizing: border-box; } body { margin:0; height:100dvh; overflow:hidden; display:grid; place-items:center; font:16px/1.5 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background:radial-gradient(circle at 20% 10%,#4530a8 0 18rem,transparent 32rem),radial-gradient(circle at 80% 20%,#0b7b86 0 16rem,transparent 31rem),var(--bg); }
-    #app { width:100%; height:100%; } main { width:min(768px,100%); height:100dvh; margin:0 auto; padding:28px; display:grid; gap:18px; grid-template-rows:auto minmax(0,1fr) auto; }
-    header, .card, form { border:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06)); box-shadow:0 24px 80px rgba(0,0,0,.35); backdrop-filter:blur(24px); border-radius:28px; }
-    header { min-height:68px; padding:10px 14px 10px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-radius:24px; } .titlebar-title { min-width:0; } .role-select { min-width:min(360px,48vw); min-height:48px; font-size:20px; font-weight:750; letter-spacing:-.03em; } .role-select .new-role { color:var(--brand); font-weight:800; } p { margin:.15rem 0 0; color:var(--muted); font-size:14px; } .titlebar-actions { display:flex; align-items:center; gap:10px; } .dot { width:15px; height:15px; border-radius:99px; background:var(--bad); box-shadow:0 0 22px currentColor; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .status-dot { position:absolute; top:-3px; right:-3px; border:2px solid rgba(42,35,100,.95); }
-    .card { min-height:0; padding:20px; overflow:hidden; position:relative; display:grid; grid-template-rows:minmax(0,1fr); } .view-toggle { position:absolute; top:14px; right:14px; z-index:2; background:rgba(255,255,255,.12); border:1px solid var(--line); } #chat { min-height:0; overflow:auto; padding:4px 56px 4px 4px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; } .group { max-width:82%; display:flex; flex-direction:column; gap:4px; animation:pop .18s ease-out; } .group.user { align-self:flex-end; align-items:flex-end; } .group.ai { align-self:flex-start; align-items:flex-start; } .role { padding:0 6px; font-size:12px; color:rgba(255,255,255,.68); } .msg { padding:10px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.08); white-space:pre-wrap; } .user .msg { background:linear-gradient(135deg,var(--brand),#23b8d5); } .group .msg + .msg { margin-top:0; } .live { min-height:0; overflow:auto; padding:64px 20px 20px; border-radius:20px; border:1px var(--line); color:var(--text); font-size:clamp(24px,4vw,44px); line-height:1.35; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; white-space:pre-wrap; } .live-role { font-size:14px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; opacity:.8; } .live-body { max-width:100%; } .live-user { color:#56e5ff; } .live-ai { color:#bba9ff; } .live-status { color:var(--warn); } .live-waiting { color:var(--muted); } .wait-icon { display:inline-block; font-size:clamp(48px,10vw,92px); animation:breathe 1.7s ease-in-out infinite; filter:drop-shadow(0 0 28px rgba(255,255,255,.22)); }
+    :root { color-scheme: light dark; --bg:#f9fafb; --surface:#fff; --glass:rgba(255,255,255,.72); --hover:#f3f4f6; --line:#e5e7eb; --text:#111827; --muted:#6b7280; --soft:#f6f7f9; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --shadow:0 24px 70px rgba(17,24,39,.12); }
+    :root[data-theme="dark"] { color-scheme: dark; --bg:#1d1d1d; --surface:#000; --glass:rgba(9,9,11,.72); --hover:#18181b; --line:#27272a; --text:#fafafa; --muted:#a1a1aa; --soft:#111113; --shadow:0 24px 70px rgba(0,0,0,.42); }
+    @media (prefers-color-scheme: dark) { :root[data-theme="system"] { color-scheme: dark; --bg:#1d1d1d; --surface:#000; --glass:rgba(9,9,11,.72); --hover:#18181b; --line:#27272a; --text:#fafafa; --muted:#a1a1aa; --soft:#111113; --shadow:0 24px 70px rgba(0,0,0,.42); } }
+    * { box-sizing:border-box; } html, body, #app { width:100%; height:100%; } body { margin:0; overflow:hidden; font:14px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--text); background:var(--bg); }
+    button, input, textarea, select { font:inherit; color:inherit; } button { border:0; cursor:pointer; transition:all .2s ease-in-out; } button:active { transform:scale(.97); } button:disabled { cursor:not-allowed; opacity:.45; transform:none; }
+    .app-shell { --sidebar-width:320px; height:100dvh; display:grid; grid-template-columns:var(--sidebar-width) minmax(0,1fr); background:var(--bg); transition:grid-template-columns .24s ease-in-out; }
+    .sidebar { position:relative; z-index:20; min-width:0; width:320px; height:100dvh; padding:16px; display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; gap:16px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); box-shadow:10px 0 40px rgba(0,0,0,.06); overflow:hidden; opacity:1; transition:width .24s ease-in-out, padding .24s ease-in-out, opacity .18s ease-in-out, transform .24s ease-in-out; }
+    .app-shell.sidebar-collapsed { --sidebar-width:0px; } .app-shell.sidebar-collapsed .sidebar { width:0; padding-inline:0; opacity:0; pointer-events:none; }
+    .brand, .sidebar-head, .topbar, .role-row, .input-bar, .call-actions, .modal-actions, .tool-picker-head { display:flex; align-items:center; gap:8px; }
+    .sidebar-head { justify-content:space-between; } .brand { min-width:0; font-size:16px; font-weight:600; } .brand-mark { width:32px; height:32px; border-radius:9999px; display:grid; place-items:center; background:var(--text); color:var(--bg); }
+    .icon-btn { width:44px; height:44px; min-width:44px; border-radius:9999px; display:inline-grid; place-items:center; background:transparent; color:var(--text); } .icon-btn:hover, .role-row:hover, .menu-item:hover { background:var(--hover); } .icon-btn.danger { color:var(--bad); }
+    .primary-btn { min-height:44px; padding:8px 12px; border-radius:9999px; display:inline-flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(135deg,#111827,#3f3f46); color:#fff; font-weight:600; }
+    :root[data-theme="dark"] .primary-btn { background:linear-gradient(135deg,#fafafa,#a1a1aa); color:#1d1d1d; }
+    .sidebar-actions { display:grid; gap:8px; } .menu-item { min-height:44px; padding:8px 12px; border-radius:12px; display:flex; justify-content: center; align-items:center; gap:10px; background:transparent; color:var(--text); text-align:left; font-weight:500; }
+    .section-title { margin:0 0 8px; padding:0 8px; color:var(--muted); font-size:12px; font-weight:500; } .role-list { min-height:0; overflow:auto; display:grid; align-content:start; gap:4px; }
+    .role-row { width:100%; min-width:0; min-height:48px; padding:6px 6px 6px 12px; border-radius:12px; background:transparent; text-align:left; } .role-row .icon-btn { flex:0 0 36px; width:36px; min-width:36px; height:36px; } .role-row.active { background:var(--hover); } .role-name { flex:1 1 auto; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
+    .sidebar-foot { display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:8px; }
+    .main { min-width:0; height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) 76px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); }
+    .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items: center; justify-items:center; line-height:1.2; } .chat-title { max-width:min(52vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; background:transparent; } .chat-title:hover { background:var(--hover); }
+    .dot { width:8px; height:8px; border-radius:9999px; background:transparent; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.bad { background:var(--bad); }
+    .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
+    .group { max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
+    .msg { padding:10px 14px; border-radius:12px; background:var(--soft); white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; } .user .msg { background:var(--text); color:var(--bg); } .system .msg { background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(245,158,11,.12)); color:var(--text); }
+    .empty-state { height:100%; display:grid; place-items:center; color:var(--muted); text-align:center; } .empty-state strong { display:block; color:var(--text); font-size:20px; font-weight:600; }
+    .input-bar { min-height:64px; justify-content:space-between; align-items: end; padding-block:8px; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; overflow:auto; border:0; outline:none; border-radius:12px; padding:13px 14px; background:var(--hover); transition:all .2s ease-in-out; }
+    .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; } .hold-record.recording { background:linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
+    .call-screen { height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) auto 82px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); background:var(--surface); }
+    .call-stage { position:relative; min-height:0; display:grid; place-items:center; overflow:hidden; } .wave { width:min(44vw,260px); height:120px; display:flex; align-items:center; justify-content:center; gap:8px; } .wave span { width:7px; height:28px; border-radius:9999px; background:linear-gradient(180deg,#10b981,#60a5fa); animation:wave 1s ease-in-out infinite; } .wave span:nth-child(2){animation-delay:.1s}.wave span:nth-child(3){animation-delay:.2s}.wave span:nth-child(4){animation-delay:.3s}.wave span:nth-child(5){animation-delay:.4s}
+    .caption-overlay { position:absolute; top:16px; left:16px; width:min(560px,calc(100% - 32px)); max-height:42%; overflow:hidden; padding:14px; border-radius:16px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); color:var(--muted); } .caption-overlay .live-body { margin-top:4px; color:var(--text); font-size:15px; line-height:1.5; }
+    .call-status { display:grid; justify-items:center; gap:8px; padding:8px 0 14px; color:var(--muted); } .call-status .icon-btn { background:var(--hover); } .call-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:0; min-height:72px; align-items:center; } .call-action { width:100%; min-width:0; min-height:72px; padding:4px 0; border-radius:12px; display:grid; justify-items:center; align-content:center; gap:4px; background:transparent; color:var(--muted); font-size:12px; } .call-action:hover { background:var(--hover); } .call-action .icon-btn { pointer-events:none; background:transparent; }
+    dialog { width:min(680px,calc(100% - 24px)); border:0; border-radius:16px; padding:0; color:var(--text); background:var(--glass); box-shadow:var(--shadow); backdrop-filter:blur(12px) saturate(180%); transform:scale(.95); opacity:0; transition:all .2s ease-in-out; } dialog[open] { transform:scale(1); opacity:1; } dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(6px); } :root[data-theme="dark"] dialog::backdrop { background:rgba(0,0,0,.6); }
+    .modal { padding:24px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:20px; font-weight:600; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:12px; } label.full, .tool-picker.full { grid-column:1/-1; }
+    input, textarea, select { width:100%; min-height:44px; border:0; border-radius:8px; padding:0 12px; outline:none; background:var(--hover); } textarea { min-height:120px; padding:12px; resize:vertical; } .modal-actions { justify-content:flex-end; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; } .tool-chip, .tool-actions button { min-height:34px; border-radius:9999px; padding:0 12px; background:var(--hover); } .tool-chip.active { background:var(--text); color:var(--bg); } .warning { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--bad); color:#fff; } .secondary-btn { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--hover); }
+    .danger-note { margin:0; padding:12px; border-radius:12px; background:rgba(239,68,68,.12); color:var(--bad); font-weight:600; }
     .render-card { display:grid; gap:8px; min-width:min(320px,70vw); max-width:100%; text-align:left; }
     .render-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
     .render-card-title { font-weight:750; }
@@ -22,7 +50,6 @@
     .render-modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--muted); }
     .render-modal iframe { width:100%; min-height:100%; border:1px solid var(--line); border-radius:16px; background:white; }
     .render-modal-close { min-width:42px; min-height:42px; padding:0; border-radius:14px; font-size:22px; line-height:1; }
-    .system .msg { background:rgba(255,255,255,.06); border-style:dashed; color:rgba(255,255,255,.86); }
     .tool-call-card { display:grid; gap:10px; min-width:min(320px,72vw); max-width:min(560px,76vw); text-align:left; }
     .tool-call-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
     .tool-call-name { font-size:13px; font-weight:800; color:var(--muted); }
@@ -37,34 +64,54 @@
     .tool-call-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.24); border-top-color:var(--warn); border-radius:50%; animation:spin .8s linear infinite; }
     .tool-call-media { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
     .tool-call-image { display:block; width:100%; min-height: auto; object-fit:contain; border:1px solid var(--line); border-radius:12px; background:rgba(0,0,0,.22); }
-    form { padding:12px; display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:10px; } .input-wrap { flex:1 1 auto; min-width:120px; } .actions { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; } input, textarea, select { width:100%; min-height:48px; border:1px solid var(--line); border-radius:18px; padding:0 16px; color:var(--text); background:rgba(0,0,0,.25); outline:none; font:inherit; } textarea { min-height:120px; padding:12px 16px; resize:vertical; } button { flex:0 0 auto; min-width:48px; min-height:48px; border:0; border-radius:18px; padding:0 14px; color:white; background:linear-gradient(135deg,var(--brand),#15c8b7); font-size:20px; font-weight:750; cursor:pointer; transition:.2s transform,.2s opacity; } button:hover { transform:translateY(-1px); } button:disabled { opacity:.45; cursor:not-allowed; transform:none; } #mic.recording { background:linear-gradient(135deg,#ff477e,#ff9f43); } #connect { position:relative; } #connect.off { background:linear-gradient(135deg,#ff477e,#ff9f43); } .ghost { background:rgba(255,255,255,.12); border:1px solid var(--line); } .warning { background:var(--bad); border:1px solid var(--line); } dialog { width:min(680px,calc(100% - 24px)); border:1px solid var(--line); border-radius:28px; padding:0; color:var(--text); background:rgba(12,16,28,.96); box-shadow:0 28px 90px rgba(0,0,0,.55); backdrop-filter:blur(24px); } dialog::backdrop { background:rgba(0,0,0,.58); backdrop-filter:blur(6px); } .modal { padding:22px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:24px; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:13px; } label.full, .tool-picker.full { grid-column:1/-1; } .modal-actions { display:flex; justify-content: space-between; gap:10px; } .tool-picker { display:grid; gap:10px; color:var(--muted); font-size:13px; } .tool-picker-head { display:flex; align-items:center; justify-content:space-between; gap:12px; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } .tool-actions { justify-content:flex-end; } .tool-actions button { min-width:0; min-height:28px; border-radius:999px; padding:0 10px; font-size:12px; } .tool-list { align-items:center; } .tool-chip { min-width:0; min-height:34px; border-radius:999px; padding:0 12px; font-size:13px; } .tool-chip { background:rgba(255,255,255,.1); border:1px solid var(--line); font-weight:650; } .tool-chip.active { background:linear-gradient(135deg,var(--brand),#15c8b7); color:white; } .tool-hint { color:var(--muted); }
-    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes breathe { 0%,100% { transform:scale(.92); opacity:.48; } 50% { transform:scale(1.08); opacity:1; } } @keyframes spin { to { transform:rotate(360deg); } } @media (max-width:700px) { main{padding:12px} header{padding:10px; gap:10px}.titlebar-title p{display:none}.titlebar-actions{gap:8px}.group{max-width:94%}.render-card,.tool-call-card{min-width:0; width:100%; max-width:100%}.grid{grid-template-columns:1fr}.render-card-preview iframe{height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
+    .tool-picker { display:grid; gap:10px; color:var(--muted); font-size:12px; } .tool-hint { color:var(--muted); }
+    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } } @keyframes wave { 0%,100% { height:28px; opacity:.55; } 50% { height:96px; opacity:1; } }
+    @media (max-width:960px) { .app-shell { grid-template-columns:minmax(0,1fr); } .sidebar { position:fixed; width:280px; transform:translateX(-105%); } .drawer-open .sidebar { transform:translateX(0); } .app-shell.sidebar-collapsed { grid-template-columns:minmax(0,1fr); } .app-shell.sidebar-collapsed .sidebar { width:280px; padding:16px; } .drawer-scrim { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.28); } }
+    @media (max-width:700px) { .main { grid-template-rows:56px minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .render-card,.tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
   </style>
 </head>
 <body>
   <div id="app">
-    <main>
-      <header>
-        <div class="titlebar-title">
-          <select class="role-select" v-model="selectedRoleId" @change="selectRole">
-            <option class="new-role" value="__new__">＋ 新建角色</option>
-            <optgroup label="User" v-if="roles.length > 0">
-              <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
-            </optgroup>
-            <optgroup label="System">
-              <option v-for="role in default_roles" :key="role.id" :value="role.id">{{ role.name }}</option>
-            </optgroup>
-          </select>
+    <div class="app-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'drawer-open': drawerOpen }" v-show="uiMode === 'chat'">
+      <div class="drawer-scrim" v-if="drawerOpen" @click="drawerOpen = false"></div>
+      <aside class="sidebar">
+        <div class="sidebar-head">
+          <div class="brand"><span class="brand-mark"><sparkles-icon /></span><span>Gemini 语音助手</span></div>
+          <button class="icon-btn" type="button" title="收起" @click="toggleSidebar"><panel-left-close-icon /></button>
         </div>
-        <div class="titlebar-actions">
-          <button id="connect" type="button" :title="statusText" :class="{ off: connected }" :disabled="isConnecting" @click="toggleConnection"><span class="dot status-dot" :class="statusKind"></span>{{ connected ? '⏻' : '🔌' }}</button>
-          <button class="ghost" type="button" title="配置" @click="openSettings">⚙️</button>
+        <div class="sidebar-actions">
+          <button class="primary-btn" type="button" @click="newChat"><message-circle-plus-icon></message-circle-plus-icon><span>新聊天</span></button>
+          <button class="menu-item" type="button" @click="createRole"><user-plus-icon></user-plus-icon><span>新角色</span></button>
         </div>
-      </header>
+        <div class="role-list">
+          <p class="section-title">角色列表</p>
+          <button v-for="role in allRoles" :key="role.id" class="role-row" :class="{ active: selectedRoleId === role.id }" type="button" @click="selectRoleById(role.id)">
+            <span class="role-name">{{ role.roleName }}</span>
+            <span class="icon-btn" title="打电话" @click.stop="enterCallMode(role.id)"><phone-icon /></span>
+            <span class="icon-btn" title="配置" @click.stop="openRoleConfig(role.id)"><settings-2-icon /></span>
+          </button>
+        </div>
+        <div class="sidebar-foot">
+          <button class="icon-btn" type="button" :title="themeTitle" @click="cycleTheme"><component :is="themeIcon" /></button>
+          <button class="icon-btn" type="button" title="系统配置" @click="openSystemSettings"><settings-icon /></button>
+        </div>
+      </aside>
 
-      <section class="card">
-        <button class="view-toggle" type="button" :title="viewMode === 'chat' ? '切换到字幕' : '切换到消息'" @click="toggleViewMode">{{ viewMode === 'chat' ? '💬' : '🗯️' }}</button>
-        <div id="chat" ref="chatEl" v-show="viewMode === 'chat'">
+      <main class="main">
+        <header class="topbar">
+          <button class="icon-btn" type="button" title="菜单" @click="toggleSidebar"><menu-icon /></button>
+          <div class="topbar-center">
+            <span class="dot" :class="statusKind"></span><button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon /></button>
+            <button class="icon-btn" type="button" :title="voiceEnabled ? '关闭自动朗读' : '打开自动朗读'" @click="toggleVoiceEnabled" :disabled="!canToggleVoice"><component :is="voiceEnabled ? 'volume-2-icon' : 'volume-x-icon'" /></button>
+          </div>
+        </header>
+
+        <section class="chat-plane">
+          <div v-if="!messageGroups.length" class="empty-state"><div><strong>Gemini 语音聊天</strong><span>发送第一条消息后自动连接</span></div></div>
+          <div id="chat" ref="chatEl" v-show="messageGroups.length">
           <div v-for="(group, index) in messageGroups" :key="index" class="group" :class="group.role === '我' ? 'user' : (group.role === '系统' ? 'system' : 'ai')">
             <div class="role">{{ group.role }}</div>
             <div v-for="(message, messageIndex) in group.messages" :key="message.id || messageIndex" class="msg">
@@ -72,7 +119,7 @@
                 <div class="render-card">
                   <div class="render-card-head">
                     <span class="render-card-title">{{ message.title }}</span>
-                    <button class="ghost render-card-open" type="button" title="放大预览" @click="openRenderedPage(message.renderId)">⛶</button>
+                    <button class="secondary-btn render-card-open" type="button" title="放大预览" @click="openRenderedPage(message.renderId)"><maximize-2-icon /></button>
                   </div>
                   <div class="render-card-preview" aria-hidden="true">
                     <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" :srcdoc="message.html"></iframe>
@@ -103,31 +150,48 @@
               <template v-else>{{ message.text || message }}</template>
             </div>
           </div>
-        </div>
-        <div class="live" :class="`live-${caption.kind}`" v-show="viewMode === 'caption'">
-          <template v-if="caption.kind === 'waiting'">
-            <span class="wait-icon" aria-label="等待用户输入">{{ caption.icon }}</span>
-          </template>
-          <template v-else>
-            <div class="live-role">{{ caption.role }}</div>
-            <div class="live-body">{{ caption.text }}</div>
-          </template>
+          </div>
+        </section>
+
+        <form class="input-bar" @submit.prevent="sendText">
+          <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon /></button>
+          <button v-if="inputMode === 'voice'" class="hold-record" type="button" :class="{ recording: micStatus === 'recording' }" :disabled="!canToggleVoice" @pointerdown="startHoldRecord" @pointerup="stopHoldRecord" @pointerleave="stopHoldRecord">按住说话</button>
+          <textarea v-else class="message-field" :style="{ height: textStyleHeight }" v-model="text" rows="1" autocomplete="off" placeholder="输入消息..." @input="resizeTextInput" @keydown="handleTextKeydown"></textarea>
+          <button class="icon-btn" v-if="text.trim()" type="submit" title="发送"><send-icon /></button>
+          <button class="icon-btn" v-else-if="inputMode === 'voice'" type="button" title="文本输入" @click="toggleInputMode"><keyboard-icon /></button>
+          <button class="icon-btn" v-else type="button" title="语音输入" @click="toggleInputMode"><mic-icon /></button>
+        </form>
+      </main>
+    </div>
+
+    <div class="call-screen" v-show="uiMode === 'call'">
+      <header class="topbar">
+        <button class="icon-btn" type="button" title="取消通话" @click="exitCallMode"><x-icon /></button>
+        <div class="chat-title">{{ currentRoleName }}</div>
+        <button class="icon-btn" type="button" title="字幕" @click="captionsVisible = !captionsVisible"><component :is="captionsVisible ? 'captions-icon' : 'captions-off-icon'" /></button>
+      </header>
+      <section class="call-stage">
+        <div class="wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="caption-overlay" v-if="captionsVisible">
+          <div class="live-role">{{ caption.role || '状态' }}</div>
+          <div class="live-body">{{ caption.text || statusText }}</div>
         </div>
       </section>
+      <div class="call-status">
+        <button class="icon-btn" type="button" @click="interruptAiPlayback"><component :is="callStateIcon" /></button>
+        <span>{{ callStatusText }}</span>
+      </div>
+      <footer class="call-actions">
+        <button class="call-action" type="button" @click="toggleInteractionMode"><span class="icon-btn"><component :is="muteModeIcon" /></span><span>{{ interactionMode === 'turn' ? '轮询' : (voiceEnabled ? '自由' : '静音') }}</span></button>
+        <button class="call-action" type="button"><span class="icon-btn"><screen-share-icon /></span><span>投屏</span></button>
+        <button class="call-action" type="button"><span class="icon-btn"><video-icon /></span><span>视频</span></button>
+        <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon /></span><span>挂断</span></button>
+      </footer>
+    </div>
 
-      <form @submit.prevent="sendText">
-        <button class="ghost" type="button" :title="interactionMode === 'turn' ? '回合模式：AI 完成后自动聆听，AI 回复时自动停麦' : '实时模式：点击麦克风开始/结束录音'" @click="toggleInteractionMode">{{ interactionMode === 'turn' ? '🔁' : '✋' }}</button>
-        <div class="input-wrap"><input v-model="text" autocomplete="off" placeholder="输入消息，或使用麦克风实时说话…" /></div>
-        <div class="actions">
-          <button id="mic" type="button" :title="voiceEnabled ? '关闭用户语音功能' : '开启用户语音功能'" :class="{ recording: voiceEnabled }" :disabled="!canToggleVoice" @click="toggleVoiceEnabled">{{ voiceEnabled ? '🛑' : '🎙️' }}</button>
-          <button type="submit" title="发送" :disabled="!canSendText">➤</button>
-        </div>
-      </form>
-    </main>
-
-    <dialog ref="settingsDialog" @click="closeSettingsOnBackdrop">
+    <dialog ref="roleDialog" @click="closeRoleConfigOnBackdrop">
       <div class="modal">
-        <div><h2>会话配置</h2></div>
+        <div><h2>角色配置</h2></div>
         <div class="grid">
           <label class="full">角色名<input v-model="draftConfig.roleName" placeholder="例如：中文助理" /></label>
           <label>模型<select v-model="draftConfig.model">
@@ -145,9 +209,9 @@
             <div class="tool-picker-head">
               <span>工具快捷选择</span>
               <div class="tool-actions">
-                <button class="ghost" type="button" :disabled="toolsLoading" @click="refreshToolDeclarations">{{ toolsLoading ? '刷新中' : '刷新' }}</button>
-                <button class="ghost" type="button" @click="setAllTools">全部</button>
-                <button class="ghost" type="button" @click="clearTools">清空</button>
+                <button class="secondary-btn" type="button" :disabled="toolsLoading" @click="refreshToolDeclarations">{{ toolsLoading ? '刷新中' : '刷新' }}</button>
+                <button class="secondary-btn" type="button" @click="setAllTools">全部</button>
+                <button class="secondary-btn" type="button" @click="clearTools">清空</button>
               </div>
             </div>
             <div class="tool-list-wrap">
@@ -168,10 +232,38 @@
           <label class="full">系统提示词<textarea v-model="draftConfig.systemInstruction"></textarea></label>
         </div>
         <div class="modal-actions">
-          <button v-if="canDeleteRole" class="warning" type="button" @click="deleteRole">删除</button>
+          <button v-if="canDeleteRole" class="warning" type="button" @click="confirmDeleteRole">删除</button>
           <div style="flex: 1"></div>
-          <button class="ghost" type="button" @click="closeSettings">取消</button>
-          <button type="button" @click="saveSettings">保存</button>
+          <button class="secondary-btn" type="button" @click="closeRoleConfig">取消</button>
+          <button class="secondary-btn" type="button" @click="saveRoleConfig">保存</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog ref="systemDialog" @click="closeSystemSettingsOnBackdrop">
+      <div class="modal">
+        <h2>系统配置</h2>
+        <div class="grid">
+          <label class="full">深色浅色模式<select v-model="themeMode" @change="saveThemeMode">
+            <option value="system">跟随系统</option>
+            <option value="light">浅色</option>
+            <option value="dark">深色</option>
+          </select></label>
+        </div>
+        <div class="modal-actions">
+          <button class="secondary-btn" type="button" @click="closeSystemSettings">关闭</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog ref="deleteDialog" @click="closeDeleteOnBackdrop">
+      <div class="modal">
+        <h2>删除角色</h2>
+        <p>确认删除「{{ pendingDeleteRole?.roleName || '' }}」？此操作无法撤销。</p>
+        <p class="danger-note" v-if="connected && pendingDeleteRole?.id === selectedRoleId">当前正在连线该角色，确认删除后会自动断开。</p>
+        <div class="modal-actions">
+          <button class="secondary-btn" type="button" @click="closeDeleteDialog">取消</button>
+          <button class="warning" type="button" @click="deleteRole">确认删除</button>
         </div>
       </div>
     </dialog>
@@ -180,7 +272,7 @@
       <div class="render-modal">
         <div class="render-modal-head">
           <strong>{{ activeRenderPage?.title || '页面渲染' }}</strong>
-          <button class="ghost render-modal-close" type="button" title="关闭预览" @click="closeRenderedPage">×</button>
+          <button class="secondary-btn render-modal-close" type="button" title="关闭预览" @click="closeRenderedPage"><x-icon /></button>
         </div>
         <iframe v-if="activeRenderPage" title="工具渲染页面预览" sandbox="allow-scripts" referrerpolicy="no-referrer" :srcdoc="activeRenderPage.html"></iframe>
       </div>
@@ -189,9 +281,11 @@
 
   <script src="./constant.js"></script>
   <script src="./tools.js"></script>
-  <script src="https://unpkg.com/vue@3.5.34/dist/vue.global.prod.js"></script>
-  <script>
-    const { createApp, nextTick } = Vue;
+  <script type="module">
+    import { createApp, nextTick } from "https://unpkg.com/vue@3.5.34/dist/vue.esm-browser.prod.js";
+    import {
+      AudioLines, Captions, CaptionsOff, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, Send, Settings, Settings2, Sparkles, Square, Sun, UserPlus, Video, Volume2, VolumeX, X,
+    } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
 
     const models = window.APP_MODELS || [];
     const voices = window.APP_VOICES || [];
@@ -201,7 +295,7 @@
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
 
-    createApp({
+    const app = createApp({
       data() {
         const defaultConfig = {
           roleName: 'Gemini 语音对话',
@@ -234,11 +328,11 @@
           micStatus: 'idle',
           statusText: '未连接',
           statusKind: '',
-          caption: { kind: 'status', role: '状态', text: '点击 🔌 开始', icon: '💭' },
-          viewMode: 'caption',
+          caption: { kind: 'status', role: '状态', text: '未连接' },
           interactionMode: localStorage.getItem('geminiInteractionMode') || 'manual',
           voiceEnabled: JSON.parse(localStorage.getItem('geminiVoiceEnabled') || 'false'),
           text: '',
+          textStyleHeight: '48px',
           messageGroups: [],
           renderedPages: [],
           activeRenderPageId: '',
@@ -246,9 +340,17 @@
           outputDraft: '',
           toolDeclarations: this.loadCachedToolDeclarations(),
           toolsLoading: false,
+          themeMode: localStorage.getItem('geminiThemeMode') || 'system',
+          sidebarCollapsed: false,
+          drawerOpen: false,
+          uiMode: 'chat',
+          inputMode: localStorage.getItem('geminiInputMode') || 'text',
+          captionsVisible: true,
+          pendingDeleteRole: null,
         };
       },
       mounted() {
+        this.applyTheme();
         this.roles = this.loadRoles();
         this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.roles[0]?.id || this.default_roles[0]?.id || '';
         this.config = this.loadConfig();
@@ -259,7 +361,44 @@
       beforeUnmount() {
         window.removeEventListener('browser-tool-render-page', this.handleRenderedPage);
       },
+      watch: {
+        themeMode() {
+          this.applyTheme();
+        },
+      },
       computed: {
+        allRoles() {
+          return [...this.roles, ...this.default_roles];
+        },
+        currentRoleName() {
+          return this.config?.roleName || 'Gemini 语音聊天';
+        },
+        currentTitle() {
+          return this.messageGroups.length ? this.currentRoleName : 'Gemini 语音聊天';
+        },
+        themeIcon() {
+          if (this.themeMode === 'dark') return 'moon-icon';
+          if (this.themeMode === 'light') return 'sun-icon';
+          return 'monitor-icon';
+        },
+        themeTitle() {
+          if (this.themeMode === 'dark') return '深色模式';
+          if (this.themeMode === 'light') return '浅色模式';
+          return '跟随系统';
+        },
+        callStatusText() {
+          if (this.isConnecting) return '正在连接中...';
+          if (this.audioNodes.length) return this.voiceEnabled ? '说话或点击打断' : '点击打断';
+          return this.voiceEnabled ? '正在听...' : '已静音';
+        },
+        callStateIcon() {
+          if (this.audioNodes.length || this.isConnecting) return 'square-icon';
+          return this.voiceEnabled ? 'audio-lines-icon' : 'mic-off-icon';
+        },
+        muteModeIcon() {
+          if (this.interactionMode === 'turn') return 'repeat-icon';
+          return this.voiceEnabled ? 'mic-icon' : 'mic-off-icon';
+        },
         activeRenderPage() {
           return this.renderedPages.find((page) => page.id === this.activeRenderPageId) || null;
         },
@@ -280,6 +419,86 @@
         },
       },
       methods: {
+        toggleSidebar() {
+          if (window.matchMedia('(max-width: 960px)').matches) this.drawerOpen = !this.drawerOpen;
+          else this.sidebarCollapsed = !this.sidebarCollapsed;
+        },
+        cycleTheme() {
+          const next = this.themeMode === 'system' ? 'light' : (this.themeMode === 'light' ? 'dark' : 'system');
+          this.themeMode = next;
+          this.saveThemeMode();
+        },
+        saveThemeMode() {
+          localStorage.setItem('geminiThemeMode', this.themeMode);
+          this.applyTheme();
+        },
+        openSystemSettings() {
+          this.$refs.systemDialog.showModal();
+        },
+        closeSystemSettings() { this.$refs.systemDialog.close(); },
+        closeSystemSettingsOnBackdrop(event) { if (event.target === this.$refs.systemDialog) this.closeSystemSettings(); },
+        applyTheme() {
+          document.documentElement.dataset.theme = this.themeMode;
+        },
+        createRole() {
+          this.draftConfig = this.createDefaultRole();
+          this.selectedRoleId = '';
+          this.$refs.roleDialog.showModal();
+        },
+        newChat() {
+          this.interruptAiPlayback();
+          this.stopMic();
+          this.ws?.close(1000, 'New chat');
+          this.messageGroups = [];
+          this.inputDraft = '';
+          this.outputDraft = '';
+          this.setStatus('未连接', '');
+          this.setCaption('status', '状态', '已进入新聊天。');
+          this.drawerOpen = false;
+        },
+        selectRoleById(roleId) {
+          this.selectedRoleId = roleId;
+          this.selectRole();
+          this.newChat();
+        },
+        openRoleConfig(roleId = this.selectedRoleId) {
+          this.selectedRoleId = roleId;
+          this.config = this.loadConfig();
+          this.draftConfig = { ...this.config };
+          this.$refs.roleDialog.showModal();
+        },
+        enterCallMode(roleId = this.selectedRoleId) {
+          if (roleId && roleId !== this.selectedRoleId) this.selectRoleById(roleId);
+          this.uiMode = 'call';
+          this.drawerOpen = false;
+          if (!this.connected && !this.isConnecting) this.connect();
+        },
+        exitCallMode() {
+          this.uiMode = 'chat';
+        },
+        toggleInputMode() {
+          this.inputMode = this.inputMode === 'voice' ? 'text' : 'voice';
+          localStorage.setItem('geminiInputMode', this.inputMode);
+        },
+        startHoldRecord() {
+          if (!this.voiceEnabled) this.toggleVoiceEnabled();
+          this.startMic({ interruptAi: true });
+        },
+        stopHoldRecord() {
+          if (this.micStatus === 'recording') this.stopMic();
+        },
+        resizeTextInput(event) {
+          const el = event.target;
+          this.textStyleHeight = 'auto';
+          nextTick(() => {
+            this.textStyleHeight = `${Math.min(el.scrollHeight, 120)}px`;
+          });
+        },
+        handleTextKeydown(event) {
+          if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) return;
+          event.preventDefault();
+          this.sendText();
+        },
         createDefaultRole() {
           return { ...this.defaultConfig, id: `role-${Date.now()}`, roleName: this.defaultConfig.roleName };
         },
@@ -351,7 +570,7 @@
         },
         setAllTools() { this.draftConfig.autoLoadTools = '*'; },
         clearTools() { this.draftConfig.autoLoadTools = ''; },
-        saveSettings() {
+        saveRoleConfig() {
           const isSystemRole = default_roles.some((role) => role.id === this.selectedRoleId);
           const sourceRole = [...this.roles, ...default_roles].find((role) => role.id === this.selectedRoleId) || this.defaultConfig;
           const baseRoleName = (this.draftConfig.roleName || sourceRole.roleName || this.defaultConfig.roleName || '').trim() || '未命名角色';
@@ -367,12 +586,21 @@
           this.config = { ...role };
           this.saveRoles();
           localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
-          this.closeSettings();
+          this.closeRoleConfig();
           this.setCaption('status', '状态', `角色「${role.roleName}」已保存，下次连接时生效。`);
         },
-        deleteRole() {
+        confirmDeleteRole() {
           if (!this.canDeleteRole) return;
-          const index = this.roles.findIndex((role) => role.id === this.selectedRoleId);
+          this.pendingDeleteRole = this.roles.find((role) => role.id === this.selectedRoleId) || null;
+          this.$refs.deleteDialog.showModal();
+        },
+        closeDeleteDialog() { this.$refs.deleteDialog.close(); },
+        closeDeleteOnBackdrop(event) { if (event.target === this.$refs.deleteDialog) this.closeDeleteDialog(); },
+        deleteRole() {
+          if (!this.pendingDeleteRole) return;
+          const deletingActiveRole = this.pendingDeleteRole.id === this.selectedRoleId;
+          if (deletingActiveRole && this.connected) this.ws?.close(1000, 'Deleted active role');
+          const index = this.roles.findIndex((role) => role.id === this.pendingDeleteRole.id);
           if (index < 0) return;
           const [deletedRole] = this.roles.splice(index, 1);
           const nextRole = this.roles[0] || default_roles[0] || null;
@@ -382,15 +610,16 @@
           this.saveRoles();
           if (this.selectedRoleId) localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
           else localStorage.removeItem('geminiSelectedRoleId');
-          this.closeSettings();
+          this.closeDeleteDialog();
+          this.closeRoleConfig();
+          this.pendingDeleteRole = null;
           this.setCaption('status', '状态', `角色「${deletedRole.roleName}」已删除。`);
         },
-        openSettings() { this.draftConfig = { ...this.loadConfig() }; this.$refs.settingsDialog.showModal(); },
         selectRole() {
           if (this.selectedRoleId === '__new__') {
             this.draftConfig = this.createDefaultRole();
             this.selectedRoleId = '';
-            this.$refs.settingsDialog.showModal();
+            this.$refs.roleDialog.showModal();
             return;
           }
           localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
@@ -398,11 +627,14 @@
           this.draftConfig = { ...this.config };
           this.setCaption('status', '状态', `已切换到角色「${this.config.roleName}」。`);
         },
-        closeSettings() { this.$refs.settingsDialog.close(); },
-        closeSettingsOnBackdrop(event) { if (event.target === this.$refs.settingsDialog) this.closeSettings(); },
-        setStatus(text, kind = '') { this.statusText = text; this.statusKind = kind; },
-        setCaption(kind, role = '', text = '', icon = '💭') { this.caption = { kind, role, text: text.trim(), icon }; },
-        showWaitingForUser() { this.setCaption('waiting', '', '', '💭'); },
+        closeRoleConfig() { this.$refs.roleDialog.close(); },
+        closeRoleConfigOnBackdrop(event) { if (event.target === this.$refs.roleDialog) this.closeRoleConfig(); },
+        setStatus(text, kind = '') {
+          this.statusText = text;
+          this.statusKind = kind || (/断开|错误|关闭/.test(text) ? 'bad' : '');
+        },
+        setCaption(kind, role = '', text = '') { this.caption = { kind, role, text: text.trim() }; },
+        showWaitingForUser() { this.setCaption('waiting'); },
         clearCaptionTimers() {
           this.captionTimers.forEach((timer) => clearTimeout(timer));
           this.captionTimers = [];
@@ -416,26 +648,25 @@
           this.audioNodes = [];
           if (this.audioCtx) this.playbackTime = this.audioCtx.currentTime;
         },
-        scheduleCaptionAt(kind, role, text, audioTime, icon = '💭', generation = this.audioGeneration) {
+        scheduleCaptionAt(kind, role, text, audioTime, generation = this.audioGeneration) {
           const delay = Math.max(0, ((audioTime || this.audioCtx?.currentTime || 0) - (this.audioCtx?.currentTime || 0)) * 1000);
           const timer = setTimeout(() => {
-            if (generation === this.audioGeneration) this.setCaption(kind, role, text, icon);
+            if (generation === this.audioGeneration) this.setCaption(kind, role, text);
           }, delay);
           this.captionTimers.push(timer);
         },
         scheduleWaitingAfterAudio() {
           const audioTime = Math.max(this.playbackTime, this.audioCtx?.currentTime || 0) + 0.1;
-          this.scheduleCaptionAt('waiting', '', '', audioTime, '💭');
+          this.scheduleCaptionAt('waiting', '', '', audioTime);
         },
         scheduleTurnMicAfterAudio() {
           if (this.interactionMode !== 'turn' || !this.voiceEnabled) return;
           const audioTime = Math.max(this.playbackTime, this.audioCtx?.currentTime || 0) + 0.15;
-          this.scheduleCaptionAt('waiting', '', '', audioTime, '🎙️');
+          this.scheduleCaptionAt('waiting', '', '', audioTime);
           const delay = Math.max(0, (audioTime - (this.audioCtx?.currentTime || 0)) * 1000);
           const timer = setTimeout(() => this.startMic({ interruptAi: false }), delay);
           this.captionTimers.push(timer);
         },
-        toggleViewMode() { this.viewMode = this.viewMode === 'chat' ? 'caption' : 'chat'; },
         toggleInteractionMode() {
           this.interactionMode = this.interactionMode === 'turn' ? 'manual' : 'turn';
           localStorage.setItem('geminiInteractionMode', this.interactionMode);
@@ -525,7 +756,6 @@
         closeRenderedPageOnBackdrop(event) {
           if (event.target === this.$refs.renderDialog) this.closeRenderedPage();
         },
-        toggleConnection() { this.connected ? this.ws?.close(1000, 'User disconnected') : this.connect(); },
         async connect() {
           if (this.connected || this.isConnecting) return;
           this.config = this.loadConfig();
@@ -628,7 +858,6 @@
           if (existing) existing.group.messages.splice(existing.messageIndex, 1, nextMessage);
           else this.addMessage('系统', nextMessage);
 
-          if (this.viewMode !== 'chat') this.viewMode = 'chat';
           if (nextMessage.status === 'running') this.setCaption('status', '状态', `正在调用${this.toolDisplayName(nextMessage.name)}…`);
           else if (nextMessage.status === 'error') this.setCaption('status', '状态', `${this.toolDisplayName(nextMessage.name)}失败：${nextMessage.error}`);
           else this.setCaption('status', '状态', `${this.toolDisplayName(nextMessage.name)}完成${images.length ? `，共 ${images.length} 张图片` : ''}。`);
@@ -695,7 +924,7 @@
           node.buffer = buffer; node.connect(this.audioCtx.destination);
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
           const startTime = this.playbackTime;
-          if (captionText) this.scheduleCaptionAt('ai', 'Gemini', captionText, startTime, '💭', generation);
+          if (captionText) this.scheduleCaptionAt('ai', 'Gemini', captionText, startTime, generation);
           node.onended = () => { this.audioNodes = this.audioNodes.filter((item) => item !== node); };
           this.audioNodes.push(node);
           node.start(startTime); this.playbackTime += buffer.duration;
@@ -741,15 +970,64 @@
         },
         sendText() {
           const value = this.text.trim();
-          if (!this.canSendText) return;
-          this.interruptAiPlayback();
-          this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
-          this.addMessage('我', value);
-          this.setCaption('user', '我', value);
-          this.text = '';
+          if (!value) return;
+          const send = () => {
+            this.interruptAiPlayback();
+            this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
+            this.addMessage('我', value);
+            this.setCaption('user', '我', value);
+            this.text = '';
+            this.textStyleHeight = '48px';
+          };
+          if (this.canSendText) {
+            send();
+            return;
+          }
+          if (!this.connected && !this.isConnecting) {
+            this.connect();
+            const timer = setInterval(() => {
+              if (this.canSendText) {
+                clearInterval(timer);
+                send();
+              }
+            }, 120);
+            setTimeout(() => clearInterval(timer), 10000);
+          }
         },
       },
-    }).mount('#app');
+    });
+
+    const lucideComponents = {
+      'audio-lines-icon': AudioLines,
+      'captions-icon': Captions,
+      'captions-off-icon': CaptionsOff,
+      'keyboard-icon': Keyboard,
+      'maximize-2-icon': Maximize2,
+      'menu-icon': Menu,
+      'message-circle-plus-icon': MessageCirclePlus,
+      'mic-icon': Mic,
+      'mic-off-icon': MicOff,
+      'monitor-icon': Monitor,
+      'moon-icon': Moon,
+      'panel-left-close-icon': PanelLeftClose,
+      'phone-icon': Phone,
+      'phone-off-icon': PhoneOff,
+      'repeat-icon': Repeat,
+      'screen-share-icon': ScreenShare,
+      'send-icon': Send,
+      'settings-icon': Settings,
+      'settings-2-icon': Settings2,
+      'sparkles-icon': Sparkles,
+      'square-icon': Square,
+      'sun-icon': Sun,
+      'user-plus-icon': UserPlus,
+      'video-icon': Video,
+      'volume-2-icon': Volume2,
+      'volume-x-icon': VolumeX,
+      'x-icon': X,
+    };
+    Object.entries(lucideComponents).forEach(([name, component]) => app.component(name, component));
+    app.mount('#app');
   </script>
 </body>
 </html>
