@@ -304,7 +304,7 @@
     const models = window.APP_MODELS || [];
     const voices = window.APP_VOICES || [];
 
-    const default_roles = window.DEFAULT_ROLES || [];
+    const defaultRoles = window.DEFAULT_ROLES;
     const browserTools = window.BROWSER_TOOLS || { declarations: [], handlers: {} };
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
@@ -323,7 +323,7 @@
           models,
           voices,
           roles: [],
-          default_roles: default_roles.map((role) => this.normalizeRole(role)),
+          default_roles: defaultRoles.map((role) => this.normalizeRole(role)),
           selectedRoleId: '',
           roleDraft: { ...defaultConfig },
           ws: null,
@@ -366,7 +366,7 @@
       mounted() {
         this.applyTheme();
         this.roles = this.loadRoles();
-        this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.roles[0]?.id || this.default_roles[0]?.id || '';
+        this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.allRoles[0].id;
         window.addEventListener('browser-tool-render-page', this.handleRenderedPage);
         this.loadToolDeclarations();
       },
@@ -383,10 +383,10 @@
           return [...this.roles, ...this.default_roles];
         },
         currentRole() {
-          return { ...this.defaultConfig, ...(this.getRoleById(this.selectedRoleId) || this.roles[0] || this.default_roles[0] || {}) };
+          return this.getRoleById(this.selectedRoleId);
         },
         currentRoleName() {
-          return this.currentRole.name || 'Gemini 语音聊天';
+          return this.currentRole.name;
         },
         currentTitle() {
           return this.currentRoleName;
@@ -419,7 +419,7 @@
         },
         canDeleteRole() {
           const roleId = this.editingRoleId || this.selectedRoleId;
-          return !!roleId && !default_roles.some((role) => role.id === roleId);
+          return !this.default_roles.some((role) => role.id === roleId);
         },
         isConnecting() {
           return !this.connected && this.statusKind === 'wait';
@@ -473,17 +473,18 @@
           this.drawerOpen = false;
         },
         selectRoleById(roleId) {
-          this.selectedRoleId = roleId;
-          this.selectRole();
+          this.editingRoleId = '';
+          this.saveSelectRoleId(roleId);
+          this.setCaption('status', '状态', `已切换到角色「${this.currentRole.name}」。`);
           this.newChat();
         },
         openRoleConfig(roleId = this.selectedRoleId) {
-          this.editingRoleId = roleId || '';
-          this.roleDraft = { ...this.getConfigById(this.editingRoleId || this.selectedRoleId) };
+          this.editingRoleId = roleId;
+          this.roleDraft = { ...this.getConfigById(roleId) };
           this.$refs.roleDialog.showModal();
         },
         enterCallMode(roleId = this.selectedRoleId) {
-          if (roleId && roleId !== this.selectedRoleId) this.selectRoleById(roleId);
+          if (roleId !== this.selectedRoleId) this.selectRoleById(roleId);
           this.uiMode = 'call';
           this.drawerOpen = false;
           if (!this.connected && !this.isConnecting) this.connect();
@@ -518,7 +519,7 @@
           return { ...this.defaultConfig, id: `role-${Date.now()}` };
         },
         getRoleById(roleId) {
-          return [...this.roles, ...this.default_roles].find((role) => role.id === roleId) || null;
+          return this.allRoles.find((role) => role.id === roleId) || this.allRoles[0];
         },
         normalizeRole(role) {
           const normalized = { ...this.defaultConfig, ...role };
@@ -534,8 +535,9 @@
           return [];
         },
         saveRoles() { localStorage.setItem('geminiRoles', JSON.stringify(this.roles)); },
+        saveSelectRoleId(selectedRoleId) { this.selectedRoleId = selectedRoleId; localStorage.setItem('geminiSelectedRoleId', selectedRoleId); },
         getConfigById(roleId) {
-          return { ...this.defaultConfig, ...(this.getRoleById(roleId) || this.roles[0] || {}) };
+          return this.getRoleById(roleId);
         },
         loadCachedToolDeclarations() {
           try {
@@ -589,28 +591,27 @@
         clearTools() { this.roleDraft.autoLoadTools = ''; },
         saveRoleConfig() {
           const targetRoleId = this.editingRoleId || this.selectedRoleId;
-          const isSystemRole = default_roles.some((role) => role.id === targetRoleId);
-          const sourceRole = this.getRoleById(targetRoleId) || this.defaultConfig;
-          const baseName = (this.roleDraft.name || sourceRole.name || this.defaultConfig.name || '').trim() || '未命名角色';
+          const isSystemRole = this.default_roles.some((role) => role.id === targetRoleId);
+          const sourceRole = this.getRoleById(targetRoleId);
+          const baseName = (this.roleDraft.name || sourceRole.name).trim() || '未命名角色';
           const name = isSystemRole && !baseName.includes('自定义')
             ? `${baseName}（自定义）`
             : baseName;
-          const roleId = isSystemRole ? `role-${Date.now()}` : (targetRoleId || `role-${Date.now()}`);
+          const roleId = isSystemRole ? `role-${Date.now()}` : targetRoleId;
           const role = this.normalizeRole({ ...this.roleDraft, id: roleId, name });
           const index = this.roles.findIndex((item) => item.id === role.id);
           if (index >= 0) this.roles.splice(index, 1, role);
           else this.roles.push(role);
-          this.selectedRoleId = role.id;
           this.editingRoleId = role.id;
+          this.saveSelectRoleId(role.id);
           this.saveRoles();
-          localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
           this.closeRoleConfig();
           this.setCaption('status', '状态', `角色「${role.name}」已保存，下次连接时生效。`);
         },
         confirmDeleteRole() {
           if (!this.canDeleteRole) return;
           const targetRoleId = this.editingRoleId || this.selectedRoleId;
-          this.pendingDeleteRole = this.roles.find((role) => role.id === targetRoleId) || null;
+          this.pendingDeleteRole = this.roles.find((role) => role.id === targetRoleId);
           this.$refs.deleteDialog.showModal();
         },
         closeDeleteDialog() { this.$refs.deleteDialog.close(); },
@@ -622,22 +623,15 @@
           const index = this.roles.findIndex((role) => role.id === this.pendingDeleteRole.id);
           if (index < 0) return;
           const [deletedRole] = this.roles.splice(index, 1);
-          const nextRole = this.roles[0] || default_roles[0] || null;
-          this.selectedRoleId = nextRole?.id || '';
-          this.roleDraft = { ...this.getConfigById(this.selectedRoleId) };
+          const selectedRoleId = this.allRoles[0].id;
+          this.roleDraft = { ...this.getConfigById(selectedRoleId) };
           this.editingRoleId = '';
           this.saveRoles();
-          if (this.selectedRoleId) localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
-          else localStorage.removeItem('geminiSelectedRoleId');
+          this.saveSelectRoleId(selectedRoleId);
           this.closeDeleteDialog();
           this.closeRoleConfig();
           this.pendingDeleteRole = null;
           this.setCaption('status', '状态', `角色「${deletedRole.name}」已删除。`);
-        },
-        selectRole() {
-          localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
-          this.editingRoleId = '';
-          this.setCaption('status', '状态', `已切换到角色「${this.currentRole.name}」。`);
         },
         closeRoleConfig() { this.$refs.roleDialog.close(); },
         closeRoleConfigOnBackdrop(event) {
