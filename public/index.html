@@ -34,13 +34,13 @@
     .dot { width:8px; height:8px; border-radius:9999px; background:transparent; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.bad { background:var(--bad); }
     .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
     .group { max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
-    .msg { padding:10px 14px; border-radius:12px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; } .user .msg { background:var(--text); color:var(--bg); } .system .msg { background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(245,158,11,.12)); color:var(--text); }
+    .msg { padding:10px 14px; border-radius:12px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; } .ai .msg { padding:10px 5px } .user .msg { background:var(--text); color:var(--bg); } .system .msg { background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(245,158,11,.12)); color:var(--text); }
     .progressive-text { white-space:pre-wrap; overflow-wrap:anywhere; } .progressive-text-played { color:var(--text); opacity:1; transition:opacity .2s ease-in-out, color .2s ease-in-out; } .progressive-text-pending { opacity:.42; transition:opacity .2s ease-in-out; } .user .progressive-text-played { color:var(--bg); } .caption-line { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; align-items:start; padding:4px 0; } .caption-role { min-width:34px; color:var(--muted); font-size:12px; font-weight:600; line-height:1.6; } .caption-text { min-width:0; color:var(--text); font-size:15px; line-height:1.5; } .caption-line.user .caption-text { color:var(--muted); opacity:.72; } .caption-line.ai .caption-text { color:var(--text); }
     .thought-card summary { min-height:28px; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:13px; font-weight:700; list-style:none; }
     .thought-card summary::-webkit-details-marker { display:none; }
     .thought-card summary::before { content:""; width:8px; height:8px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(-45deg); transition:transform .18s ease-in-out; opacity:.72; }
     .thought-card[open] summary::before { transform:rotate(45deg); }
-    .thought-text { margin:8px 0 0; padding:10px 12px; border-left:3px solid var(--line); border-radius:8px; background:rgba(127,127,127,.08); white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.55; }
+    .thought-text { margin:8px 0 0; padding:10px 12px; border-radius:8px; background:rgba(127,127,127,.08); white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.55; }
     .empty-state { height:100%; display:grid; place-items:center; color:var(--muted); text-align:center; } .empty-state strong { display:block; color:var(--text); font-size:20px; font-weight:600; }
     .input-bar { min-height:64px; justify-content:space-between; align-items: end; padding-block:8px; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; overflow:auto; border:0; outline:none; border-radius:12px; padding:13px 14px; background:var(--hover); transition:all .2s ease-in-out; }
     .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; } .hold-record.recording { background:linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
@@ -133,7 +133,6 @@
           <div v-if="!messageGroups.length" class="empty-state"><div><strong>Gemini 语音聊天</strong><span>发送第一条消息后自动连接</span></div></div>
           <div id="chat" ref="chatEl" v-show="messageGroups.length">
           <div v-for="(item, index) in messageGroups" :key="item.message.id || index" class="group" :class="item.role === '我' ? 'user' : (item.role === '系统' ? 'system' : 'ai')">
-            <div class="role">{{ item.role }}</div>
             <div class="msg">
               <template v-if="item.message.type === 'renderPage'">
                 <div class="render-card">
@@ -430,6 +429,7 @@
           text: '',
           textStyleHeight: '48px',
           pendingAiCaption: '',
+          pendingAiMessageId: '',
           messageGroups: [],
           renderedPages: [],
           activeRenderPageId: '',
@@ -750,6 +750,7 @@
         interruptAiPlayback() {
           this.audioGeneration += 1;
           this.pendingAiCaption = '';
+          this.pendingAiMessageId = '';
           this.clearPlaybackTimers();
           this.aiAudioScheduledThisTurn = false;
           this.audioNodes.forEach((node) => { try { node.stop(); } catch {} });
@@ -818,6 +819,7 @@
           if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ toolResponse: { functionResponses } }));
         },
         handleRenderedPage(event) {
+          this.closeAiTextSegment();
           const page = {
             id: event.detail?.id || `render-${Date.now()}`,
             title: event.detail?.title || '页面渲染',
@@ -885,6 +887,7 @@
           }
           const browserFunctionCalls = (msg.toolCall?.functionCalls || []).filter((call) => browserTools.handlers?.[call.name]);
           if (browserFunctionCalls.length) {
+            this.closeAiTextSegment();
             this.handleBrowserToolCalls(browserFunctionCalls);
             return;
           }
@@ -893,32 +896,40 @@
           if (content.interrupted) {
             this.interruptAiPlayback();
             this.aiAudioScheduledThisTurn = false;
+            this.pendingAiMessageId = '';
             if (this.interactionMode === 'turn' && this.voiceEnabled) this.scheduleTurnMicAfterAudio();
             return;
           }
-          if (content.inputTranscription?.text) this.addTranscript('我', content.inputTranscription.text);
+          if (content.inputTranscription?.text) {
+            this.closeAiTextSegment();
+            this.addTranscript('我', content.inputTranscription.text);
+          }
           const aiStarted = !!(content.outputTranscription?.text || content.modelTurn?.parts?.length);
           if (aiStarted && this.interactionMode === 'turn' && this.voiceEnabled && this.micStatus === 'recording') this.stopMic({ sendEnd: false });
           if (content.outputTranscription?.text) {
-            this.addTranscript('Gemini', content.outputTranscription.text);
+            this.ensureAiTextSegment();
+            this.addTranscript('Gemini', content.outputTranscription.text, this.pendingAiMessageId);
             this.pendingAiCaption += content.outputTranscription.text;
           }
           for (const part of content.modelTurn?.parts || []) {
             if (part.text) {
               if (part.thought) {
+                this.closeAiTextSegment();
                 this.addThought(part.text);
               } else {
-                this.addTranscript('Gemini', part.text);
+                this.ensureAiTextSegment();
+                this.addTranscript('Gemini', part.text, this.pendingAiMessageId);
                 this.pendingAiCaption += part.text;
               }
             }
             if (part.inlineData?.data) {
               this.aiAudioScheduledThisTurn = true;
-              this.playPcm(part.inlineData.data, part.inlineData.mimeType, this.pendingAiCaption);
+              this.playPcm(part.inlineData.data, part.inlineData.mimeType, this.pendingAiCaption, this.pendingAiMessageId);
             }
           }
           if (content.turnComplete) {
             this.pendingAiCaption = '';
+            this.pendingAiMessageId = '';
             this.aiAudioScheduledThisTurn = false;
             if (this.voiceEnabled && this.interactionMode === 'turn') this.scheduleTurnMicAfterAudio();
           }
@@ -926,6 +937,7 @@
         handleSystemContent(systemContent) {
           const toolCall = systemContent?.toolCall;
           if (!toolCall) return;
+          this.closeAiTextSegment();
 
           const id = toolCall.id || `tool-call-${Date.now()}`;
           const existing = this.findToolCallMessage(id);
@@ -975,6 +987,14 @@
           if (status === 'error') return '失败';
           return '进行中';
         },
+        ensureAiTextSegment() {
+          if (!this.pendingAiMessageId) this.pendingAiMessageId = `ai-msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          return this.pendingAiMessageId;
+        },
+        closeAiTextSegment() {
+          this.pendingAiCaption = '';
+          this.pendingAiMessageId = '';
+        },
         addThought(text) {
           if (!text) return;
           const lastItem = this.messageGroups.at(-1);
@@ -985,28 +1005,45 @@
           }
           this.addMessage('Gemini', { type: 'thought', text, title: 'AI 思考过程' });
         },
-        addCaption(role, text) {
+        addCaption(role, text, messageId = '') {
           if (!text) return;
+          if (messageId) {
+            const target = this.findMessageById(messageId);
+            if (target?.role === role && target.message?.type === 'text') {
+              target.message.caption = text;
+              return;
+            }
+          }
           const lastItem = this.messageGroups.at(-1);
           if (lastItem?.role === role && lastItem.message?.type === 'text') {
             lastItem.message.caption = text;
             return;
           }
-          this.addMessage(role, text);
+          this.addMessage(role, text, messageId);
         },
-        addTranscript(role, text) {
+        addTranscript(role, text, messageId = '') {
           if (!text) return;
+          if (messageId) {
+            const target = this.findMessageById(messageId);
+            if (target?.role === role && target.message?.type === 'text') {
+              target.message.text += text;
+              nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
+              return;
+            }
+          }
           const lastItem = this.messageGroups.at(-1);
           if (lastItem?.role === role && lastItem.message?.type === 'text') {
             lastItem.message.text += text;
             nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
             return;
           }
-          this.addMessage(role, text);
+          this.addMessage(role, text, messageId);
         },
-        addMessage(role, content) {
+        addMessage(role, content, messageId = '') {
           const message = typeof content === 'string' ? { type: 'text', text: content, caption: '' } : content;
           if (!message || (message.type === 'text' && !message.text)) return;
+          if (messageId && !message.id) message.id = messageId;
+          if (!message.id) message.id = `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
           this.messageGroups.push({ role, message });
           nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
         },
@@ -1015,7 +1052,7 @@
           if (this.audioCtx.state !== 'running') await this.audioCtx.resume();
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
         },
-        async playPcm(data, mime = 'audio/pcm;rate=24000', caption = "") {
+        async playPcm(data, mime = 'audio/pcm;rate=24000', caption = "", messageId = '') {
           const generation = this.audioGeneration;
           await this.ensureAudio();
           if (generation !== this.audioGeneration) return;
@@ -1029,19 +1066,27 @@
           node.buffer = buffer; node.connect(this.audioCtx.destination);
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
           const startTime = this.playbackTime
-          if (caption) this.scheduleCaptionAt(caption, startTime, generation);
+          if (caption) this.scheduleCaptionAt(caption, startTime, generation, messageId);
           node.onended = () => { this.audioNodes = this.audioNodes.filter((item) => item !== node); };
           this.audioNodes.push(node);
           node.start(this.playbackTime); this.playbackTime += buffer.duration;
         },
-        scheduleCaptionAt(text, audioTime, generation = this.audioGeneration) {
+        scheduleCaptionAt(text, audioTime, generation = this.audioGeneration, messageId = '') {
           const delay = Math.max(0, ((audioTime || this.audioCtx?.currentTime || 0) - (this.audioCtx?.currentTime || 0)) * 1000);
           const timer = setTimeout(() => {
             if (generation === this.audioGeneration) {
-              this.addCaption('Gemini', text);
-            };
+              this.addCaption('Gemini', text, messageId);
+            }
           }, delay);
           this.playbackTimers.push(timer);
+        },
+        findMessageById(messageId) {
+          if (!messageId) return null;
+          for (let index = this.messageGroups.length - 1; index >= 0; index -= 1) {
+            const item = this.messageGroups[index];
+            if (item?.message?.id === messageId) return item;
+          }
+          return null;
         },
         async startMic(options = {}) {
           const { interruptAi = true } = options;
