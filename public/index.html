@@ -428,6 +428,7 @@
           voiceEnabled: JSON.parse(localStorage.getItem('geminiVoiceEnabled') || 'false'),
           text: '',
           textStyleHeight: '48px',
+          pendingInitialMessages: [],
           pendingAiCaption: '',
           pendingAiMessageId: '',
           messageGroups: [],
@@ -791,6 +792,10 @@
           const browserToolNames = this.selectedBrowserToolNames(setup.autoLoadTools);
           const browserToolDeclarations = browserTools.declarations.filter((tool) => browserToolNames.includes(tool.name));
           if (browserToolDeclarations.length) setup.tools = [{ functionDeclarations: browserToolDeclarations }];
+          if (this.pendingInitialMessages.length) {
+            setup.initialMessages = this.pendingInitialMessages;
+            this.pendingInitialMessages = [];
+          }
           return { setup };
         },
         selectedBrowserToolNames(autoLoadTools) {
@@ -1004,7 +1009,7 @@
             nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
             return;
           }
-          this.addMessage('Gemini', { type: 'thought', text, title: 'AI 思考过程' });
+          this.addMessage('Gemini', { type: 'thought', text, title: '思考过程' });
         },
         addCaption(role, text, messageId = '') {
           if (!text) return;
@@ -1130,26 +1135,20 @@
         sendText() {
           const value = this.text.trim();
           if (!value) return;
-          const send = () => {
+          if (this.canSendText) {
             this.interruptAiPlayback();
             this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
             this.addMessage('我', value);
             this.text = '';
             this.textStyleHeight = '48px';
-          };
-          if (this.canSendText) {
-            send();
             return;
           }
           if (!this.isSessionActive) {
+            this.pendingInitialMessages.push({ role: 'user', parts: [{ text: value }] });
+            this.addMessage('我', value);
+            this.text = '';
+            this.textStyleHeight = '48px';
             this.connect();
-            const timer = setInterval(() => {
-              if (this.canSendText) {
-                clearInterval(timer);
-                send();
-              }
-            }, 120);
-            setTimeout(() => clearInterval(timer), 10000);
           }
         },
       },

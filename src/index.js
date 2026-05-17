@@ -216,20 +216,22 @@ export default {
       if (geminiSession.readyState === WebSocket.OPEN) {
         const message = typeof event.data === 'string' ? parseJson(event.data) : null;
         if (message?.setup) {
+          const initialMessages = Array.isArray(message.setup.initialMessages) ? message.setup.initialMessages : [];
+          delete message.setup.initialMessages;
           try {
             const mcpServers = getMcpServersConfig(message.setup?.mcpServers, env.MCP_SERVERS);
             const mcpRegistry = await createMcpToolRegistry(mcpServers);
             mcpToolDeclarations = mcpRegistry.declarations;
             mcpToolHandlers = mcpRegistry.handlers;
             enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools, mcpToolDeclarations);
-            geminiSession.sendManagedSetup(injectTools(message, mcpToolDeclarations));
+            geminiSession.sendManagedSetup(injectTools(message, mcpToolDeclarations), initialMessages);
           } catch (error) {
             sendClientStatus({
               type: 'warning',
               message: `MCP 初始化失败: ${error.message || error}`,
             });
             enabledToolNames = getEnabledToolNames(message.setup.autoLoadTools, []);
-            geminiSession.sendManagedSetup(injectTools(message, []));
+            geminiSession.sendManagedSetup(injectTools(message, []), initialMessages);
           }
         } else {
           geminiSession.send(event.data);

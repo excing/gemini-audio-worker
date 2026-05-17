@@ -29,6 +29,8 @@ export const createGeminiSessionManager = ({
   let currentWs = null;
   let currentGeneration = 0;
   let setupMessage = null;
+  let initialMessages = [];
+  let initialMessagesSent = false;
   let sessionHandle = '';
   let reconnectTimer = null;
   let closedByClient = false;
@@ -118,6 +120,19 @@ export const createGeminiSessionManager = ({
         scheduleReconnect('goAway');
       }
 
+      if (message?.setupComplete && !initialMessagesSent && initialMessages.length && isGeminiOpen()) {
+        initialMessagesSent = true;
+        for (const turn of initialMessages) {
+          if (!isGeminiOpen() || generation !== currentGeneration) break;
+          currentWs.send(JSON.stringify({
+            clientContent: {
+              turns: [turn],
+              turnComplete: true,
+            },
+          }));
+        }
+      }
+
       await onGeminiMessage(rawData, message);
     });
 
@@ -157,8 +172,10 @@ export const createGeminiSessionManager = ({
     return true;
   };
 
-  const sendManagedSetup = (message) => {
+  const sendManagedSetup = (message, messages = []) => {
     setupMessage = structuredClone(message);
+    initialMessages = Array.isArray(messages) ? structuredClone(messages) : [];
+    initialMessagesSent = false;
     return send(JSON.stringify(withSessionManagement(structuredClone(message), sessionHandle)));
   };
 
