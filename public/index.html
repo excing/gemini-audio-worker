@@ -692,14 +692,15 @@
         setAllTools() { this.roleDraft.autoLoadTools = '*'; },
         clearTools() { this.roleDraft.autoLoadTools = ''; },
         saveRoleConfig() {
-          const targetRoleId = this.editingRoleId || this.selectedRoleId;
-          const isSystemRole = this.default_roles.some((role) => role.id === targetRoleId);
+          const isCreatingRole = !this.editingRoleId;
+          const targetRoleId = isCreatingRole ? this.roleDraft.id : this.editingRoleId;
+          const isSystemRole = !isCreatingRole && this.default_roles.some((role) => role.id === targetRoleId);
           const sourceRole = this.getRoleById(targetRoleId);
           const baseName = (this.roleDraft.name || sourceRole.name).trim() || '未命名角色';
           const name = isSystemRole && !baseName.includes('自定义')
             ? `${baseName}（自定义）`
             : baseName;
-          const roleId = isSystemRole ? `role-${Date.now()}` : targetRoleId;
+          const roleId = isCreatingRole || isSystemRole ? `role-${Date.now()}` : targetRoleId;
           const role = this.normalizeRole({ ...this.roleDraft, id: roleId, name });
           const index = this.roles.findIndex((item) => item.id === role.id);
           if (index >= 0) this.roles.splice(index, 1, role);
