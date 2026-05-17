@@ -187,8 +187,8 @@
       <section class="call-stage">
         <div class="wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
         <div class="caption-overlay" v-if="captionsVisible">
-          <div class="live-role">{{ caption.role || '状态' }}</div>
-          <div class="live-body">{{ caption.text || statusText }}</div>
+          <div class="live-role">字幕</div>
+          <div class="live-body">字幕占位符</div>
         </div>
       </section>
       <div class="call-status">
@@ -331,15 +331,13 @@
           playbackTime: 0,
           audioNodes: [],
           audioGeneration: 0,
-          captionTimers: [],
-          pendingAiCaption: '',
+          playbackTimers: [],
           aiAudioScheduledThisTurn: false,
           micStream: null,
           source: null,
           processor: null,
           sessionStatus: 'idle',
           micStatus: 'idle',
-          captionOverride: null,
           interactionMode: localStorage.getItem('geminiInteractionMode') || 'manual',
           voiceEnabled: JSON.parse(localStorage.getItem('geminiVoiceEnabled') || 'false'),
           text: '',
@@ -421,7 +419,6 @@
         },
         statusText() { return this.sessionStateMeta.text; },
         statusKind() { return this.sessionStateMeta.kind; },
-        caption() { return this.captionOverride || this.sessionCaption; },
         sessionStateMeta() {
           switch (this.sessionStatus) {
             case 'idle': return { text: '未连接', kind: '' };
@@ -434,30 +431,6 @@
             case 'socket_closed': return { text: '已断开', kind: 'bad' };
             case 'error': return { text: '连接错误', kind: 'bad' };
             default: return { text: '未连接', kind: '' };
-          }
-        },
-        sessionCaption() {
-          switch (this.sessionStatus) {
-            case 'idle':
-              return { kind: 'status', role: '状态', text: '未连接' };
-            case 'connecting':
-              return { kind: 'status', role: '状态', text: '正在连接…' };
-            case 'socket_open':
-              return { kind: 'status', role: '状态', text: '正在初始化 Gemini Live 会话…' };
-            case 'session_open':
-              return { kind: 'status', role: '状态', text: '正在建立会话…' };
-            case 'session_ready':
-              return { kind: 'status', role: '状态', text: this.voiceEnabled ? '正在聆听…' : '等待输入…' };
-            case 'session_reconnecting':
-              return { kind: 'status', role: '状态', text: '正在恢复 Gemini Live 会话…' };
-            case 'session_closed':
-              return { kind: 'status', role: '状态', text: '已关闭' };
-            case 'socket_closed':
-              return { kind: 'status', role: '状态', text: '连接已关闭' };
-            case 'error':
-              return { kind: 'status', role: '状态', text: '连接错误' };
-            default:
-              return { kind: 'status', role: '状态', text: '未连接' };
           }
         },
         isConnecting() {
@@ -510,13 +483,12 @@
           this.messageGroups = [];
           this.inputDraft = '';
           this.outputDraft = '';
-          this.setSessionStatus('idle', { caption: { role: '状态', text: '已进入新聊天。' } });
+          this.setSessionStatus('idle');
           this.drawerOpen = false;
         },
         selectRoleById(roleId) {
           this.editingRoleId = '';
           this.saveSelectRoleId(roleId);
-          this.setCaption('status', '状态', `已切换到角色「${this.currentRole.name}」。`);
           this.newChat();
         },
         openRoleConfig(roleId = this.selectedRoleId) {
@@ -647,7 +619,6 @@
           this.saveSelectRoleId(role.id);
           this.saveRoles();
           this.closeRoleConfig();
-          this.setCaption('status', '状态', `角色「${role.name}」已保存，下次连接时生效。`);
         },
         confirmDeleteRole() {
           if (!this.canDeleteRole) return;
@@ -672,7 +643,6 @@
           this.closeDeleteDialog();
           this.closeRoleConfig();
           this.pendingDeleteRole = null;
-          this.setCaption('status', '状态', `角色「${deletedRole.name}」已删除。`);
         },
         closeRoleConfig() { this.$refs.roleDialog.close(); },
         closeRoleConfigOnBackdrop(event) {
@@ -681,52 +651,31 @@
             this.closeRoleConfig();
           }
         },
-        setSessionStatus(next, options = {}) {
+        setSessionStatus(next) {
           this.sessionStatus = next;
-          if (Object.prototype.hasOwnProperty.call(options, 'caption')) this.captionOverride = options.caption;
-          else this.captionOverride = null;
         },
-        clearCaptionOverride() { this.captionOverride = null; },
-        setCaption(kind, role = '', text = '') { this.captionOverride = { kind, role, text: text.trim() }; },
-        showWaitingForUser() { this.clearCaptionOverride(); },
-        clearCaptionTimers() {
-          this.captionTimers.forEach((timer) => clearTimeout(timer));
-          this.captionTimers = [];
+        clearPlaybackTimers() {
+          this.playbackTimers.forEach((timer) => clearTimeout(timer));
+          this.playbackTimers = [];
         },
         interruptAiPlayback() {
           this.audioGeneration += 1;
-          this.clearCaptionTimers();
-          this.pendingAiCaption = '';
+          this.clearPlaybackTimers();
           this.aiAudioScheduledThisTurn = false;
           this.audioNodes.forEach((node) => { try { node.stop(); } catch {} });
           this.audioNodes = [];
           if (this.audioCtx) this.playbackTime = this.audioCtx.currentTime;
         },
-        scheduleCaptionAt(kind, role, text, audioTime, generation = this.audioGeneration) {
-          const delay = Math.max(0, ((audioTime || this.audioCtx?.currentTime || 0) - (this.audioCtx?.currentTime || 0)) * 1000);
-          const timer = setTimeout(() => {
-            if (generation === this.audioGeneration) this.setCaption(kind, role, text);
-          }, delay);
-          this.captionTimers.push(timer);
-        },
-        scheduleWaitingAfterAudio() {
-          const audioTime = Math.max(this.playbackTime, this.audioCtx?.currentTime || 0) + 0.1;
-          this.scheduleCaptionAt('waiting', '', '', audioTime);
-        },
         scheduleTurnMicAfterAudio() {
           if (this.interactionMode !== 'turn' || !this.voiceEnabled) return;
           const audioTime = Math.max(this.playbackTime, this.audioCtx?.currentTime || 0) + 0.15;
-          this.scheduleCaptionAt('waiting', '', '', audioTime);
           const delay = Math.max(0, (audioTime - (this.audioCtx?.currentTime || 0)) * 1000);
           const timer = setTimeout(() => this.startMic({ interruptAi: false }), delay);
-          this.captionTimers.push(timer);
+          this.playbackTimers.push(timer);
         },
         toggleInteractionMode() {
           this.interactionMode = this.interactionMode === 'turn' ? 'manual' : 'turn';
           localStorage.setItem('geminiInteractionMode', this.interactionMode);
-          this.setCaption('status', '状态', this.interactionMode === 'turn'
-            ? (this.voiceEnabled ? '已开启回合模式。AI 完成后会自动聆听。' : '已开启回合模式，但用户语音未开启。当前仅支持文字输入。')
-            : (this.voiceEnabled ? '已切换到实时模式。用户语音将保持开启。' : '已切换到实时模式。当前仅支持文字输入。'));
           if (this.voiceEnabled && this.interactionMode === 'turn' && this.isSessionReady && this.micStatus === 'idle' && !this.audioNodes.length) this.startMic({ interruptAi: false });
         },
         toggleVoiceEnabled() {
@@ -735,12 +684,8 @@
           if (!this.voiceEnabled) {
             this.stopMic();
             this.interruptAiPlayback();
-            this.setCaption('status', '状态', '已关闭用户语音功能。现在仅支持文字输入。');
             return;
           }
-          this.setCaption('status', '状态', this.interactionMode === 'turn'
-            ? '已开启用户语音功能，正在进入回合模式。'
-            : '已开启用户语音功能，正在进入实时模式。');
           if (this.isSessionReady && this.micStatus === 'idle' && !this.audioNodes.length) this.startMic({ interruptAi: this.interactionMode === 'manual' });
         },
         setupMessage() {
@@ -821,9 +766,7 @@
           this.ws.onclose = (event) => {
             this.interruptAiPlayback();
             this.stopMic();
-            this.setSessionStatus(event.code == 1000 ? 'session_closed' : 'socket_closed', {
-              caption: { role: '状态', text: event.code == 1000 ? '已关闭' : `连接关闭 code=${event.code || 'unknown'} reason=${event.reason || '无'}` },
-            });
+            this.setSessionStatus(event.code == 1000 ? 'session_closed' : 'socket_closed');
           };
         },
         handleMessage(msg) {
@@ -838,16 +781,15 @@
               this.ws.send(JSON.stringify(this.setupMessage()));
             }
             if (msg.workerStatus.type === 'session_reconnect' || msg.workerStatus.type === 'session_resuming') {
-              this.setSessionStatus('session_reconnecting', { caption: { role: '状态', text: msg.workerStatus.message || '正在恢复 Gemini Live 会话…' } });
+              this.setSessionStatus('session_reconnecting');
             }
             if (msg.workerStatus.type === 'session_reconnected') {
-              this.setSessionStatus('session_reconnecting', { caption: { role: '状态', text: 'Gemini Live 会话已重连，正在恢复上下文…' } });
+              this.setSessionStatus('session_reconnecting');
             }
             return;
           }
           if (msg.setupComplete) {
             this.setSessionStatus('session_ready');
-            this.showWaitingForUser();
             if (this.voiceEnabled) this.startMic({ interruptAi: false });
             return;
           }
@@ -862,35 +804,28 @@
             this.interruptAiPlayback();
             this.aiAudioScheduledThisTurn = false;
             if (this.interactionMode === 'turn' && this.voiceEnabled) this.scheduleTurnMicAfterAudio();
-            else this.scheduleWaitingAfterAudio();
             return;
           }
-          if (content.inputTranscription?.text) { this.setCaption('user', '我', `${this.inputDraft}${content.inputTranscription.text}`); this.addTranscript('我', content.inputTranscription.text); }
+          if (content.inputTranscription?.text) this.addTranscript('我', content.inputTranscription.text);
           const aiStarted = !!(content.outputTranscription?.text || content.modelTurn?.parts?.length);
           if (aiStarted && this.interactionMode === 'turn' && this.voiceEnabled && this.micStatus === 'recording') this.stopMic({ sendEnd: false });
           if (content.outputTranscription?.text) {
-            this.pendingAiCaption = `${this.outputDraft}${content.outputTranscription.text}`;
             this.addTranscript('Gemini', content.outputTranscription.text);
           }
           for (const part of content.modelTurn?.parts || []) {
             if (part.text) {
-              this.pendingAiCaption = `${this.outputDraft}${part.text}`;
               this.addTranscript('Gemini', part.text);
             }
             if (part.inlineData?.data) {
               this.aiAudioScheduledThisTurn = true;
-              this.playPcm(part.inlineData.data, part.inlineData.mimeType, this.pendingAiCaption);
+              this.playPcm(part.inlineData.data, part.inlineData.mimeType);
             }
           }
           if (content.turnComplete) {
-            const textOnlyAiCaption = !this.aiAudioScheduledThisTurn && this.pendingAiCaption;
             this.addTranscript('我', '', true);
             this.addTranscript('Gemini', '', true);
-            if (textOnlyAiCaption) this.setCaption('ai', 'Gemini', textOnlyAiCaption);
-            this.pendingAiCaption = '';
             this.aiAudioScheduledThisTurn = false;
             if (this.voiceEnabled && this.interactionMode === 'turn') this.scheduleTurnMicAfterAudio();
-            else if (!textOnlyAiCaption) this.scheduleWaitingAfterAudio();
           }
         },
         handleSystemContent(systemContent) {
@@ -917,10 +852,6 @@
 
           if (existing) existing.group.messages.splice(existing.messageIndex, 1, nextMessage);
           else this.addMessage('系统', nextMessage);
-
-          if (nextMessage.status === 'running') this.setCaption('status', '状态', `正在调用${this.toolDisplayName(nextMessage.name)}…`);
-          else if (nextMessage.status === 'error') this.setCaption('status', '状态', `${this.toolDisplayName(nextMessage.name)}失败：${nextMessage.error}`);
-          else this.setCaption('status', '状态', `${this.toolDisplayName(nextMessage.name)}完成${images.length ? `，共 ${images.length} 张图片` : ''}。`);
 
           nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
         },
@@ -970,7 +901,7 @@
           if (this.audioCtx.state !== 'running') await this.audioCtx.resume();
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
         },
-        async playPcm(data, mime = 'audio/pcm;rate=24000', captionText = '') {
+        async playPcm(data, mime = 'audio/pcm;rate=24000') {
           const generation = this.audioGeneration;
           await this.ensureAudio();
           if (generation !== this.audioGeneration) return;
@@ -983,11 +914,9 @@
           const node = this.audioCtx.createBufferSource();
           node.buffer = buffer; node.connect(this.audioCtx.destination);
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
-          const startTime = this.playbackTime;
-          if (captionText) this.scheduleCaptionAt('ai', 'Gemini', captionText, startTime, generation);
           node.onended = () => { this.audioNodes = this.audioNodes.filter((item) => item !== node); };
           this.audioNodes.push(node);
-          node.start(startTime); this.playbackTime += buffer.duration;
+          node.start(this.playbackTime); this.playbackTime += buffer.duration;
         },
         async startMic(options = {}) {
           const { interruptAi = true } = options;
@@ -1002,11 +931,10 @@
             this.source = this.audioCtx.createMediaStreamSource(this.micStream);
             this.processor = this.audioCtx.createScriptProcessor(4096, 1, 1);
             this.source.connect(this.processor); this.processor.connect(this.audioCtx.destination);
-            this.micStatus = 'recording'; this.setCaption('user', '我', '正在聆听…');
+            this.micStatus = 'recording';
             this.processor.onaudioprocess = (event) => this.sendPcm16k(event.inputBuffer.getChannelData(0), this.audioCtx.sampleRate);
           } catch (error) {
             this.stopMic();
-            this.setCaption('status', '状态', `无法开始录音：${error.message || error}`);
           }
         },
         stopMic(options = {}) {
@@ -1035,7 +963,6 @@
             this.interruptAiPlayback();
             this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
             this.addMessage('我', value);
-            this.setCaption('user', '我', value);
             this.text = '';
             this.textStyleHeight = '48px';
           };
