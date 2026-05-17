@@ -126,42 +126,42 @@
         <section class="chat-plane">
           <div v-if="!messageGroups.length" class="empty-state"><div><strong>Gemini 语音聊天</strong><span>发送第一条消息后自动连接</span></div></div>
           <div id="chat" ref="chatEl" v-show="messageGroups.length">
-          <div v-for="(group, index) in messageGroups" :key="index" class="group" :class="group.role === '我' ? 'user' : (group.role === '系统' ? 'system' : 'ai')">
-            <div class="role">{{ group.role }}</div>
-            <div v-for="(message, messageIndex) in group.messages" :key="message.id || messageIndex" class="msg">
-              <template v-if="message.type === 'renderPage'">
+          <div v-for="(item, index) in messageGroups" :key="item.message.id || index" class="group" :class="item.role === '我' ? 'user' : (item.role === '系统' ? 'system' : 'ai')">
+            <div class="role">{{ item.role }}</div>
+            <div class="msg">
+              <template v-if="item.message.type === 'renderPage'">
                 <div class="render-card">
                   <div class="render-card-head">
-                    <span class="render-card-title">{{ message.title }}</span>
-                    <button class="secondary-btn render-card-open" type="button" title="放大预览" @click="openRenderedPage(message.renderId)"><maximize-2-icon /></button>
+                    <span class="render-card-title">{{ item.message.title }}</span>
+                    <button class="secondary-btn render-card-open" type="button" title="放大预览" @click="openRenderedPage(item.message.renderId)"><maximize-2-icon /></button>
                   </div>
                   <div class="render-card-preview" aria-hidden="true">
-                    <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" :srcdoc="message.html"></iframe>
+                    <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" :srcdoc="item.message.html"></iframe>
                   </div>
                 </div>
               </template>
-              <template v-else-if="message.type === 'toolCall'">
+              <template v-else-if="item.message.type === 'toolCall'">
                 <div class="tool-call-card">
                   <div class="tool-call-head">
-                    <span class="tool-call-name">{{ toolDisplayName(message.name) }}</span>
-                    <span class="tool-call-badge" :class="message.status">
-                      <span v-if="message.status === 'running'" class="tool-call-spinner" aria-hidden="true"></span>
-                      {{ toolStatusText(message.status) }}
+                    <span class="tool-call-name">{{ toolDisplayName(item.message.name) }}</span>
+                    <span class="tool-call-badge" :class="item.message.status">
+                      <span v-if="item.message.status === 'running'" class="tool-call-spinner" aria-hidden="true"></span>
+                      {{ toolStatusText(item.message.status) }}
                     </span>
                   </div>
-                  <div v-if="message.prompt">
-                    <p class="tool-call-prompt">{{ message.prompt }}</p>
+                  <div v-if="item.message.prompt">
+                    <p class="tool-call-prompt">{{ item.message.prompt }}</p>
                   </div>
-                  <div class="tool-call-media" v-if="message.images?.length">
-                    <a v-for="(image, imageIndex) in message.images" :key="imageIndex" :href="image.url" target="_blank" rel="noopener noreferrer" title="打开图片">
+                  <div class="tool-call-media" v-if="item.message.images?.length">
+                    <a v-for="(image, imageIndex) in item.message.images" :key="imageIndex" :href="image.url" target="_blank" rel="noopener noreferrer" title="打开图片">
                       <img class="tool-call-image" :src="image.url" alt="生成图片" />
                     </a>
                   </div>
-                  <p class="tool-call-text" v-if="message.text">{{ message.text }}</p>
-                  <p class="tool-call-error" v-if="message.error">{{ message.error }}</p>
+                  <p class="tool-call-text" v-if="item.message.text">{{ item.message.text }}</p>
+                  <p class="tool-call-error" v-if="item.message.error">{{ item.message.error }}</p>
                 </div>
               </template>
-              <template v-else>{{ message.text || message }}</template>
+              <template v-else>{{ item.message.text || item.message }}</template>
             </div>
           </div>
           </div>
@@ -345,8 +345,6 @@
           messageGroups: [],
           renderedPages: [],
           activeRenderPageId: '',
-          inputDraft: '',
-          outputDraft: '',
           toolDeclarations: this.loadCachedToolDeclarations(),
           toolsLoading: false,
           themeMode: localStorage.getItem('geminiThemeMode') || 'system',
@@ -481,8 +479,6 @@
           this.stopMic();
           this.ws?.close(1000, 'New chat');
           this.messageGroups = [];
-          this.inputDraft = '';
-          this.outputDraft = '';
           this.setSessionStatus('idle');
           this.drawerOpen = false;
         },
@@ -822,8 +818,6 @@
             }
           }
           if (content.turnComplete) {
-            this.addTranscript('我', '', true);
-            this.addTranscript('Gemini', '', true);
             this.aiAudioScheduledThisTurn = false;
             if (this.voiceEnabled && this.interactionMode === 'turn') this.scheduleTurnMicAfterAudio();
           }
@@ -850,17 +844,17 @@
             error: toolCall.error ? String(toolCall.error) : '',
           };
 
-          if (existing) existing.group.messages.splice(existing.messageIndex, 1, nextMessage);
+          if (existing) this.messageGroups.splice(existing.index, 1, { role: '系统', message: nextMessage });
           else this.addMessage('系统', nextMessage);
 
           nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
         },
         findToolCallMessage(id) {
-          for (let groupIndex = this.messageGroups.length - 1; groupIndex >= 0; groupIndex -= 1) {
-            const group = this.messageGroups[groupIndex];
-            if (group.role !== '系统') continue;
-            const messageIndex = group.messages.findIndex((message) => message?.type === 'toolCall' && message.id === id);
-            if (messageIndex >= 0) return { group, messageIndex, message: group.messages[messageIndex] };
+          for (let index = this.messageGroups.length - 1; index >= 0; index -= 1) {
+            const item = this.messageGroups[index];
+            if (item.role === '系统' && item.message?.type === 'toolCall' && item.message.id === id) {
+              return { index, message: item.message };
+            }
           }
           return null;
         },
@@ -880,20 +874,20 @@
           if (status === 'error') return '失败';
           return '进行中';
         },
-        addTranscript(role, text, flush = false) {
-          const draftKey = role === '我' ? 'inputDraft' : 'outputDraft';
-          const draft = this[draftKey] + text;
-          const parts = draft.match(/[^。！？!?；;\n]+[。！？!?；;\n]+|[^。！？!?；;\n]+$/g) || [];
-          const pending = !flush && parts.length && !/[。！？!?；;\n]$/.test(parts.at(-1)) ? parts.pop() : '';
-          parts.forEach((part) => this.addMessage(role, part.trim()));
-          this[draftKey] = pending;
+        addTranscript(role, text) {
+          if (!text) return;
+          const lastItem = this.messageGroups.at(-1);
+          if (lastItem?.role === role && lastItem.message?.type === 'text') {
+            lastItem.message.text += text;
+            nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
+            return;
+          }
+          this.addMessage(role, text);
         },
         addMessage(role, text) {
-          const message = typeof text === 'string' ? { type: 'text', text: text.trim() } : text;
+          const message = typeof text === 'string' ? { type: 'text', text } : text;
           if (!message || (message.type === 'text' && !message.text)) return;
-          const lastGroup = this.messageGroups.at(-1);
-          if (lastGroup?.role === role) lastGroup.messages.push(message);
-          else this.messageGroups.push({ role, messages: [message] });
+          this.messageGroups.push({ role, message });
           nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
         },
         async ensureAudio() {
