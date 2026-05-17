@@ -1019,6 +1019,8 @@
               target.message.caption = text;
               return;
             }
+            this.addMessage(role, text, messageId);
+            return;
           }
           const lastItem = this.messageGroups.at(-1);
           if (lastItem?.role === role && lastItem.message?.type === 'text') {
@@ -1036,6 +1038,8 @@
               nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
               return;
             }
+            this.addMessage(role, text, messageId);
+            return;
           }
           const lastItem = this.messageGroups.at(-1);
           if (lastItem?.role === role && lastItem.message?.type === 'text') {
@@ -1138,6 +1142,7 @@
           if (this.canSendText) {
             this.interruptAiPlayback();
             this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
+            this.closeAiTextSegment();
             this.addMessage('我', value);
             this.text = '';
             this.textStyleHeight = '48px';
@@ -1145,6 +1150,7 @@
           }
           if (!this.isSessionActive) {
             this.pendingInitialMessages.push({ role: 'user', parts: [{ text: value }] });
+            this.closeAiTextSegment();
             this.addMessage('我', value);
             this.text = '';
             this.textStyleHeight = '48px';
