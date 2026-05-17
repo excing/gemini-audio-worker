@@ -100,7 +100,7 @@
         <div class="role-list">
           <p class="section-title">角色列表</p>
           <button v-for="role in allRoles" :key="role.id" class="role-row" :class="{ active: selectedRoleId === role.id }" type="button" @click="selectRoleById(role.id)">
-            <span class="role-name">{{ role.roleName }}</span>
+            <span class="role-name">{{ role.name }}</span>
             <span class="icon-btn" title="打电话" @click.stop="enterCallMode(role.id)"><phone-icon /></span>
             <span class="icon-btn" title="配置" @click.stop="openRoleConfig(role.id)"><settings-2-icon /></span>
           </button>
@@ -207,7 +207,7 @@
       <div class="modal">
         <div><h2>角色配置</h2></div>
         <div class="grid">
-          <label class="full">角色名<input v-model="draftConfig.roleName" placeholder="例如：中文助理" /></label>
+          <label class="full">角色名<input v-model="draftConfig.name" placeholder="例如：中文助理" /></label>
           <label>模型<select v-model="draftConfig.model">
             <option v-for="model in models" :key="model.value" :value="model.value">
               {{ model.name }}
@@ -273,7 +273,7 @@
     <dialog ref="deleteDialog" @click="closeDeleteOnBackdrop">
       <div class="modal">
         <h2>删除角色</h2>
-        <p>确认删除「{{ pendingDeleteRole?.roleName || '' }}」？此操作无法撤销。</p>
+        <p>确认删除「{{ pendingDeleteRole?.name || '' }}」？此操作无法撤销。</p>
         <p class="danger-note" v-if="connected && pendingDeleteRole?.id === selectedRoleId">当前正在连线该角色，确认删除后会自动断开。</p>
         <div class="modal-actions">
           <button class="secondary-btn" type="button" @click="closeDeleteDialog">取消</button>
@@ -312,7 +312,7 @@
     const app = createApp({
       data() {
         const defaultConfig = {
-          roleName: 'Gemini 语音对话',
+          name: 'Gemini 语音对话',
           model: 'gemini-3.1-flash-preview',
           voiceName: 'Kore',
           systemInstruction: 'You are a concise, friendly Chinese voice assistant.',
@@ -385,10 +385,10 @@
           return [...this.roles, ...this.default_roles];
         },
         currentRoleName() {
-          return this.config?.roleName || 'Gemini 语音聊天';
+          return this.config?.name || 'Gemini 语音聊天';
         },
         currentTitle() {
-          return this.messageGroups.length ? this.currentRoleName : 'Gemini 语音聊天';
+          return this.currentRoleName;
         },
         themeIcon() {
           if (this.themeMode === 'dark') return 'moon-icon';
@@ -514,13 +514,12 @@
           this.sendText();
         },
         createDefaultRole() {
-          return { ...this.defaultConfig, id: `role-${Date.now()}`, roleName: this.defaultConfig.roleName };
+          return { ...this.defaultConfig, id: `role-${Date.now()}` };
         },
         normalizeRole(role) {
           const normalized = { ...this.defaultConfig, ...role };
           normalized.id ||= `role-${Date.now()}`;
-          normalized.roleName = (normalized.roleName || normalized.name || this.defaultConfig.roleName).trim();
-          normalized.name = normalized.roleName;
+          normalized.name = (normalized.name || this.defaultConfig.name).trim();
           return normalized;
         },
         loadRoles() {
@@ -587,12 +586,12 @@
         saveRoleConfig() {
           const isSystemRole = default_roles.some((role) => role.id === this.selectedRoleId);
           const sourceRole = [...this.roles, ...default_roles].find((role) => role.id === this.selectedRoleId) || this.defaultConfig;
-          const baseRoleName = (this.draftConfig.roleName || sourceRole.roleName || this.defaultConfig.roleName || '').trim() || '未命名角色';
-          const roleName = isSystemRole && !baseRoleName.includes('自定义')
-            ? `${baseRoleName}（自定义）`
-            : baseRoleName;
+          const baseName = (this.draftConfig.name || sourceRole.name || this.defaultConfig.name || '').trim() || '未命名角色';
+          const name = isSystemRole && !baseName.includes('自定义')
+            ? `${baseName}（自定义）`
+            : baseName;
           const roleId = isSystemRole ? `role-${Date.now()}` : (this.selectedRoleId || `role-${Date.now()}`);
-          const role = this.normalizeRole({ ...this.draftConfig, id: roleId, roleName });
+          const role = this.normalizeRole({ ...this.draftConfig, id: roleId, name });
           const index = this.roles.findIndex((item) => item.id === role.id);
           if (index >= 0) this.roles.splice(index, 1, role);
           else this.roles.push(role);
@@ -601,7 +600,7 @@
           this.saveRoles();
           localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
           this.closeRoleConfig();
-          this.setCaption('status', '状态', `角色「${role.roleName}」已保存，下次连接时生效。`);
+          this.setCaption('status', '状态', `角色「${role.name}」已保存，下次连接时生效。`);
         },
         confirmDeleteRole() {
           if (!this.canDeleteRole) return;
@@ -627,7 +626,7 @@
           this.closeDeleteDialog();
           this.closeRoleConfig();
           this.pendingDeleteRole = null;
-          this.setCaption('status', '状态', `角色「${deletedRole.roleName}」已删除。`);
+          this.setCaption('status', '状态', `角色「${deletedRole.name}」已删除。`);
         },
         selectRole() {
           if (this.selectedRoleId === '__new__') {
@@ -639,7 +638,7 @@
           localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
           this.config = this.loadConfig();
           this.draftConfig = { ...this.config };
-          this.setCaption('status', '状态', `已切换到角色「${this.config.roleName}」。`);
+          this.setCaption('status', '状态', `已切换到角色「${this.config.name}」。`);
         },
         closeRoleConfig() { this.$refs.roleDialog.close(); },
         closeRoleConfigOnBackdrop(event) { if (event.target === this.$refs.roleDialog) this.closeRoleConfig(); },
