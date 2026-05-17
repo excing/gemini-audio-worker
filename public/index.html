@@ -30,7 +30,7 @@
     .role-row { width:100%; min-width:0; min-height:48px; padding:6px 6px 6px 12px; border-radius:12px; background:transparent; text-align:left; } .role-row .icon-btn { flex:0 0 36px; width:36px; min-width:36px; height:36px; } .role-row.active { background:var(--hover); } .role-name { flex:1 1 auto; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
     .sidebar-foot { display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:8px; }
     .main { min-width:0; height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) 76px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); }
-    .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items: center; justify-items:center; line-height:1.2; } .chat-title { max-width:min(52vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; background:transparent; } .chat-title:hover { background:var(--hover); }
+    .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items: center; justify-items:center; line-height:1.2; } .chat-title { max-width:min(39vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; background:transparent; } .chat-title:hover { background:var(--hover); }
     .dot { width:8px; height:8px; border-radius:9999px; background:transparent; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.bad { background:var(--bad); }
     .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
     .group { max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
@@ -207,18 +207,18 @@
       <div class="modal">
         <div><h2>角色配置</h2></div>
         <div class="grid">
-          <label class="full">角色名<input v-model="draftConfig.name" placeholder="例如：中文助理" /></label>
-          <label>模型<select v-model="draftConfig.model">
+          <label class="full">角色名<input v-model="roleDraft.name" placeholder="例如：中文助理" /></label>
+          <label>模型<select v-model="roleDraft.model">
             <option v-for="model in models" :key="model.value" :value="model.value">
               {{ model.name }}
             </option>
           </select></label>
-          <label>语音<select v-model="draftConfig.voiceName">
+          <label>语音<select v-model="roleDraft.voiceName">
             <option v-for="voice in voices" :key="voice.name" :value="voice.name === 'No Voice' ? '' : voice.name">
               {{ voice.name }} - {{ voice.characteristics }}
             </option>
           </select></label>
-          <label>自动加载工具<input v-model="draftConfig.autoLoadTools" placeholder="留空不加载，* 加载全部，或用逗号分隔工具名" /></label>
+          <label>自动加载工具<input v-model="roleDraft.autoLoadTools" placeholder="留空不加载，* 加载全部，或用逗号分隔工具名" /></label>
           <div class="tool-picker full">
             <div class="tool-picker-head">
               <span>工具快捷选择</span>
@@ -243,7 +243,7 @@
               <span class="tool-hint" v-else>暂无可用工具</span>
             </div>
           </div>
-          <label class="full">系统提示词<textarea v-model="draftConfig.systemInstruction"></textarea></label>
+          <label class="full">系统提示词<textarea v-model="roleDraft.systemInstruction"></textarea></label>
         </div>
         <div class="modal-actions">
           <button v-if="canDeleteRole" class="warning" type="button" @click="confirmDeleteRole">删除</button>
@@ -325,8 +325,7 @@
           roles: [],
           default_roles: default_roles.map((role) => this.normalizeRole(role)),
           selectedRoleId: '',
-          config: defaultConfig,
-          draftConfig: { ...defaultConfig },
+          roleDraft: { ...defaultConfig },
           ws: null,
           audioCtx: null,
           playbackTime: 0,
@@ -361,14 +360,13 @@
           inputMode: localStorage.getItem('geminiInputMode') || 'text',
           captionsVisible: true,
           pendingDeleteRole: null,
+          editingRoleId: '',
         };
       },
       mounted() {
         this.applyTheme();
         this.roles = this.loadRoles();
         this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.roles[0]?.id || this.default_roles[0]?.id || '';
-        this.config = this.loadConfig();
-        this.draftConfig = { ...this.config };
         window.addEventListener('browser-tool-render-page', this.handleRenderedPage);
         this.loadToolDeclarations();
       },
@@ -384,8 +382,11 @@
         allRoles() {
           return [...this.roles, ...this.default_roles];
         },
+        currentRole() {
+          return { ...this.defaultConfig, ...(this.getRoleById(this.selectedRoleId) || this.roles[0] || this.default_roles[0] || {}) };
+        },
         currentRoleName() {
-          return this.config?.name || 'Gemini 语音聊天';
+          return this.currentRole.name || 'Gemini 语音聊天';
         },
         currentTitle() {
           return this.currentRoleName;
@@ -417,7 +418,8 @@
           return this.renderedPages.find((page) => page.id === this.activeRenderPageId) || null;
         },
         canDeleteRole() {
-          return !!this.selectedRoleId && this.selectedRoleId !== '__new__' && !default_roles.some((role) => role.id === this.selectedRoleId);
+          const roleId = this.editingRoleId || this.selectedRoleId;
+          return !!roleId && !default_roles.some((role) => role.id === roleId);
         },
         isConnecting() {
           return !this.connected && this.statusKind === 'wait';
@@ -455,8 +457,8 @@
           document.documentElement.dataset.theme = this.themeMode;
         },
         createRole() {
-          this.draftConfig = this.createDefaultRole();
-          this.selectedRoleId = '';
+          this.roleDraft = this.createDefaultRole();
+          this.editingRoleId = '';
           this.$refs.roleDialog.showModal();
         },
         newChat() {
@@ -476,9 +478,8 @@
           this.newChat();
         },
         openRoleConfig(roleId = this.selectedRoleId) {
-          this.selectedRoleId = roleId;
-          this.config = this.loadConfig();
-          this.draftConfig = { ...this.config };
+          this.editingRoleId = roleId || '';
+          this.roleDraft = { ...this.getConfigById(this.editingRoleId || this.selectedRoleId) };
           this.$refs.roleDialog.showModal();
         },
         enterCallMode(roleId = this.selectedRoleId) {
@@ -516,6 +517,9 @@
         createDefaultRole() {
           return { ...this.defaultConfig, id: `role-${Date.now()}` };
         },
+        getRoleById(roleId) {
+          return [...this.roles, ...this.default_roles].find((role) => role.id === roleId) || null;
+        },
         normalizeRole(role) {
           const normalized = { ...this.defaultConfig, ...role };
           normalized.id ||= `role-${Date.now()}`;
@@ -530,8 +534,8 @@
           return [];
         },
         saveRoles() { localStorage.setItem('geminiRoles', JSON.stringify(this.roles)); },
-        loadConfig() {
-          return { ...this.defaultConfig, ...([...this.roles, ...this.default_roles].find((role) => role.id === this.selectedRoleId) || this.roles[0] || {}) };
+        getConfigById(roleId) {
+          return { ...this.defaultConfig, ...(this.getRoleById(roleId) || this.roles[0] || {}) };
         },
         loadCachedToolDeclarations() {
           try {
@@ -567,36 +571,37 @@
         },
         refreshToolDeclarations() { this.loadToolDeclarations(); },
         selectedToolNames() {
-          const value = (this.draftConfig.autoLoadTools || '').trim();
+          const value = (this.roleDraft.autoLoadTools || '').trim();
           if (!value) return [];
           if (value === '*') return this.toolDeclarations.map((tool) => tool.name);
           return value.split(',').map((name) => name.trim()).filter(Boolean);
         },
         updateSelectedTools(names) {
           const uniqueNames = names.filter((name, index) => name && names.indexOf(name) === index);
-          this.draftConfig.autoLoadTools = uniqueNames.join(',');
+          this.roleDraft.autoLoadTools = uniqueNames.join(',');
         },
         isToolSelected(name) { return this.selectedToolNames().includes(name); },
         toggleTool(name) {
           const names = this.selectedToolNames();
           this.updateSelectedTools(names.includes(name) ? names.filter((item) => item !== name) : [...names, name]);
         },
-        setAllTools() { this.draftConfig.autoLoadTools = '*'; },
-        clearTools() { this.draftConfig.autoLoadTools = ''; },
+        setAllTools() { this.roleDraft.autoLoadTools = '*'; },
+        clearTools() { this.roleDraft.autoLoadTools = ''; },
         saveRoleConfig() {
-          const isSystemRole = default_roles.some((role) => role.id === this.selectedRoleId);
-          const sourceRole = [...this.roles, ...default_roles].find((role) => role.id === this.selectedRoleId) || this.defaultConfig;
-          const baseName = (this.draftConfig.name || sourceRole.name || this.defaultConfig.name || '').trim() || '未命名角色';
+          const targetRoleId = this.editingRoleId || this.selectedRoleId;
+          const isSystemRole = default_roles.some((role) => role.id === targetRoleId);
+          const sourceRole = this.getRoleById(targetRoleId) || this.defaultConfig;
+          const baseName = (this.roleDraft.name || sourceRole.name || this.defaultConfig.name || '').trim() || '未命名角色';
           const name = isSystemRole && !baseName.includes('自定义')
             ? `${baseName}（自定义）`
             : baseName;
-          const roleId = isSystemRole ? `role-${Date.now()}` : (this.selectedRoleId || `role-${Date.now()}`);
-          const role = this.normalizeRole({ ...this.draftConfig, id: roleId, name });
+          const roleId = isSystemRole ? `role-${Date.now()}` : (targetRoleId || `role-${Date.now()}`);
+          const role = this.normalizeRole({ ...this.roleDraft, id: roleId, name });
           const index = this.roles.findIndex((item) => item.id === role.id);
           if (index >= 0) this.roles.splice(index, 1, role);
           else this.roles.push(role);
           this.selectedRoleId = role.id;
-          this.config = { ...role };
+          this.editingRoleId = role.id;
           this.saveRoles();
           localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
           this.closeRoleConfig();
@@ -604,7 +609,8 @@
         },
         confirmDeleteRole() {
           if (!this.canDeleteRole) return;
-          this.pendingDeleteRole = this.roles.find((role) => role.id === this.selectedRoleId) || null;
+          const targetRoleId = this.editingRoleId || this.selectedRoleId;
+          this.pendingDeleteRole = this.roles.find((role) => role.id === targetRoleId) || null;
           this.$refs.deleteDialog.showModal();
         },
         closeDeleteDialog() { this.$refs.deleteDialog.close(); },
@@ -618,8 +624,8 @@
           const [deletedRole] = this.roles.splice(index, 1);
           const nextRole = this.roles[0] || default_roles[0] || null;
           this.selectedRoleId = nextRole?.id || '';
-          this.config = this.loadConfig();
-          this.draftConfig = { ...this.config };
+          this.roleDraft = { ...this.getConfigById(this.selectedRoleId) };
+          this.editingRoleId = '';
           this.saveRoles();
           if (this.selectedRoleId) localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
           else localStorage.removeItem('geminiSelectedRoleId');
@@ -629,19 +635,17 @@
           this.setCaption('status', '状态', `角色「${deletedRole.name}」已删除。`);
         },
         selectRole() {
-          if (this.selectedRoleId === '__new__') {
-            this.draftConfig = this.createDefaultRole();
-            this.selectedRoleId = '';
-            this.$refs.roleDialog.showModal();
-            return;
-          }
           localStorage.setItem('geminiSelectedRoleId', this.selectedRoleId);
-          this.config = this.loadConfig();
-          this.draftConfig = { ...this.config };
-          this.setCaption('status', '状态', `已切换到角色「${this.config.name}」。`);
+          this.editingRoleId = '';
+          this.setCaption('status', '状态', `已切换到角色「${this.currentRole.name}」。`);
         },
         closeRoleConfig() { this.$refs.roleDialog.close(); },
-        closeRoleConfigOnBackdrop(event) { if (event.target === this.$refs.roleDialog) this.closeRoleConfig(); },
+        closeRoleConfigOnBackdrop(event) {
+          if (event.target === this.$refs.roleDialog) {
+            this.editingRoleId = '';
+            this.closeRoleConfig();
+          }
+        },
         setStatus(text, kind = '') {
           this.statusText = text;
           this.statusKind = kind || (/断开|错误|关闭/.test(text) ? 'bad' : '');
@@ -704,12 +708,12 @@
         },
         setupMessage() {
           const setup = {
-            model: this.config.model,
+            model: this.currentRole.model,
             generationConfig: { },
-            systemInstruction: { parts: [{ text: this.config.systemInstruction }] },
+            systemInstruction: { parts: [{ text: this.currentRole.systemInstruction }] },
           };
-          if (this.config.voiceName) setup.generationConfig.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voiceName } } };
-          setup.autoLoadTools = this.config.autoLoadTools || '';
+          if (this.currentRole.voiceName) setup.generationConfig.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.currentRole.voiceName } } };
+          setup.autoLoadTools = this.currentRole.autoLoadTools || '';
           const browserToolNames = this.selectedBrowserToolNames(setup.autoLoadTools);
           const browserToolDeclarations = browserTools.declarations.filter((tool) => browserToolNames.includes(tool.name));
           if (browserToolDeclarations.length) setup.tools = [{ functionDeclarations: browserToolDeclarations }];
@@ -771,7 +775,6 @@
         },
         async connect() {
           if (this.connected || this.isConnecting) return;
-          this.config = this.loadConfig();
           this.ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
           this.interruptAiPlayback();
           this.setStatus('连接中…', 'wait');
