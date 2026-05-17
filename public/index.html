@@ -35,12 +35,13 @@
     .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
     .group { max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
     .msg { padding:10px 14px; border-radius:12px; background:var(--soft); white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; } .user .msg { background:var(--text); color:var(--bg); } .system .msg { background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(245,158,11,.12)); color:var(--text); }
+    .progressive-text { white-space:pre-wrap; overflow-wrap:anywhere; } .progressive-text-played { color:var(--text); opacity:1; transition:opacity .2s ease-in-out, color .2s ease-in-out; } .progressive-text-pending { opacity:.42; transition:opacity .2s ease-in-out; } .user .progressive-text-played { color:var(--bg); } .caption-line { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; align-items:start; padding:4px 0; } .caption-role { min-width:34px; color:var(--muted); font-size:12px; font-weight:600; line-height:1.6; } .caption-text { min-width:0; color:var(--text); font-size:15px; line-height:1.5; } .caption-line.user .caption-text { color:var(--muted); opacity:.72; } .caption-line.ai .caption-text { color:var(--text); }
     .empty-state { height:100%; display:grid; place-items:center; color:var(--muted); text-align:center; } .empty-state strong { display:block; color:var(--text); font-size:20px; font-weight:600; }
     .input-bar { min-height:64px; justify-content:space-between; align-items: end; padding-block:8px; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; overflow:auto; border:0; outline:none; border-radius:12px; padding:13px 14px; background:var(--hover); transition:all .2s ease-in-out; }
     .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; } .hold-record.recording { background:linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
     .call-screen { height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) auto 82px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); background:var(--surface); }
     .call-stage { position:relative; min-height:0; display:grid; place-items:center; overflow:hidden; } .wave { width:min(44vw,260px); height:120px; display:flex; align-items:center; justify-content:center; gap:8px; } .wave span { width:7px; height:28px; border-radius:9999px; background:linear-gradient(180deg,#10b981,#60a5fa); animation:wave 1s ease-in-out infinite; } .wave span:nth-child(2){animation-delay:.1s}.wave span:nth-child(3){animation-delay:.2s}.wave span:nth-child(4){animation-delay:.3s}.wave span:nth-child(5){animation-delay:.4s}
-    .caption-overlay { position:absolute; top:16px; left:16px; width:min(560px,calc(100% - 32px)); max-height:42%; overflow:hidden; padding:14px; border-radius:16px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); color:var(--muted); } .caption-overlay .live-body { margin-top:4px; color:var(--text); font-size:15px; line-height:1.5; }
+    .caption-overlay { position:absolute; top:16px; left:16px; width:min(560px,calc(100% - 32px)); max-height:42%; overflow:hidden; padding:14px; border-radius:16px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); color:var(--muted); } .caption-overlay .live-body { margin-top:4px; display:grid; gap:4px; }
     .call-status { display:grid; justify-items:center; gap:8px; padding:8px 0 14px; color:var(--muted); } .call-status .icon-btn { background:var(--hover); } .call-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:0; min-height:72px; align-items:center; } .call-action { width:100%; min-width:0; min-height:72px; padding:4px 0; border-radius:12px; display:grid; justify-items:center; align-content:center; gap:4px; background:transparent; color:var(--muted); font-size:12px; } .call-action:hover { background:var(--hover); } .call-action .icon-btn { pointer-events:none; background:transparent; }
     dialog { width:min(680px,calc(100% - 24px)); border:0; border-radius:16px; padding:0; color:var(--text); background:var(--glass); box-shadow:var(--shadow); backdrop-filter:blur(12px) saturate(180%); transform:scale(.95); opacity:0; transition:all .2s ease-in-out; } dialog[open] { transform:scale(1); opacity:1; } dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(6px); } :root[data-theme="dark"] dialog::backdrop { background:rgba(0,0,0,.6); }
     .modal { padding:24px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:20px; font-weight:600; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:12px; } label.full, .tool-picker.full { grid-column:1/-1; }
@@ -161,7 +162,15 @@
                   <p class="tool-call-error" v-if="item.message.error">{{ item.message.error }}</p>
                 </div>
               </template>
-              <template v-else>{{ item.message.text || item.message }}</template>
+              <template v-else>
+                <progressive-text
+                  v-if="item.message.type === 'text'"
+                  :text="item.message.text"
+                  :caption="item.message.caption"
+                  :active="item.role === 'Gemini'"
+                ></progressive-text>
+                <template v-else>{{ item.message.text || item.message }}</template>
+              </template>
             </div>
           </div>
           </div>
@@ -188,7 +197,22 @@
         <div class="wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
         <div class="caption-overlay" v-if="captionsVisible">
           <div class="live-role">字幕</div>
-          <div class="live-body">字幕占位符</div>
+          <div class="live-body">
+            <div
+              v-for="(item, index) in captionMessages"
+              :key="item.message.id || index"
+              class="caption-line"
+              :class="item.role === '我' ? 'user' : 'ai'"
+            >
+              <span class="caption-role">{{ item.role }}</span>
+              <progressive-text
+                class="caption-text"
+                :text="item.message.text"
+                :caption="item.message.caption"
+                :active="item.role === 'Gemini'"
+              ></progressive-text>
+            </div>
+          </div>
         </div>
       </section>
       <div class="call-status">
@@ -309,6 +333,58 @@
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
 
+    const ProgressiveText = {
+      props: {
+        text: { type: String, default: '' },
+        caption: { type: String, default: '' },
+        active: { type: Boolean, default: false },
+      },
+      computed: {
+        parts() {
+          const text = String(this.text || '');
+          if (!this.active) return { played: text, pending: '' };
+
+          const caption = String(this.caption || '');
+          if (!text || !caption) return { played: '', pending: text };
+          if (text.startsWith(caption)) return { played: caption, pending: text.slice(caption.length) };
+
+          const compactText = text.replace(/\s+/g, '');
+          const compactCaption = caption.replace(/\s+/g, '');
+          if (!compactCaption) return { played: '', pending: text };
+
+          let matched = 0;
+          for (let i = 0; i < text.length && matched < compactCaption.length; i += 1) {
+            if (/\s/.test(text[i])) continue;
+            if (text[i] !== compactCaption[matched]) break;
+            matched += 1;
+          }
+          if (matched === compactCaption.length) {
+            let playedEnd = 0;
+            let seen = 0;
+            while (playedEnd < text.length && seen < matched) {
+              if (!/\s/.test(text[playedEnd])) seen += 1;
+              playedEnd += 1;
+            }
+            return { played: text.slice(0, playedEnd), pending: text.slice(playedEnd) };
+          }
+
+          const index = text.indexOf(caption);
+          if (index >= 0) {
+            const playedEnd = index + caption.length;
+            return { played: text.slice(0, playedEnd), pending: text.slice(playedEnd) };
+          }
+
+          const fallbackLength = Math.min(text.length, caption.length);
+          return { played: text.slice(0, fallbackLength), pending: text.slice(fallbackLength) };
+        },
+      },
+      template: `
+        <span class="progressive-text">
+          <span v-if="parts.played" class="progressive-text-played">{{ parts.played }}</span><span v-if="parts.pending" class="progressive-text-pending">{{ parts.pending }}</span>
+        </span>
+      `,
+    };
+
     const app = createApp({
       data() {
         const defaultConfig = {
@@ -342,6 +418,7 @@
           voiceEnabled: JSON.parse(localStorage.getItem('geminiVoiceEnabled') || 'false'),
           text: '',
           textStyleHeight: '48px',
+          pendingAiCaption: '',
           messageGroups: [],
           renderedPages: [],
           activeRenderPageId: '',
@@ -445,6 +522,11 @@
         },
         canSendText() {
           return this.isSessionReady && !!this.text.trim();
+        },
+        captionMessages() {
+          return this.messageGroups
+            .filter((item) => item.message?.type === 'text' && item.message.text)
+            .slice(-4);
         },
       },
       methods: {
@@ -656,6 +738,7 @@
         },
         interruptAiPlayback() {
           this.audioGeneration += 1;
+          this.pendingAiCaption = '';
           this.clearPlaybackTimers();
           this.aiAudioScheduledThisTurn = false;
           this.audioNodes.forEach((node) => { try { node.stop(); } catch {} });
@@ -807,17 +890,20 @@
           if (aiStarted && this.interactionMode === 'turn' && this.voiceEnabled && this.micStatus === 'recording') this.stopMic({ sendEnd: false });
           if (content.outputTranscription?.text) {
             this.addTranscript('Gemini', content.outputTranscription.text);
+            this.pendingAiCaption += content.outputTranscription.text;
           }
           for (const part of content.modelTurn?.parts || []) {
             if (part.text) {
               this.addTranscript('Gemini', part.text);
+              this.pendingAiCaption += part.text;
             }
             if (part.inlineData?.data) {
               this.aiAudioScheduledThisTurn = true;
-              this.playPcm(part.inlineData.data, part.inlineData.mimeType);
+              this.playPcm(part.inlineData.data, part.inlineData.mimeType, this.pendingAiCaption);
             }
           }
           if (content.turnComplete) {
+            this.pendingAiCaption = '';
             this.aiAudioScheduledThisTurn = false;
             if (this.voiceEnabled && this.interactionMode === 'turn') this.scheduleTurnMicAfterAudio();
           }
@@ -874,6 +960,15 @@
           if (status === 'error') return '失败';
           return '进行中';
         },
+        addCaption(role, text) {
+          if (!text) return;
+          const lastItem = this.messageGroups.at(-1);
+          if (lastItem?.role === role && lastItem.message?.type === 'text') {
+            lastItem.message.caption = text;
+            return;
+          }
+          this.addMessage(role, text);
+        },
         addTranscript(role, text) {
           if (!text) return;
           const lastItem = this.messageGroups.at(-1);
@@ -884,8 +979,8 @@
           }
           this.addMessage(role, text);
         },
-        addMessage(role, text) {
-          const message = typeof text === 'string' ? { type: 'text', text } : text;
+        addMessage(role, content) {
+          const message = typeof content === 'string' ? { type: 'text', text: content, caption: '' } : content;
           if (!message || (message.type === 'text' && !message.text)) return;
           this.messageGroups.push({ role, message });
           nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
@@ -895,7 +990,7 @@
           if (this.audioCtx.state !== 'running') await this.audioCtx.resume();
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
         },
-        async playPcm(data, mime = 'audio/pcm;rate=24000') {
+        async playPcm(data, mime = 'audio/pcm;rate=24000', caption = "") {
           const generation = this.audioGeneration;
           await this.ensureAudio();
           if (generation !== this.audioGeneration) return;
@@ -908,9 +1003,20 @@
           const node = this.audioCtx.createBufferSource();
           node.buffer = buffer; node.connect(this.audioCtx.destination);
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
+          const startTime = this.playbackTime
+          if (caption) this.scheduleCaptionAt(caption, startTime, generation);
           node.onended = () => { this.audioNodes = this.audioNodes.filter((item) => item !== node); };
           this.audioNodes.push(node);
           node.start(this.playbackTime); this.playbackTime += buffer.duration;
+        },
+        scheduleCaptionAt(text, audioTime, generation = this.audioGeneration) {
+          const delay = Math.max(0, ((audioTime || this.audioCtx?.currentTime || 0) - (this.audioCtx?.currentTime || 0)) * 1000);
+          const timer = setTimeout(() => {
+            if (generation === this.audioGeneration) {
+              this.addCaption('Gemini', text);
+            };
+          }, delay);
+          this.playbackTimers.push(timer);
         },
         async startMic(options = {}) {
           const { interruptAi = true } = options;
@@ -1008,6 +1114,7 @@
       'x-icon': X,
     };
     Object.entries(lucideComponents).forEach(([name, component]) => app.component(name, component));
+    app.component('progressive-text', ProgressiveText);
     app.mount('#app');
     document.body.classList.add('app-ready');
     const bootScreen = document.getElementById('boot-screen');
