@@ -274,7 +274,7 @@
       <div class="modal">
         <h2>删除角色</h2>
         <p>确认删除「{{ pendingDeleteRole?.name || '' }}」？此操作无法撤销。</p>
-        <p class="danger-note" v-if="connected && pendingDeleteRole?.id === selectedRoleId">当前正在连线该角色，确认删除后会自动断开。</p>
+        <p class="danger-note" v-if="isSessionActive && pendingDeleteRole?.id === selectedRoleId">当前正在连线该角色，确认删除后会自动断开。</p>
         <div class="modal-actions">
           <button class="secondary-btn" type="button" @click="closeDeleteDialog">取消</button>
           <button class="warning" type="button" @click="deleteRole">确认删除</button>
@@ -337,11 +337,9 @@
           micStream: null,
           source: null,
           processor: null,
-          connected: false,
+          sessionStatus: 'idle',
           micStatus: 'idle',
-          statusText: '未连接',
-          statusKind: '',
-          caption: { kind: 'status', role: '状态', text: '未连接' },
+          captionOverride: null,
           interactionMode: localStorage.getItem('geminiInteractionMode') || 'manual',
           voiceEnabled: JSON.parse(localStorage.getItem('geminiVoiceEnabled') || 'false'),
           text: '',
@@ -421,11 +419,55 @@
           const roleId = this.editingRoleId || this.selectedRoleId;
           return !this.default_roles.some((role) => role.id === roleId);
         },
+        statusText() { return this.sessionStateMeta.text; },
+        statusKind() { return this.sessionStateMeta.kind; },
+        caption() { return this.captionOverride || this.sessionCaption; },
+        sessionStateMeta() {
+          switch (this.sessionStatus) {
+            case 'idle': return { text: '未连接', kind: '' };
+            case 'connecting': return { text: '连接中…', kind: 'wait' };
+            case 'socket_open': return { text: '初始化…', kind: 'wait' };
+            case 'session_open': return { text: '建立会话…', kind: 'wait' };
+            case 'session_ready': return { text: '已连接', kind: 'ok' };
+            case 'session_reconnecting': return { text: '恢复会话…', kind: 'wait' };
+            case 'session_closed': return { text: '已关闭', kind: '' };
+            case 'socket_closed': return { text: '已断开', kind: 'bad' };
+            case 'error': return { text: '连接错误', kind: 'bad' };
+            default: return { text: '未连接', kind: '' };
+          }
+        },
+        sessionCaption() {
+          switch (this.sessionStatus) {
+            case 'idle':
+              return { kind: 'status', role: '状态', text: '未连接' };
+            case 'connecting':
+              return { kind: 'status', role: '状态', text: '正在连接…' };
+            case 'socket_open':
+              return { kind: 'status', role: '状态', text: '正在初始化 Gemini Live 会话…' };
+            case 'session_open':
+              return { kind: 'status', role: '状态', text: '正在建立会话…' };
+            case 'session_ready':
+              return { kind: 'status', role: '状态', text: this.voiceEnabled ? '正在聆听…' : '等待输入…' };
+            case 'session_reconnecting':
+              return { kind: 'status', role: '状态', text: '正在恢复 Gemini Live 会话…' };
+            case 'session_closed':
+              return { kind: 'status', role: '状态', text: '已关闭' };
+            case 'socket_closed':
+              return { kind: 'status', role: '状态', text: '连接已关闭' };
+            case 'error':
+              return { kind: 'status', role: '状态', text: '连接错误' };
+            default:
+              return { kind: 'status', role: '状态', text: '未连接' };
+          }
+        },
         isConnecting() {
-          return !this.connected && this.statusKind === 'wait';
+          return ['connecting', 'socket_open', 'session_open', 'session_reconnecting'].includes(this.sessionStatus);
         },
         isSessionReady() {
-          return this.connected && this.statusKind === 'ok';
+          return this.sessionStatus === 'session_ready';
+        },
+        isSessionActive() {
+          return ['connecting', 'socket_open', 'session_open', 'session_ready', 'session_reconnecting'].includes(this.sessionStatus);
         },
         canToggleVoice() {
           return this.isSessionReady && this.micStatus !== 'starting';
@@ -468,8 +510,7 @@
           this.messageGroups = [];
           this.inputDraft = '';
           this.outputDraft = '';
-          this.setStatus('未连接', '');
-          this.setCaption('status', '状态', '已进入新聊天。');
+          this.setSessionStatus('idle', { caption: { role: '状态', text: '已进入新聊天。' } });
           this.drawerOpen = false;
         },
         selectRoleById(roleId) {
@@ -487,7 +528,7 @@
           if (roleId !== this.selectedRoleId) this.selectRoleById(roleId);
           this.uiMode = 'call';
           this.drawerOpen = false;
-          if (!this.connected && !this.isConnecting) this.connect();
+          if (!this.isSessionActive) this.connect();
         },
         exitCallMode() {
           this.uiMode = 'chat';
@@ -619,7 +660,7 @@
         deleteRole() {
           if (!this.pendingDeleteRole) return;
           const deletingActiveRole = this.pendingDeleteRole.id === this.selectedRoleId;
-          if (deletingActiveRole && this.connected) this.ws?.close(1000, 'Deleted active role');
+          if (deletingActiveRole && this.isSessionActive) this.ws?.close(1000, 'Deleted active role');
           const index = this.roles.findIndex((role) => role.id === this.pendingDeleteRole.id);
           if (index < 0) return;
           const [deletedRole] = this.roles.splice(index, 1);
@@ -640,12 +681,14 @@
             this.closeRoleConfig();
           }
         },
-        setStatus(text, kind = '') {
-          this.statusText = text;
-          this.statusKind = kind || (/断开|错误|关闭/.test(text) ? 'bad' : '');
+        setSessionStatus(next, options = {}) {
+          this.sessionStatus = next;
+          if (Object.prototype.hasOwnProperty.call(options, 'caption')) this.captionOverride = options.caption;
+          else this.captionOverride = null;
         },
-        setCaption(kind, role = '', text = '') { this.caption = { kind, role, text: text.trim() }; },
-        showWaitingForUser() { this.setCaption('waiting'); },
+        clearCaptionOverride() { this.captionOverride = null; },
+        setCaption(kind, role = '', text = '') { this.captionOverride = { kind, role, text: text.trim() }; },
+        showWaitingForUser() { this.clearCaptionOverride(); },
         clearCaptionTimers() {
           this.captionTimers.forEach((timer) => clearTimeout(timer));
           this.captionTimers = [];
@@ -768,14 +811,20 @@
           if (event.target === this.$refs.renderDialog) this.closeRenderedPage();
         },
         async connect() {
-          if (this.connected || this.isConnecting) return;
+          if (this.isSessionActive) return;
           this.ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
           this.interruptAiPlayback();
-          this.setStatus('连接中…', 'wait');
-          this.ws.onopen = async () => { this.connected = true; await this.ensureAudio(); this.setStatus('初始化…', 'wait'); this.setCaption('status', '状态', '正在初始化 Gemini Live 会话…'); };
+          this.setSessionStatus('connecting');
+          this.ws.onopen = async () => { await this.ensureAudio(); this.setSessionStatus('socket_open'); };
           this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
-          this.ws.onerror = () => this.setStatus('连接错误');
-          this.ws.onclose = (event) => { this.interruptAiPlayback(); this.stopMic(); this.connected = false; this.setStatus('已断开'); this.setCaption('status', '状态', event.code == 1000 ? '已关闭' : `连接关闭 code=${event.code || 'unknown'} reason=${event.reason || '无'}`); };
+          this.ws.onerror = () => this.setSessionStatus('error');
+          this.ws.onclose = (event) => {
+            this.interruptAiPlayback();
+            this.stopMic();
+            this.setSessionStatus(event.code == 1000 ? 'session_closed' : 'socket_closed', {
+              caption: { role: '状态', text: event.code == 1000 ? '已关闭' : `连接关闭 code=${event.code || 'unknown'} reason=${event.reason || '无'}` },
+            });
+          };
         },
         handleMessage(msg) {
           if (msg.systemContent) {
@@ -784,19 +833,20 @@
           }
           if (msg.workerStatus) {
             if (msg.workerStatus.type === 'gemini_close') this.ws?.close(1000, 'User disconnected');
-            if (msg.workerStatus.type === 'gemini_open') this.ws.send(JSON.stringify(this.setupMessage()));
+            if (msg.workerStatus.type === 'gemini_open') {
+              this.setSessionStatus('session_open');
+              this.ws.send(JSON.stringify(this.setupMessage()));
+            }
             if (msg.workerStatus.type === 'session_reconnect' || msg.workerStatus.type === 'session_resuming') {
-              this.setStatus('恢复会话…', 'wait');
-              this.setCaption('status', '状态', msg.workerStatus.message || '正在恢复 Gemini Live 会话…');
+              this.setSessionStatus('session_reconnecting', { caption: { role: '状态', text: msg.workerStatus.message || '正在恢复 Gemini Live 会话…' } });
             }
             if (msg.workerStatus.type === 'session_reconnected') {
-              this.setStatus('恢复会话…', 'wait');
-              this.setCaption('status', '状态', 'Gemini Live 会话已重连，正在恢复上下文…');
+              this.setSessionStatus('session_reconnecting', { caption: { role: '状态', text: 'Gemini Live 会话已重连，正在恢复上下文…' } });
             }
             return;
           }
           if (msg.setupComplete) {
-            this.setStatus('已连接', 'ok');
+            this.setSessionStatus('session_ready');
             this.showWaitingForUser();
             if (this.voiceEnabled) this.startMic({ interruptAi: false });
             return;
@@ -962,7 +1012,7 @@
         stopMic(options = {}) {
           const { sendEnd = true } = options;
           const wasRecording = this.micStatus === 'recording';
-          if (sendEnd && wasRecording && this.connected && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
+          if (sendEnd && wasRecording && this.isSessionActive && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
           this.processor?.disconnect(); this.source?.disconnect(); this.micStream?.getTracks().forEach((track) => track.stop());
           this.processor = this.source = this.micStream = null; this.micStatus = 'idle';
         },
@@ -993,7 +1043,7 @@
             send();
             return;
           }
-          if (!this.connected && !this.isConnecting) {
+          if (!this.isSessionActive) {
             this.connect();
             const timer = setInterval(() => {
               if (this.canSendText) {
