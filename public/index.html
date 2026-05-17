@@ -9,6 +9,13 @@
     :root[data-theme="dark"] { color-scheme: dark; --bg:#1d1d1d; --surface:#000; --glass:rgba(9,9,11,.72); --hover:#18181b; --line:#27272a; --text:#fafafa; --muted:#a1a1aa; --soft:#111113; --shadow:0 24px 70px rgba(0,0,0,.42); }
     @media (prefers-color-scheme: dark) { :root[data-theme="system"] { color-scheme: dark; --bg:#1d1d1d; --surface:#000; --glass:rgba(9,9,11,.72); --hover:#18181b; --line:#27272a; --text:#fafafa; --muted:#a1a1aa; --soft:#111113; --shadow:0 24px 70px rgba(0,0,0,.42); } }
     * { box-sizing:border-box; } html, body, #app { width:100%; height:100%; } body { margin:0; overflow:hidden; font:14px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--text); background:var(--bg); }
+    body:not(.app-ready) #app { visibility:hidden; }
+    body:not(.app-ready) { background:var(--bg); }
+    .boot-screen { position:fixed; inset:0; z-index:9999; display:grid; place-items:center; background:var(--bg); color:var(--text); transition:opacity .2s ease-in-out, visibility .2s ease-in-out; }
+    .boot-screen.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+    .boot-card { display:grid; justify-items:center; gap:14px; padding:20px 24px; text-align:center; }
+    .boot-logo { width:52px; height:52px; border-radius:9999px; display:grid; place-items:center; background:var(--text); color:var(--bg); }
+    .boot-spinner { width:28px; height:28px; border-radius:50%; border:3px solid rgba(127,127,127,.24); border-top-color:var(--text); animation:spin .8s linear infinite; }
     button, input, textarea, select { font:inherit; color:inherit; } button { border:0; cursor:pointer; transition:all .2s ease-in-out; } button:active { transform:scale(.97); } button:disabled { cursor:not-allowed; opacity:.45; transform:none; }
     .app-shell { --sidebar-width:320px; height:100dvh; display:grid; grid-template-columns:var(--sidebar-width) minmax(0,1fr); background:var(--bg); transition:grid-template-columns .24s ease-in-out; }
     .sidebar { position:relative; z-index:20; min-width:0; width:320px; height:100dvh; padding:16px; display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; gap:16px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); box-shadow:10px 0 40px rgba(0,0,0,.06); overflow:hidden; opacity:1; transition:width .24s ease-in-out, padding .24s ease-in-out, opacity .18s ease-in-out, transform .24s ease-in-out; }
@@ -71,6 +78,13 @@
   </style>
 </head>
 <body>
+  <div id="boot-screen" class="boot-screen" aria-live="polite" aria-label="正在加载">
+    <div class="boot-card">
+      <div class="boot-logo" aria-hidden="true">G</div>
+      <div class="boot-spinner" aria-hidden="true"></div>
+      <div>正在加载 Gemini 语音助手</div>
+    </div>
+  </div>
   <div id="app">
     <div class="app-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'drawer-open': drawerOpen }" v-show="uiMode === 'chat'">
       <div class="drawer-scrim" v-if="drawerOpen" @click="drawerOpen = false"></div>
@@ -1028,6 +1042,9 @@
     };
     Object.entries(lucideComponents).forEach(([name, component]) => app.component(name, component));
     app.mount('#app');
+    document.body.classList.add('app-ready');
+    const bootScreen = document.getElementById('boot-screen');
+    if (bootScreen) bootScreen.classList.add('hidden');
   </script>
 </body>
 </html>
