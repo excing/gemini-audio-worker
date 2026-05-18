@@ -47,7 +47,7 @@
     .input-bar { min-height:64px; justify-content:space-between; align-items: end; padding-block:8px; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; overflow:auto; border:0; outline:none; border-radius:12px; padding:13px 14px; background:var(--hover); transition:all .2s ease-in-out; }
     .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; } .hold-record.recording { background:linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
     .call-screen { height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) auto 82px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); background:var(--surface); }
-    .call-stage { position:relative; min-height:0; display:grid; place-items:center; overflow:hidden; } .wave { width:min(44vw,260px); height:120px; display:flex; align-items:center; justify-content:center; gap:8px; } .wave span { width:7px; height:28px; border-radius:9999px; background:linear-gradient(180deg,#10b981,#60a5fa); animation:wave 1s ease-in-out infinite; } .wave span:nth-child(2){animation-delay:.1s}.wave span:nth-child(3){animation-delay:.2s}.wave span:nth-child(4){animation-delay:.3s}.wave span:nth-child(5){animation-delay:.4s}
+    .call-stage { position:relative; min-height:0; display:grid; place-items:center; overflow:hidden; } .wave { width:min(44vw,260px); height:120px; display:flex; align-items:center; justify-content:center; gap:8px; } .wave span { width:7px; height:calc(18px + var(--wave-level, 0) * 90px); border-radius:9999px; background:linear-gradient(180deg,#10b981,#60a5fa); opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; } .user-wave { display:inline-flex; align-items:center; justify-content:center; gap:3px; height:22px; } .user-wave span { width:3px; height:calc(4px + var(--wave-level, 0) * 18px); border-radius:9999px; background:currentColor; opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; }
     .caption-overlay { position:absolute; inset:0; min-height:0; overflow:hidden;  padding:14px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); color:var(--muted); pointer-events:none; } .caption-overlay .live-body { width:70%; height:70%; min-height:0; display:grid; align-content:start; gap:4px; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; pointer-events:auto; } .caption-overlay .live-body::-webkit-scrollbar { display:none; }
     .call-status { display:grid; justify-items:center; gap:8px; padding:8px 0 14px; color:var(--muted); } .call-status .icon-btn { background:var(--hover); } .call-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:0; min-height:72px; align-items:center; } .call-action { width:100%; min-width:0; min-height:72px; padding:4px 0; border-radius:12px; display:grid; justify-items:center; align-content:center; gap:4px; background:transparent; color:var(--muted); font-size:12px; } .call-action:hover { background:var(--hover); } .call-action .icon-btn { pointer-events:none; background:transparent; }
     dialog { width:min(680px,calc(100% - 24px)); border:0; border-radius:16px; padding:0; color:var(--text); background:var(--glass); box-shadow:var(--shadow); backdrop-filter:blur(12px) saturate(180%); transform:scale(.95); opacity:0; transition:all .2s ease-in-out; } dialog[open] { transform:scale(1); opacity:1; } dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(6px); } :root[data-theme="dark"] dialog::backdrop { background:rgba(0,0,0,.6); }
@@ -81,7 +81,7 @@
     .tool-call-image { display:block; width:100%; min-height: auto; object-fit:contain; border:1px solid var(--line); border-radius:12px; background:rgba(0,0,0,.22); }
     .tool-picker { display:grid; gap:10px; color:var(--muted); font-size:12px; } .tool-hint { color:var(--muted); }
     [data-sonner-toaster] [data-sonner-toast] [data-close-button] { left:auto !important; right:0 !important; transform:translate(40%, -40%); width: 28px; height: 28px; }
-    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } } @keyframes wave { 0%,100% { height:28px; opacity:.55; } 50% { height:96px; opacity:1; } }
+    @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } }
     @media (max-width:960px) { .app-shell { grid-template-columns:minmax(0,1fr); } .sidebar { position:fixed; width:280px; transform:translateX(-105%); } .drawer-open .sidebar { transform:translateX(0); } .app-shell.sidebar-collapsed { grid-template-columns:minmax(0,1fr); } .app-shell.sidebar-collapsed .sidebar { width:280px; padding:16px; } .drawer-scrim { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.28); } }
     @media (max-width:700px) { .main { grid-template-rows:56px minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .render-card,.tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
   </style>
@@ -209,7 +209,9 @@
         <button class="icon-btn" type="button" title="字幕" @click="captionsVisible = !captionsVisible"><component :is="captionsVisible ? 'captions-icon' : 'captions-off-icon'" /></button>
       </header>
       <section class="call-stage">
-        <div class="wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="wave" aria-hidden="true">
+          <span v-for="(level, i) in aiWaveBars" :key="i" :style="{ '--wave-level': level }"></span>
+        </div>
         <div class="caption-overlay" v-if="captionsVisible">
           <div class="live-body" ref="callCaptionEl">
             <div
@@ -229,7 +231,12 @@
         </div>
       </section>
       <div class="call-status">
-        <button class="icon-btn" type="button" @click="interruptAiPlayback"><component :is="callStateIcon" /></button>
+        <button class="icon-btn" type="button" @click="interruptAiPlayback">
+          <span v-if="showUserWave" class="user-wave" aria-hidden="true">
+            <span v-for="(level, i) in userWaveBars" :key="i" :style="{ '--wave-level': level }"></span>
+          </span>
+          <component v-else :is="callStateIcon" />
+        </button>
         <span>{{ callStatusText }}</span>
       </div>
       <footer class="call-actions">
@@ -453,6 +460,9 @@
           captionsVisible: true,
           pendingDeleteRole: null,
           editingRoleId: '',
+          aiWaveBars: [0, 0, 0, 0, 0],
+          userWaveBars: [0, 0, 0, 0, 0],
+          waveRafId: null,
         };
       },
       mounted() {
@@ -471,6 +481,7 @@
         this.loadToolDeclarations();
       },
       beforeUnmount() {
+        this.stopWaveLoop();
         window.removeEventListener('browser-tool-render-page', this.handleRenderedPage);
         this.audioService?.destroy();
       },
@@ -482,7 +493,12 @@
           this.scrollCallCaptions();
         },
         uiMode(value) {
-          if (value === 'call') this.scrollCallCaptions();
+          if (value === 'call') {
+            this.scrollCallCaptions();
+            this.startWaveLoop();
+          } else {
+            this.stopWaveLoop();
+          }
         },
       },
       computed: {
@@ -522,6 +538,9 @@
           if (this.callAudioMode === 'turn') return 'repeat-icon';
           if (this.callAudioMode === 'mute') return 'mic-off-icon';
           return 'mic-icon';
+        },
+        showUserWave() {
+          return this.callStateIcon === 'audio-lines-icon';
         },
         shouldSendAudio() {
           return this.canSendAudioNow();
@@ -1128,6 +1147,25 @@
             const el = this.$refs.callCaptionEl;
             if (el) el.scrollTop = el.scrollHeight;
           });
+        },
+        startWaveLoop() {
+          if (this.waveRafId !== null) return;
+          const tick = () => {
+            if (this.audioService) {
+              this.aiWaveBars = this.audioService.getAiWaveform(5);
+              this.userWaveBars = this.audioService.getUserWaveform(5);
+            }
+            this.waveRafId = requestAnimationFrame(tick);
+          };
+          this.waveRafId = requestAnimationFrame(tick);
+        },
+        stopWaveLoop() {
+          if (this.waveRafId !== null) {
+            cancelAnimationFrame(this.waveRafId);
+            this.waveRafId = null;
+          }
+          this.aiWaveBars = [0, 0, 0, 0, 0];
+          this.userWaveBars = [0, 0, 0, 0, 0];
         },
         async ensureAudio() {
           await this.audioService?.ensureAudio();

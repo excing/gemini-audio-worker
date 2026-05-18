@@ -8,6 +8,10 @@ export function createAudioService(options = {}) {
   let micStream = null;
   let source = null;
   let processor = null;
+  let aiAnalyser = null;
+  let micAnalyser = null;
+  let aiFreqData = null;
+  let micFreqData = null;
 
   const getVoiceEnabled = () => options.getVoiceEnabled?.() ?? true;
   const shouldSendAudio = () => options.shouldSendAudio?.() ?? false;
@@ -40,6 +44,13 @@ export function createAudioService(options = {}) {
     if (!playbackGain) {
       playbackGain = audioCtx.createGain();
       playbackGain.connect(audioCtx.destination);
+    }
+    if (!aiAnalyser) {
+      aiAnalyser = audioCtx.createAnalyser();
+      aiAnalyser.fftSize = 64;
+      aiAnalyser.smoothingTimeConstant = 0.7;
+      aiFreqData = new Uint8Array(aiAnalyser.frequencyBinCount);
+      playbackGain.connect(aiAnalyser);
     }
     if (audioCtx.state !== 'running') await audioCtx.resume();
     syncPlaybackVolume();
@@ -151,6 +162,11 @@ export function createAudioService(options = {}) {
     processor = audioCtx.createScriptProcessor(4096, 1, 1);
     source.connect(processor);
     processor.connect(audioCtx.destination);
+    micAnalyser = audioCtx.createAnalyser();
+    micAnalyser.fftSize = 64;
+    micAnalyser.smoothingTimeConstant = 0.7;
+    micFreqData = new Uint8Array(micAnalyser.frequencyBinCount);
+    source.connect(micAnalyser);
     const track = micStream.getAudioTracks()[0];
     if (track) track.addEventListener('ended', onMicEnded);
     processor.onaudioprocess = (event) => sendPcm16k(event.inputBuffer.getChannelData(0), audioCtx.sampleRate);
@@ -160,19 +176,57 @@ export function createAudioService(options = {}) {
   function stopMic() {
     processor?.disconnect();
     source?.disconnect();
+    try { micAnalyser?.disconnect(); } catch {}
     micStream?.getTracks().forEach((track) => track.stop());
-    processor = source = micStream = null;
+    processor = source = micStream = micAnalyser = micFreqData = null;
   }
 
   async function destroy() {
     stopMic();
     stopAiAudioPlayback();
+    try { aiAnalyser?.disconnect(); } catch {}
+    aiAnalyser = aiFreqData = null;
     if (audioCtx) {
       await audioCtx.close();
       audioCtx = null;
     }
     playbackGain = null;
     playbackTime = 0;
+  }
+
+  function sampleWaveform(analyser, buffer, bins) {
+    const result = new Array(bins).fill(0);
+    if (!analyser || !buffer || bins <= 0) return result;
+    analyser.getByteFrequencyData(buffer);
+    const usable = Math.max(1, Math.floor(buffer.length * 0.75));
+    const slice = Math.max(1, Math.floor(usable / bins));
+    const bands = new Array(bins);
+    for (let b = 0; b < bins; b += 1) {
+      const start = b * slice;
+      const end = Math.min(usable, start + slice);
+      let sum = 0;
+      for (let j = start; j < end; j += 1) sum += buffer[j];
+      bands[b] = end > start ? sum / ((end - start) * 255) : 0;
+    }
+    const center = (bins - 1) / 2;
+    const order = Array.from({ length: bins }, (_, i) => i)
+      .sort((a, b) => {
+        const da = Math.abs(a - center);
+        const db = Math.abs(b - center);
+        return da !== db ? da - db : a - b;
+      });
+    for (let i = 0; i < bins; i += 1) {
+      result[order[i]] = Math.min(1, bands[i] * 0.9);
+    }
+    return result;
+  }
+
+  function getAiWaveform(bins = 5) {
+    return sampleWaveform(aiAnalyser, aiFreqData, bins);
+  }
+
+  function getUserWaveform(bins = 5) {
+    return sampleWaveform(micAnalyser, micFreqData, bins);
   }
 
   function sendPcm16k(input, inRate) {
@@ -211,5 +265,7 @@ export function createAudioService(options = {}) {
     stopMic,
     destroy,
     hasQueuedPlayback: () => audioNodes.length > 0,
+    getAiWaveform,
+    getUserWaveform,
   };
 }
