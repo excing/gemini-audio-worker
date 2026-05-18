@@ -126,7 +126,7 @@
           </div>
           <div class="topbar-actions">
             <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon /></button>
-            <button class="icon-btn" type="button" :title="voiceEnabled ? '关闭自动朗读' : '打开自动朗读'" @click="toggleVoiceEnabled" :disabled="!canToggleVoice"><component :is="voiceEnabled ? 'volume-2-icon' : 'volume-x-icon'" /></button>
+            <button class="icon-btn" type="button" :title="voiceEnabled ? '关闭自动朗读' : '打开自动朗读'" @click="toggleVoiceEnabled" :disabled="!canToggleAutoRead"><component :is="voiceEnabled ? 'volume-2-icon' : 'volume-x-icon'" /></button>
           </div>
         </header>
 
@@ -417,6 +417,7 @@
           roleDraft: { ...defaultConfig },
           ws: null,
           audioCtx: null,
+          playbackGain: null,
           playbackTime: 0,
           audioNodes: [],
           audioGeneration: 0,
@@ -547,6 +548,9 @@
         },
         canToggleVoice() {
           return this.isSessionReady && this.micStatus !== 'starting';
+        },
+        canToggleAutoRead() {
+          return !this.isConnecting;
         },
         canSendText() {
           return this.isSessionReady && !!this.text.trim();
@@ -774,16 +778,24 @@
           this.playbackTimers.forEach((timer) => clearTimeout(timer));
           this.playbackTimers = [];
         },
-        interruptAiPlayback() {
+        stopAiAudioPlayback() {
           this.audioGeneration += 1;
-          this.pendingAiCaption = '';
-          this.pendingAiMessageId = '';
           this.clearPlaybackTimers();
-          this.aiAudioScheduledThisTurn = false;
           this.audioNodes.forEach((node) => { try { node.stop(); } catch {} });
           this.audioNodes = [];
-          this.callTurnOwner = 'user';
           if (this.audioCtx) this.playbackTime = this.audioCtx.currentTime;
+        },
+        syncPlaybackVolume() {
+          if (!this.playbackGain || !this.audioCtx) return;
+          const value = this.voiceEnabled ? 1 : 0;
+          this.playbackGain.gain.setTargetAtTime(value, this.audioCtx.currentTime, 0.015);
+        },
+        interruptAiPlayback() {
+          this.stopAiAudioPlayback();
+          this.aiAudioScheduledThisTurn = false;
+          this.pendingAiCaption = '';
+          this.pendingAiMessageId = '';
+          this.callTurnOwner = 'user';
         },
         toggleCallAudioMode() {
           const order = ['free', 'turn', 'mute'];
@@ -794,7 +806,7 @@
         toggleVoiceEnabled() {
           this.voiceEnabled = !this.voiceEnabled;
           localStorage.setItem('geminiVoiceEnabled', JSON.stringify(this.voiceEnabled));
-          if (!this.voiceEnabled) this.interruptAiPlayback();
+          this.syncPlaybackVolume();
         },
         setupMessage() {
           const setup = {
@@ -1078,7 +1090,12 @@
         },
         async ensureAudio() {
           this.audioCtx ||= new AudioContext();
+          if (!this.playbackGain) {
+            this.playbackGain = this.audioCtx.createGain();
+            this.playbackGain.connect(this.audioCtx.destination);
+          }
           if (this.audioCtx.state !== 'running') await this.audioCtx.resume();
+          this.syncPlaybackVolume();
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
         },
         async playReadyTone(options = {}) {
@@ -1095,7 +1112,7 @@
           gain.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
           gain.gain.linearRampToValueAtTime(0.0001, startTime + duration);
           osc.connect(gain);
-          gain.connect(this.audioCtx.destination);
+          gain.connect(this.playbackGain);
           osc.onended = () => {
             try { osc.disconnect(); } catch {}
             try { gain.disconnect(); } catch {}
@@ -1115,7 +1132,7 @@
           const out = buffer.getChannelData(0);
           for (let i = 0; i < samples; i++) { const lo = raw.charCodeAt(i * 2), hi = raw.charCodeAt(i * 2 + 1); let value = (hi << 8) | lo; if (value & 0x8000) value -= 0x10000; out[i] = value / 32768; }
           const node = this.audioCtx.createBufferSource();
-          node.buffer = buffer; node.connect(this.audioCtx.destination);
+          node.buffer = buffer; node.connect(this.playbackGain);
           this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
           const startTime = this.playbackTime
           if (caption) this.scheduleCaptionAt(caption, startTime, generation, messageId);
