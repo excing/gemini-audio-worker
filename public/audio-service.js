@@ -1,0 +1,178 @@
+export function createAudioService(options = {}) {
+  let audioCtx = null;
+  let playbackGain = null;
+  let playbackTime = 0;
+  let audioNodes = [];
+  let audioGeneration = 0;
+  let playbackTimers = [];
+  let micStream = null;
+  let source = null;
+  let processor = null;
+
+  const getVoiceEnabled = () => options.getVoiceEnabled?.() ?? true;
+  const shouldSendAudio = () => options.shouldSendAudio?.() ?? false;
+  const canSendAudioInput = () => options.canSendAudioInput?.() ?? true;
+  const onAudioInput = (payload) => options.onAudioInput?.(payload);
+  const onCaptionDue = (payload) => options.onCaptionDue?.(payload);
+  const onMicEnded = () => options.onMicEnded?.();
+
+  function clearPlaybackTimers() {
+    playbackTimers.forEach((timer) => clearTimeout(timer));
+    playbackTimers = [];
+  }
+
+  function stopAiAudioPlayback() {
+    audioGeneration += 1;
+    clearPlaybackTimers();
+    audioNodes.forEach((node) => { try { node.stop(); } catch {} });
+    audioNodes = [];
+    if (audioCtx) playbackTime = audioCtx.currentTime;
+  }
+
+  function syncPlaybackVolume() {
+    if (!playbackGain || !audioCtx) return;
+    const value = getVoiceEnabled() ? 1 : 0;
+    playbackGain.gain.setTargetAtTime(value, audioCtx.currentTime, 0.015);
+  }
+
+  async function ensureAudio() {
+    audioCtx ||= new AudioContext();
+    if (!playbackGain) {
+      playbackGain = audioCtx.createGain();
+      playbackGain.connect(audioCtx.destination);
+    }
+    if (audioCtx.state !== 'running') await audioCtx.resume();
+    syncPlaybackVolume();
+    playbackTime = Math.max(playbackTime, audioCtx.currentTime);
+  }
+
+  async function playReadyTone(toneOptions = {}) {
+    const { type = 'sine', queued = false } = toneOptions;
+    await ensureAudio();
+    const startTime = queued ? Math.max(playbackTime, audioCtx.currentTime) + 0.08 : audioCtx.currentTime;
+    const duration = 0.16;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(660, startTime);
+    osc.frequency.exponentialRampToValueAtTime(880, startTime + duration);
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+    gain.gain.linearRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(playbackGain);
+    osc.onended = () => {
+      try { osc.disconnect(); } catch {}
+      try { gain.disconnect(); } catch {}
+    };
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.02);
+    if (queued) playbackTime = startTime + duration + 0.02;
+  }
+
+  async function playPcm(data, mime = 'audio/pcm;rate=24000', caption = '', messageId = '') {
+    const generation = audioGeneration;
+    await ensureAudio();
+    if (generation !== audioGeneration) return;
+    const rate = +(mime.match(/rate=(\d+)/)?.[1] || 24000);
+    const raw = atob(data);
+    const samples = raw.length / 2;
+    const buffer = audioCtx.createBuffer(1, samples, rate);
+    const out = buffer.getChannelData(0);
+    for (let i = 0; i < samples; i += 1) {
+      const lo = raw.charCodeAt(i * 2);
+      const hi = raw.charCodeAt(i * 2 + 1);
+      let value = (hi << 8) | lo;
+      if (value & 0x8000) value -= 0x10000;
+      out[i] = value / 32768;
+    }
+    const node = audioCtx.createBufferSource();
+    node.buffer = buffer;
+    node.connect(playbackGain);
+    playbackTime = Math.max(playbackTime, audioCtx.currentTime);
+    const startTime = playbackTime;
+    if (caption) scheduleCaptionAt(caption, startTime, generation, messageId);
+    node.onended = () => { audioNodes = audioNodes.filter((item) => item !== node); };
+    audioNodes.push(node);
+    node.start(playbackTime);
+    playbackTime += buffer.duration;
+  }
+
+  function scheduleCaptionAt(text, audioTime, generation = audioGeneration, messageId = '') {
+    const currentTime = audioCtx?.currentTime || 0;
+    const delay = Math.max(0, ((audioTime || currentTime) - currentTime) * 1000);
+    const timer = setTimeout(() => {
+      if (generation === audioGeneration) onCaptionDue({ text, messageId });
+    }, delay);
+    playbackTimers.push(timer);
+  }
+
+  async function startMic() {
+    if (micStream || processor) return true;
+    await ensureAudio();
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    source = audioCtx.createMediaStreamSource(micStream);
+    processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    source.connect(processor);
+    processor.connect(audioCtx.destination);
+    const track = micStream.getAudioTracks()[0];
+    if (track) track.addEventListener('ended', onMicEnded);
+    processor.onaudioprocess = (event) => sendPcm16k(event.inputBuffer.getChannelData(0), audioCtx.sampleRate);
+    return true;
+  }
+
+  function stopMic() {
+    processor?.disconnect();
+    source?.disconnect();
+    micStream?.getTracks().forEach((track) => track.stop());
+    processor = source = micStream = null;
+  }
+
+  async function destroy() {
+    stopMic();
+    stopAiAudioPlayback();
+    if (audioCtx) {
+      await audioCtx.close();
+      audioCtx = null;
+    }
+    playbackGain = null;
+    playbackTime = 0;
+  }
+
+  function sendPcm16k(input, inRate) {
+    if (!canSendAudioInput()) return;
+    if (!shouldSendAudio()) return;
+    const ratio = inRate / 16000;
+    const pcm = new Int16Array(Math.floor(input.length / ratio));
+    for (let i = 0; i < pcm.length; i += 1) {
+      const sample = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)]));
+      pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+    }
+    onAudioInput({
+      realtimeInput: {
+        audio: {
+          data: b64(new Uint8Array(pcm.buffer)),
+          mimeType: 'audio/pcm;rate=16000',
+        },
+      },
+    });
+  }
+
+  function b64(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+
+  return {
+    ensureAudio,
+    playReadyTone,
+    playPcm,
+    stopAiAudioPlayback,
+    syncPlaybackVolume,
+    startMic,
+    stopMic,
+    destroy,
+    hasQueuedPlayback: () => audioNodes.length > 0,
+  };
+}

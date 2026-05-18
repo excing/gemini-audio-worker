@@ -332,6 +332,7 @@
   <script src="./tools.js"></script>
   <script type="module">
     import { createApp, nextTick } from "https://unpkg.com/vue@3.5.34/dist/vue.esm-browser.prod.js";
+    import { createAudioService } from "./audio-service.js";
     import {
       AudioLines, Captions, CaptionsOff, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, Send, Settings, Settings2, Sparkles, Square, Sun, UserPlus, Video, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
@@ -414,16 +415,8 @@
           selectedRoleId: '',
           roleDraft: { ...defaultConfig },
           ws: null,
-          audioCtx: null,
-          playbackGain: null,
-          playbackTime: 0,
-          audioNodes: [],
-          audioGeneration: 0,
-          playbackTimers: [],
+          audioService: null,
           aiAudioScheduledThisTurn: false,
-          micStream: null,
-          source: null,
-          processor: null,
           sessionStatus: 'idle',
           micStatus: 'idle',
           callAudioMode: localStorage.getItem('geminiCallAudioMode') || 'free',
@@ -454,11 +447,20 @@
         this.applyTheme();
         this.roles = this.loadUserRoles();
         this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.allRoles[0].id;
+        this.audioService = createAudioService({
+          getVoiceEnabled: () => this.voiceEnabled,
+          canSendAudioInput: () => this.ws?.readyState === WebSocket.OPEN,
+          shouldSendAudio: () => this.canSendAudioNow(),
+          onAudioInput: (payload) => this.ws?.send(JSON.stringify(payload)),
+          onCaptionDue: ({ text, messageId }) => this.addCaption('Gemini', text, messageId),
+          onMicEnded: () => this.handleMicEnded(),
+        });
         window.addEventListener('browser-tool-render-page', this.handleRenderedPage);
         this.loadToolDeclarations();
       },
       beforeUnmount() {
         window.removeEventListener('browser-tool-render-page', this.handleRenderedPage);
+        this.audioService?.destroy();
       },
       watch: {
         themeMode() {
@@ -510,13 +512,7 @@
           return 'mic-icon';
         },
         shouldSendAudio() {
-          if (!this.isSessionReady) return false;
-          if (this.holdActive) return true;
-          if (this.uiMode !== 'call') return false;
-          if (this.callAudioMode === 'mute') return false;
-          if (this.callAudioMode === 'turn' && this.callTurnOwner !== 'user') return false;
-          if (this.callAudioMode === 'turn' && this.audioNodes.length > 0) return false;
-          return true;
+          return this.canSendAudioNow();
         },
         activeRenderPage() {
           return this.renderedPages.find((page) => page.id === this.activeRenderPageId) || null;
@@ -778,21 +774,20 @@
         setSessionStatus(next) {
           this.sessionStatus = next;
         },
-        clearPlaybackTimers() {
-          this.playbackTimers.forEach((timer) => clearTimeout(timer));
-          this.playbackTimers = [];
+        canSendAudioNow() {
+          if (!this.isSessionReady) return false;
+          if (this.holdActive) return true;
+          if (this.uiMode !== 'call') return false;
+          if (this.callAudioMode === 'mute') return false;
+          if (this.callAudioMode === 'turn' && this.callTurnOwner !== 'user') return false;
+          if (this.callAudioMode === 'turn' && this.audioService?.hasQueuedPlayback()) return false;
+          return true;
         },
         stopAiAudioPlayback() {
-          this.audioGeneration += 1;
-          this.clearPlaybackTimers();
-          this.audioNodes.forEach((node) => { try { node.stop(); } catch {} });
-          this.audioNodes = [];
-          if (this.audioCtx) this.playbackTime = this.audioCtx.currentTime;
+          this.audioService?.stopAiAudioPlayback();
         },
         syncPlaybackVolume() {
-          if (!this.playbackGain || !this.audioCtx) return;
-          const value = this.voiceEnabled ? 1 : 0;
-          this.playbackGain.gain.setTargetAtTime(value, this.audioCtx.currentTime, 0.015);
+          this.audioService?.syncPlaybackVolume();
         },
         interruptAiPlayback() {
           this.stopAiAudioPlayback();
@@ -1104,65 +1099,13 @@
           });
         },
         async ensureAudio() {
-          this.audioCtx ||= new AudioContext();
-          if (!this.playbackGain) {
-            this.playbackGain = this.audioCtx.createGain();
-            this.playbackGain.connect(this.audioCtx.destination);
-          }
-          if (this.audioCtx.state !== 'running') await this.audioCtx.resume();
-          this.syncPlaybackVolume();
-          this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
+          await this.audioService?.ensureAudio();
         },
         async playReadyTone(options = {}) {
-          const { type = 'sine', queued = false } = options;
-          await this.ensureAudio();
-          const startTime = queued ? Math.max(this.playbackTime, this.audioCtx.currentTime) + 0.08 : this.audioCtx.currentTime;
-          const duration = 0.16;
-          const osc = this.audioCtx.createOscillator();
-          const gain = this.audioCtx.createGain();
-          osc.type = type;
-          osc.frequency.setValueAtTime(660, startTime);
-          osc.frequency.exponentialRampToValueAtTime(880, startTime + duration);
-          gain.gain.setValueAtTime(0.0001, startTime);
-          gain.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
-          gain.gain.linearRampToValueAtTime(0.0001, startTime + duration);
-          osc.connect(gain);
-          gain.connect(this.playbackGain);
-          osc.onended = () => {
-            try { osc.disconnect(); } catch {}
-            try { gain.disconnect(); } catch {}
-          };
-          osc.start(startTime);
-          osc.stop(startTime + duration + 0.02);
-          if (queued) this.playbackTime = startTime + duration + 0.02;
+          await this.audioService?.playReadyTone(options);
         },
         async playPcm(data, mime = 'audio/pcm;rate=24000', caption = "", messageId = '') {
-          const generation = this.audioGeneration;
-          await this.ensureAudio();
-          if (generation !== this.audioGeneration) return;
-          const rate = +(mime.match(/rate=(\d+)/)?.[1] || 24000);
-          const raw = atob(data);
-          const samples = raw.length / 2;
-          const buffer = this.audioCtx.createBuffer(1, samples, rate);
-          const out = buffer.getChannelData(0);
-          for (let i = 0; i < samples; i++) { const lo = raw.charCodeAt(i * 2), hi = raw.charCodeAt(i * 2 + 1); let value = (hi << 8) | lo; if (value & 0x8000) value -= 0x10000; out[i] = value / 32768; }
-          const node = this.audioCtx.createBufferSource();
-          node.buffer = buffer; node.connect(this.playbackGain);
-          this.playbackTime = Math.max(this.playbackTime, this.audioCtx.currentTime);
-          const startTime = this.playbackTime
-          if (caption) this.scheduleCaptionAt(caption, startTime, generation, messageId);
-          node.onended = () => { this.audioNodes = this.audioNodes.filter((item) => item !== node); };
-          this.audioNodes.push(node);
-          node.start(this.playbackTime); this.playbackTime += buffer.duration;
-        },
-        scheduleCaptionAt(text, audioTime, generation = this.audioGeneration, messageId = '') {
-          const delay = Math.max(0, ((audioTime || this.audioCtx?.currentTime || 0) - (this.audioCtx?.currentTime || 0)) * 1000);
-          const timer = setTimeout(() => {
-            if (generation === this.audioGeneration) {
-              this.addCaption('Gemini', text, messageId);
-            }
-          }, delay);
-          this.playbackTimers.push(timer);
+          await this.audioService?.playPcm(data, mime, caption, messageId);
         },
         findMessageById(messageId) {
           if (!messageId) return null;
@@ -1176,15 +1119,9 @@
           if (this.micStatus !== 'idle') return;
           this.micStatus = 'starting';
           try {
-            await this.ensureAudio();
-            this.micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-            this.source = this.audioCtx.createMediaStreamSource(this.micStream);
-            this.processor = this.audioCtx.createScriptProcessor(4096, 1, 1);
-            this.source.connect(this.processor); this.processor.connect(this.audioCtx.destination);
+            const started = await this.audioService?.startMic();
+            if (!started) throw new Error('mic not started');
             this.micStatus = 'recording';
-            const track = this.micStream.getAudioTracks()[0];
-            if (track) track.addEventListener('ended', () => this.handleMicEnded());
-            this.processor.onaudioprocess = (event) => this.sendPcm16k(event.inputBuffer.getChannelData(0), this.audioCtx.sampleRate);
           } catch (error) {
             this.micStatus = 'idle';
             this.handleMicEnded();
@@ -1195,8 +1132,8 @@
           if (!force && this.holdActive) return;
           const wasRecording = this.micStatus === 'recording';
           if (sendEnd && wasRecording && this.isSessionActive && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
-          this.processor?.disconnect(); this.source?.disconnect(); this.micStream?.getTracks().forEach((track) => track.stop());
-          this.processor = this.source = this.micStream = null; this.micStatus = 'idle';
+          this.audioService?.stopMic();
+          this.micStatus = 'idle';
         },
         handleMicEnded() {
           if (this.uiMode === 'call') {
@@ -1207,19 +1144,6 @@
             this.holdActive = false;
             this.stopMic({ sendEnd: false, force: true });
           }
-        },
-        sendPcm16k(input, inRate) {
-          if (this.ws?.readyState !== WebSocket.OPEN) return;
-          if (!this.shouldSendAudio) return;
-          const ratio = inRate / 16000;
-          const pcm = new Int16Array(Math.floor(input.length / ratio));
-          for (let i = 0; i < pcm.length; i++) { const sample = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)])); pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff; }
-          this.ws.send(JSON.stringify({ realtimeInput: { audio: { data: this.b64(new Uint8Array(pcm.buffer)), mimeType: 'audio/pcm;rate=16000' } } }));
-        },
-        b64(bytes) {
-          let binary = '';
-          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-          return btoa(binary);
         },
         sendText() {
           const value = this.text.trim();
