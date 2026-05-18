@@ -107,6 +107,42 @@ export function createAudioService(options = {}) {
     playbackTimers.push(timer);
   }
 
+  async function checkMicAvailable() {
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      const error = new Error('当前页面非安全上下文，无法使用麦克风');
+      error.name = 'InsecureContextError';
+      throw error;
+    }
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      const error = new Error('当前浏览器不支持麦克风');
+      error.name = 'NotSupportedError';
+      throw error;
+    }
+    if (navigator.permissions?.query) {
+      try {
+        const status = await navigator.permissions.query({ name: 'microphone' });
+        if (status.state === 'denied') {
+          const error = new Error('麦克风权限被拒绝');
+          error.name = 'NotAllowedError';
+          throw error;
+        }
+      } catch (err) {
+        if (err?.name === 'NotAllowedError') throw err;
+      }
+    }
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      if (devices.length && !devices.some((device) => device.kind === 'audioinput')) {
+        const error = new Error('未检测到麦克风');
+        error.name = 'NotFoundError';
+        throw error;
+      }
+    } catch (err) {
+      if (err?.name === 'NotFoundError') throw err;
+    }
+    return true;
+  }
+
   async function startMic() {
     if (micStream || processor) return true;
     await ensureAudio();
@@ -170,6 +206,7 @@ export function createAudioService(options = {}) {
     playPcm,
     stopAiAudioPlayback,
     syncPlaybackVolume,
+    checkMicAvailable,
     startMic,
     stopMic,
     destroy,

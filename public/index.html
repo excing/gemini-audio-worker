@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gemini 语音对话</title>
+  <link rel="stylesheet" href="https://esm.sh/vue-sonner@2.0.9/lib/index.css" />
   <style>
     :root { color-scheme: light dark; --bg:#f9fafb; --surface:#fff; --glass:rgba(255,255,255,.72); --hover:#f3f4f6; --line:#e5e7eb; --text:#111827; --muted:#6b7280; --soft:#f6f7f9; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --shadow:0 24px 70px rgba(17,24,39,.12); }
     :root[data-theme="dark"] { color-scheme: dark; --bg:#1d1d1d; --surface:#000; --glass:rgba(9,9,11,.72); --hover:#18181b; --line:#27272a; --text:#fafafa; --muted:#a1a1aa; --soft:#111113; --shadow:0 24px 70px rgba(0,0,0,.42); }
@@ -79,6 +80,7 @@
     .tool-call-media { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
     .tool-call-image { display:block; width:100%; min-height: auto; object-fit:contain; border:1px solid var(--line); border-radius:12px; background:rgba(0,0,0,.22); }
     .tool-picker { display:grid; gap:10px; color:var(--muted); font-size:12px; } .tool-hint { color:var(--muted); }
+    [data-sonner-toaster] [data-sonner-toast] [data-close-button] { left:auto !important; right:0 !important; transform:translate(40%, -40%); width: 28px; height: 28px; }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } } @keyframes wave { 0%,100% { height:28px; opacity:.55; } 50% { height:96px; opacity:1; } }
     @media (max-width:960px) { .app-shell { grid-template-columns:minmax(0,1fr); } .sidebar { position:fixed; width:280px; transform:translateX(-105%); } .drawer-open .sidebar { transform:translateX(0); } .app-shell.sidebar-collapsed { grid-template-columns:minmax(0,1fr); } .app-shell.sidebar-collapsed .sidebar { width:280px; padding:16px; } .drawer-scrim { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.28); } }
     @media (max-width:700px) { .main { grid-template-rows:56px minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .render-card,.tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
@@ -326,12 +328,22 @@
         <iframe v-if="activeRenderPage" title="工具渲染页面预览" sandbox="allow-scripts" referrerpolicy="no-referrer" :srcdoc="activeRenderPage.html"></iframe>
       </div>
     </dialog>
+    <Toaster position="top-right" :duration="3200" :theme="themeMode" rich-colors close-button></Toaster>
   </div>
 
   <script src="./constant.js"></script>
   <script src="./tools.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "vue": "https://unpkg.com/vue@3.5.34/dist/vue.esm-browser.prod.js",
+        "sonner": "https://unpkg.com/vue-sonner"
+      }
+    }
+  </script>
   <script type="module">
-    import { createApp, nextTick } from "https://unpkg.com/vue@3.5.34/dist/vue.esm-browser.prod.js";
+    import { createApp, nextTick } from "vue";
+    import { toast, Toaster } from "sonner";
     import { createAudioService } from "./audio-service.js";
     import {
       AudioLines, Captions, CaptionsOff, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, Send, Settings, Settings2, Sparkles, Square, Sun, UserPlus, Video, Volume2, VolumeX, X,
@@ -609,10 +621,13 @@
         },
         enterCallMode(roleId = this.selectedRoleId) {
           if (roleId !== this.selectedRoleId) this.selectRoleById(roleId);
-          this.uiMode = 'call';
-          this.drawerOpen = false;
-          if (!this.isSessionActive) this.connect();
-          this.startMic();
+          this.precheckMic().then((ok) => {
+            if (!ok) return;
+            this.uiMode = 'call';
+            this.drawerOpen = false;
+            if (!this.isSessionActive) this.connect();
+            this.startMic();
+          });
         },
         exitCallMode() {
           this.uiMode = 'chat';
@@ -626,9 +641,16 @@
         startHoldRecord() {
           if (this.holdActive) return;
           this.holdActive = true;
-          this.interruptAiPlayback();
-          if (!this.isSessionActive) this.connect();
-          this.startMic();
+          this.precheckMic().then((ok) => {
+            if (!ok) {
+              this.holdActive = false;
+              return;
+            }
+            if (!this.holdActive) return;
+            this.interruptAiPlayback();
+            if (!this.isSessionActive) this.connect();
+            this.startMic();
+          });
         },
         stopHoldRecord() {
           if (!this.holdActive) return;
@@ -885,7 +907,16 @@
           this.interruptAiPlayback();
           this.setSessionStatus('connecting');
           this.ws.onopen = async () => { await this.ensureAudio(); this.setSessionStatus('socket_open'); };
-          this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
+          this.ws.onmessage = (event) => {
+            let payload;
+            try {
+              payload = JSON.parse(event.data);
+            } catch (err) {
+              console.warn('Failed to parse WS message:', err, event.data);
+              return;
+            }
+            this.handleMessage(payload);
+          };
           this.ws.onerror = () => this.setSessionStatus('error');
           this.ws.onclose = (event) => {
             this.interruptAiPlayback();
@@ -1115,6 +1146,31 @@
           }
           return null;
         },
+        async precheckMic() {
+          try {
+            await this.audioService?.checkMicAvailable();
+            return true;
+          } catch (err) {
+            this.showMicError(err);
+            return false;
+          }
+        },
+        showMicError(error) {
+          const name = error?.name || '';
+          if (name === 'InsecureContextError') {
+            toast.error('当前页面非安全上下文', { description: '请通过 HTTPS 或 localhost 访问才能使用麦克风' });
+          } else if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') {
+            toast.error('麦克风未授权', { description: '请在浏览器设置中允许麦克风权限后重试' });
+          } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
+            toast.error('未检测到麦克风', { description: '请检查麦克风是否连接' });
+          } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+            toast.error('麦克风被占用', { description: '请关闭其他正在使用麦克风的应用后重试' });
+          } else if (name === 'NotSupportedError') {
+            toast.error('当前浏览器不支持麦克风');
+          } else {
+            toast.error('麦克风启动失败', { description: error?.message || '请稍后重试' });
+          }
+        },
         async startMic() {
           if (this.micStatus !== 'idle') return;
           this.micStatus = 'starting';
@@ -1124,6 +1180,7 @@
             this.micStatus = 'recording';
           } catch (error) {
             this.micStatus = 'idle';
+            this.showMicError(error);
             this.handleMicEnded();
           }
         },
@@ -1200,6 +1257,7 @@
     };
     Object.entries(lucideComponents).forEach(([name, component]) => app.component(name, component));
     app.component('progressive-text', ProgressiveText);
+    app.component('toaster', Toaster);
     app.mount('#app');
     document.body.classList.add('app-ready');
     const bootScreen = document.getElementById('boot-screen');
