@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gemini 语音对话</title>
+  <script>document.documentElement.dataset.theme = localStorage.getItem('geminiThemeMode') || 'system';</script>
   <link rel="stylesheet" href="https://esm.sh/vue-sonner@2.0.9/lib/index.css" />
   <style>
     :root { color-scheme: light dark; --bg:#f9fafb; --surface:#fff; --glass:rgba(255,255,255,.72); --hover:#f3f4f6; --line:#e5e7eb; --text:#111827; --muted:#6b7280; --soft:#f6f7f9; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --shadow:0 24px 70px rgba(17,24,39,.12); }
@@ -231,7 +232,7 @@
         </div>
       </section>
       <div class="call-status">
-        <button class="icon-btn" type="button" @click="interruptAiPlayback">
+        <button class="icon-btn" :disabled="showUserWave" type="button" @click="interruptAiPlayback">
           <span v-if="showUserWave" class="user-wave" aria-hidden="true">
             <span v-for="(level, i) in userWaveBars" :key="i" :style="{ '--wave-level': level }"></span>
           </span>
@@ -466,7 +467,6 @@
         };
       },
       mounted() {
-        this.applyTheme();
         this.roles = this.loadUserRoles();
         this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.allRoles[0].id;
         this.audioService = createAudioService({
@@ -604,7 +604,6 @@
         },
         saveThemeMode() {
           localStorage.setItem('geminiThemeMode', this.themeMode);
-          this.applyTheme();
         },
         openSystemSettings() {
           this.$refs.systemDialog.showModal();
