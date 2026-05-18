@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Web Audio API 静态示例</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f6fb;
+      --panel: rgba(255,255,255,.86);
+      --panel-strong: #ffffff;
+      --line: rgba(15,23,42,.12);
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #2563eb;
+      --accent-2: #7c3aed;
+      --good: #059669;
+      --warn: #d97706;
+      --bad: #dc2626;
+      --shadow: 0 20px 60px rgba(15, 23, 42, .10);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1220;
+        --panel: rgba(15,23,42,.84);
+        --panel-strong: #0f172a;
+        --line: rgba(148,163,184,.16);
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --shadow: 0 20px 60px rgba(0, 0, 0, .35);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { padding: 24px; }
+    h1, h2, h3, p { margin: 0; }
+    .wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 16px; }
+    .hero {
+      display: grid;
+      gap: 12px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(37,99,235,.10), rgba(124,58,237,.08)), var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .hero-top { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .title { font-size: 24px; font-weight: 700; letter-spacing: 0; }
+    .subtitle { color: var(--muted); max-width: 78ch; }
+    .status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-strong); }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--warn); box-shadow: 0 0 0 4px rgba(217,119,6,.12); }
+    .dot.on { background: var(--good); box-shadow: 0 0 0 4px rgba(5,150,105,.12); }
+    .dot.off { background: var(--bad); box-shadow: 0 0 0 4px rgba(220,38,38,.12); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      color: var(--text);
+      border-radius: 12px;
+      min-height: 42px;
+      padding: 0 14px;
+      cursor: pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    button:hover { transform: translateY(-1px); border-color: rgba(37,99,235,.35); }
+    button:active { transform: translateY(0); }
+    button.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border-color: transparent; }
+    button.danger { background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; border-color: transparent; }
+    button.ghost { background: transparent; }
+    .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+    .card-head { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
+    .card-title { font-size: 16px; font-weight: 700; }
+    .card-sub { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .controls { display: grid; gap: 10px; }
+    .row { display: grid; grid-template-columns: 120px minmax(0, 1fr) 70px; gap: 10px; align-items: center; }
+    .row label { color: var(--muted); font-size: 12px; }
+    .row output { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    select, input[type="number"] {
+      width: 100%;
+      min-height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      color: var(--text);
+      padding: 0 12px;
+    }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pad-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .pad {
+      min-height: 68px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-weight: 700;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(37,99,235,.14), rgba(124,58,237,.12)), var(--panel-strong);
+    }
+    .pad small { display: block; color: var(--muted); font-weight: 500; margin-top: 2px; }
+    .steps { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+    .step {
+      min-height: 44px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      font-variant-numeric: tabular-nums;
+    }
+    .step.on { background: rgba(37,99,235,.18); border-color: rgba(37,99,235,.35); }
+    .step.playing { outline: 2px solid var(--accent); outline-offset: 1px; }
+    canvas {
+      width: 100%;
+      height: 220px;
+      display: block;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(2,6,23,.04);
+    }
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      padding: 2px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      font-size: 12px;
+    }
+    .log {
+      min-height: 84px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      white-space: pre-wrap;
+      overflow: auto;
+      color: var(--muted);
+    }
+    @media (max-width: 960px) {
+      .span-4, .span-6, .span-8 { grid-column: span 12; }
+      .row { grid-template-columns: 1fr; }
+      .row output { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <h1 class="title">Web Audio API 静态示例</h1>
+          <p class="subtitle">纯 JavaScript 生成声音，不依赖任何音频文件。这里集中演示振荡器、包络、滤波、噪声、LFO、延迟、立体声、和弦、节拍器和简单节拍器序列。</p>
+        </div>
+        <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">未初始化</span></div>
+      </div>
+      <div class="actions">
+        <button id="initBtn" class="primary" type="button">初始化音频上下文</button>
+        <button id="resumeBtn" type="button">恢复播放</button>
+        <button id="suspendBtn" type="button">暂停</button>
+        <button id="panicBtn" class="danger" type="button">全部停止</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card span-6">
+        <div class="card-head">
+          <div>
+            <div class="card-title">基础振荡器</div>
+            <div class="card-sub">sine / square / triangle / sawtooth，支持音高、音量、微调。</div>
+          </div>
+          <button id="playToneBtn" class="primary" type="button">播放 1 秒</button>
+        </div>
+        <div class="controls">
+          <div class="row"><label>波形</label><select id="waveform"><option>sine</option><option>square</option><option>triangle</option><option>sawtooth</option></select><output></output></div>
+          <div class="row"><label>频率</label><input id="toneFreq" type="range" min="60" max="1200" value="440" step="1" /><output id="toneFreqOut">440 Hz</output></div>
+          <div class="row"><label>音量</label><input id="toneGain" type="range" min="0" max="1" value="0.2" step="0.01" /><output id="toneGainOut">0.20</output></div>
+          <div class="row"><label>微调</label><input id="toneDetune" type="range" min="-1200" max="1200" value="0" step="1" /><output id="toneDetuneOut">0 cent</output></div>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <div class="card-head">
+          <div>
+            <div class="card-title">ADSR 包络</div>
+            <div class="card-sub">攻击、衰减、延音、释放，适合做短促提示音或乐器音色。</div>
+          </div>
+          <button id="playEnvelopeBtn" type="button">演示包络</button>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Attack</label><input id="attack" type="range" min="0.001" max="2" value="0.02" step="0.001" /><output id="attackOut">0.020 s</output></div>
+          <div class="row"><label>Decay</label><input id="decay" type="range" min="0.01" max="2" value="0.18" step="0.01" /><output id="decayOut">0.18 s</output></div>
+          <div class="row"><label>Sustain</label><input id="sustain" type="range" min="0" max="1" value="0.45" step="0.01" /><output id="sustainOut">0.45</output></div>
+          <div class="row"><label>Release</label><input id="release" type="range" min="0.02" max="3" value="0.6" step="0.01" /><output id="releaseOut">0.60 s</output></div>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <div class="card-head">
+          <div>
+            <div class="card-title">滤波与扫描</div>
+            <div class="card-sub">用白噪声经过 BiquadFilterNode，感受低通和带通扫频。</div>
+          </div>
+          <div class="btn-row">
+            <button id="filterLowBtn" type="button">低通</button>
+            <button id="filterBandBtn" type="button">带通</button>
+            <button id="filterSweepBtn" type="button">扫频</button>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="row"><label>截止频率</label><input id="filterFreq" type="range" min="80" max="10000" value="900" step="1" /><output id="filterFreqOut">900 Hz</output></div>
+          <div class="row"><label>Q 值</label><input id="filterQ" type="range" min="0.1" max="20" value="1.2" step="0.1" /><output id="filterQOut">1.2</output></div>
+          <div class="row"><label>增益</label><input id="filterGain" type="range" min="-24" max="24" value="0" step="1" /><output id="filterGainOut">0 dB</output></div>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <div class="card-head">
+          <div>
+            <div class="card-title">LFO / 颤音 / 调频</div>
+            <div class="card-sub">低频振荡器可以调制音量、频率或左右声像。</div>
+          </div>
+          <button id="playLfoBtn" type="button">演示 LFO</button>
+        </div>
+        <div class="controls">
+          <div class="row"><label>LFO 频率</label><input id="lfoFreq" type="range" min="0.1" max="20" value="5" step="0.1" /><output id="lfoFreqOut">5.0 Hz</output></div>
+          <div class="row"><label>调制深度</label><input id="lfoDepth" type="range" min="0" max="1000" value="120" step="1" /><output id="lfoDepthOut">120</output></div>
+          <div class="row"><label>目标</label><select id="lfoTarget"><option value="gain">音量颤音</option><option value="detune">频率抖动</option><option value="pan">左右摆动</option></select><output></output></div>
+        </div>
+      </div>
+
+      <div class="card span-8">
+        <div class="card-head">
+          <div>
+            <div class="card-title">和弦与音阶</div>
+            <div class="card-sub">一次按下多个音高，演示多振荡器叠加、和弦、琶音和简单音阶。</div>
+          </div>
+          <div class="btn-row">
+            <button id="majorBtn" type="button">大三和弦</button>
+            <button id="minorBtn" type="button">小三和弦</button>
+            <button id="arpBtn" type="button">琶音</button>
+          </div>
+        </div>
+        <div class="pad-grid">
+          <button class="pad" data-note="261.63">C4<small>261.63 Hz</small></button>
+          <button class="pad" data-note="293.66">D4<small>293.66 Hz</small></button>
+          <button class="pad" data-note="329.63">E4<small>329.63 Hz</small></button>
+          <button class="pad" data-note="349.23">F4<small>349.23 Hz</small></button>
+          <button class="pad" data-note="392.00">G4<small>392.00 Hz</small></button>
+          <button class="pad" data-note="440.00">A4<small>440.00 Hz</small></button>
+          <button class="pad" data-note="493.88">B4<small>493.88 Hz</small></button>
+          <button class="pad" data-note="523.25">C5<small>523.25 Hz</small></button>
+        </div>
+      </div>
+
+      <div class="card span-4">
+        <div class="card-head">
+          <div>
+            <div class="card-title">节拍器 / 音序器</div>
+            <div class="card-sub">8 步序列，演示定时器、短音高、重音和节奏触发。</div>
+          </div>
+          <button id="metroBtn" class="primary" type="button">开始</button>
+        </div>
+        <div class="controls">
+          <div class="row"><label>BPM</label><input id="bpm" type="range" min="40" max="220" value="96" step="1" /><output id="bpmOut">96 BPM</output></div>
+          <div class="steps" id="steps"></div>
+        </div>
+      </div>
+
+      <div class="card span-8">
+        <div class="card-head">
+          <div>
+            <div class="card-title">立体声、延迟与混响感</div>
+            <div class="card-sub">PannerNode、DelayNode 和反馈环路组合，模拟空间感。</div>
+          </div>
+          <div class="btn-row">
+            <button id="spaceBtn" type="button">空间音</button>
+            <button id="noiseBtn" type="button">噪声冲击</button>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Pan</label><input id="pan" type="range" min="-1" max="1" value="0" step="0.01" /><output id="panOut">0.00</output></div>
+          <div class="row"><label>Delay</label><input id="delay" type="range" min="0" max="0.8" value="0.22" step="0.01" /><output id="delayOut">0.22 s</output></div>
+          <div class="row"><label>反馈</label><input id="feedback" type="range" min="0" max="0.92" value="0.3" step="0.01" /><output id="feedbackOut">0.30</output></div>
+        </div>
+      </div>
+
+      <div class="card span-12">
+        <div class="card-head">
+          <div>
+            <div class="card-title">实时频谱</div>
+            <div class="card-sub">把正在播放的音频送进 AnalyserNode 画出来。</div>
+          </div>
+          <button id="toggleVizBtn" type="button">开始频谱</button>
+        </div>
+        <canvas id="viz" width="1200" height="320"></canvas>
+      </div>
+
+      <div class="card span-12">
+        <div class="card-head">
+          <div>
+            <div class="card-title">运行日志</div>
+            <div class="card-sub">点击任何按钮后，这里会记录当前演示的参数。</div>
+          </div>
+          <button id="clearLogBtn" class="ghost" type="button">清空</button>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const state = {
+        audio: null,
+        master: null,
+        analyser: null,
+        vizOn: false,
+        metroTimer: null,
+        metroStep: 0,
+        stepPattern: [1, 0, 0, 0, 1, 0, 1, 0],
+        spaceNodes: null,
+        lfoTimer: null,
+        activeSources: new Set(),
+        activeTimers: new Set(),
+      };
+
+      const log = (msg) => {
+        const node = $('log');
+        const ts = new Date().toLocaleTimeString();
+        node.textContent = `[${ts}] ${msg}\n` + node.textContent;
+      };
+
+      const setStatus = (kind, text) => {
+        $('statusDot').className = `dot ${kind}`;
+        $('statusText').textContent = text;
+      };
+
+      const ensureAudio = async () => {
+        if (!state.audio) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          state.audio = new AudioCtx();
+          state.master = state.audio.createGain();
+          state.master.gain.value = 0.7;
+          state.analyser = state.audio.createAnalyser();
+          state.analyser.fftSize = 2048;
+          state.master.connect(state.analyser);
+          state.analyser.connect(state.audio.destination);
+          setStatus('on', '已初始化');
+          log('AudioContext 已创建');
+        }
+        if (state.audio.state === 'suspended') {
+          await state.audio.resume();
+          setStatus('on', '播放中');
+        }
+        return state.audio;
+      };
+
+      const trackSource = (source, nodes = []) => {
+        const item = { source, nodes };
+        state.activeSources.add(item);
+        const cleanup = () => {
+          nodes.forEach((node) => {
+            try { node.disconnect(); } catch {}
+          });
+          state.activeSources.delete(item);
+        };
+        source.addEventListener?.('ended', cleanup, { once: true });
+        return item;
+      };
+
+      const stopTrackedSource = (item) => {
+        try { item.source.stop(0); } catch {}
+        item.nodes.forEach((node) => {
+          try { node.disconnect(); } catch {}
+        });
+        state.activeSources.delete(item);
+      };
+
+      const trackTimer = (timerId) => {
+        state.activeTimers.add(timerId);
+        return timerId;
+      };
+
+      const stopAll = () => {
+        if (state.metroTimer) {
+          clearInterval(state.metroTimer);
+          state.metroTimer = null;
+        }
+        state.activeTimers.forEach((id) => clearTimeout(id));
+        state.activeTimers.clear();
+        state.lfoTimer?.forEach((id) => clearTimeout(id));
+        state.lfoTimer = null;
+        if (state.spaceNodes) {
+          stopTrackedSource(state.spaceNodes.tracked);
+        }
+        state.spaceNodes = null;
+        [...state.activeSources].forEach(stopTrackedSource);
+        setStatus(state.audio ? 'off' : '', state.audio ? '已停止' : '未初始化');
+        document.querySelectorAll('.step.playing').forEach((el) => el.classList.remove('playing'));
+        const metroBtn = $('metroBtn');
+        if (metroBtn) metroBtn.textContent = '开始';
+        log('已停止所有演示');
+      };
+
+      const createTone = async ({ freq = 440, type = 'sine', gain = 0.2, detune = 0, duration = 1, envelope = null, pan = 0, delay = 0, feedback = 0, filter = null } = {}) => {
+        const ctx = await ensureAudio();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const amp = ctx.createGain();
+        const panNode = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+        const out = filter ? ctx.createBiquadFilter() : null;
+        const delayNode = delay > 0 ? ctx.createDelay(1.5) : null;
+        const fb = delay > 0 ? ctx.createGain() : null;
+
+        osc.type = type;
+        osc.frequency.value = freq;
+        osc.detune.value = detune;
+        amp.gain.value = 0.0001;
+        if (panNode) panNode.pan.value = pan;
+
+        let chain = osc;
+        if (filter) {
+          out.type = filter.type || 'lowpass';
+          out.frequency.value = filter.frequency || 900;
+          out.Q.value = filter.Q || 1;
+          out.gain.value = filter.gain || 0;
+          chain.connect(out);
+          chain = out;
+        }
+        chain.connect(amp);
+        chain = amp;
+        if (panNode) {
+          chain.connect(panNode);
+          chain = panNode;
+        }
+        if (delayNode && fb) {
+          delayNode.delayTime.value = delay;
+          fb.gain.value = feedback;
+          chain.connect(delayNode);
+          delayNode.connect(fb);
+          fb.connect(delayNode);
+          delayNode.connect(state.master);
+        }
+        chain.connect(state.master);
+
+        if (envelope) {
+          const a = Math.max(0.001, envelope.attack || 0.02);
+          const d = Math.max(0.01, envelope.decay || 0.18);
+          const s = Math.max(0, Math.min(1, envelope.sustain ?? 0.45));
+          const r = Math.max(0.02, envelope.release || 0.6);
+          amp.gain.cancelScheduledValues(now);
+          amp.gain.setValueAtTime(0.0001, now);
+          amp.gain.linearRampToValueAtTime(gain, now + a);
+          amp.gain.linearRampToValueAtTime(gain * s, now + a + d);
+          amp.gain.setValueAtTime(gain * s, now + Math.max(a + d, duration - r));
+          amp.gain.linearRampToValueAtTime(0.0001, now + duration);
+          osc.start(now);
+          osc.stop(now + duration + 0.05);
+        } else {
+          amp.gain.linearRampToValueAtTime(gain, now + 0.01);
+          amp.gain.setValueAtTime(gain, now + Math.max(0.02, duration - 0.08));
+          amp.gain.linearRampToValueAtTime(0.0001, now + duration);
+          osc.start(now);
+          osc.stop(now + duration + 0.05);
+        }
+        trackSource(osc, [osc, amp, panNode, out, delayNode, fb].filter(Boolean));
+        return osc;
+      };
+
+      const playNoise = async ({ duration = 0.5, filter = 'lowpass', freq = 1000, q = 1.2, gain = 0.18, pan = 0 } = {}) => {
+        const ctx = await ensureAudio();
+        const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        const filt = ctx.createBiquadFilter();
+        filt.type = filter;
+        filt.frequency.value = freq;
+        filt.Q.value = q;
+        const amp = ctx.createGain();
+        const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+        amp.gain.value = 0.0001;
+        if (panner) panner.pan.value = pan;
+        src.connect(filt);
+        filt.connect(amp);
+        if (panner) {
+          amp.connect(panner);
+          panner.connect(state.master);
+        } else {
+          amp.connect(state.master);
+        }
+        const now = ctx.currentTime;
+        amp.gain.linearRampToValueAtTime(gain, now + 0.03);
+        amp.gain.linearRampToValueAtTime(0.0001, now + duration);
+        src.start();
+        src.stop(now + duration + 0.05);
+        trackSource(src, [src, filt, amp, panner].filter(Boolean));
+      };
+
+      const buildSpaceNodes = async () => {
+        const ctx = await ensureAudio();
+        const osc = ctx.createOscillator();
+        const amp = ctx.createGain();
+        const panner = ctx.createStereoPanner();
+        const delay = ctx.createDelay(1.2);
+        const feedback = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+        const delayMix = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = 220;
+        filter.type = 'lowpass';
+        filter.frequency.value = 1200;
+        amp.gain.value = 0.12;
+        delay.delayTime.value = +$('delay').value;
+        feedback.gain.value = +$('feedback').value;
+        panner.pan.value = +$('pan').value;
+        delayMix.gain.value = 0.42;
+        osc.connect(filter);
+        filter.connect(amp);
+        amp.connect(panner);
+        panner.connect(state.master);
+        panner.connect(delay);
+        delay.connect(feedback);
+        feedback.connect(delay);
+        delay.connect(delayMix);
+        delayMix.connect(state.master);
+        osc.start();
+        const tracked = trackSource(osc, [osc, amp, panner, delay, feedback, filter, delayMix]);
+        return { osc, amp, panner, delay, feedback, filter, delayMix, tracked };
+      };
+
+      const drawViz = () => {
+        if (!state.vizOn || !state.analyser) return;
+        const canvas = $('viz');
+        const ctx2d = canvas.getContext('2d');
+        const data = new Uint8Array(state.analyser.frequencyBinCount);
+        state.analyser.getByteFrequencyData(data);
+        ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+        const w = canvas.width / data.length;
+        for (let i = 0; i < data.length; i++) {
+          const v = data[i] / 255;
+          const h = v * canvas.height;
+          ctx2d.fillStyle = `hsl(${220 - v * 140} 85% ${55 - v * 10}%)`;
+          ctx2d.fillRect(i * w, canvas.height - h, Math.max(1, w - 1), h);
+        }
+        requestAnimationFrame(drawViz);
+      };
+
+      const syncReadout = (input, out, formatter) => {
+        const update = () => out.textContent = formatter(input.value);
+        input.addEventListener('input', update);
+        update();
+      };
+
+      syncReadout($('toneFreq'), $('toneFreqOut'), (v) => `${v} Hz`);
+      syncReadout($('toneGain'), $('toneGainOut'), (v) => (+v).toFixed(2));
+      syncReadout($('toneDetune'), $('toneDetuneOut'), (v) => `${v} cent`);
+      syncReadout($('attack'), $('attackOut'), (v) => `${(+v).toFixed(3)} s`);
+      syncReadout($('decay'), $('decayOut'), (v) => `${(+v).toFixed(2)} s`);
+      syncReadout($('sustain'), $('sustainOut'), (v) => (+v).toFixed(2));
+      syncReadout($('release'), $('releaseOut'), (v) => `${(+v).toFixed(2)} s`);
+      syncReadout($('filterFreq'), $('filterFreqOut'), (v) => `${v} Hz`);
+      syncReadout($('filterQ'), $('filterQOut'), (v) => (+v).toFixed(1));
+      syncReadout($('filterGain'), $('filterGainOut'), (v) => `${v} dB`);
+      syncReadout($('lfoFreq'), $('lfoFreqOut'), (v) => `${(+v).toFixed(1)} Hz`);
+      syncReadout($('lfoDepth'), $('lfoDepthOut'), (v) => v);
+      syncReadout($('pan'), $('panOut'), (v) => (+v).toFixed(2));
+      syncReadout($('delay'), $('delayOut'), (v) => `${(+v).toFixed(2)} s`);
+      syncReadout($('feedback'), $('feedbackOut'), (v) => (+v).toFixed(2));
+      syncReadout($('bpm'), $('bpmOut'), (v) => `${v} BPM`);
+
+      $('initBtn').addEventListener('click', ensureAudio);
+      $('resumeBtn').addEventListener('click', ensureAudio);
+      $('suspendBtn').addEventListener('click', async () => {
+        if (state.audio) {
+          await state.audio.suspend();
+          setStatus('off', '已暂停');
+          log('AudioContext 已暂停');
+        }
+      });
+      $('panicBtn').addEventListener('click', stopAll);
+      $('clearLogBtn').addEventListener('click', () => $('log').textContent = '');
+
+      $('playToneBtn').addEventListener('click', async () => {
+        await createTone({
+          freq: +$('toneFreq').value,
+          type: $('waveform').value,
+          gain: +$('toneGain').value,
+          detune: +$('toneDetune').value,
+          duration: 1,
+        });
+        log(`基础振荡器: ${$('waveform').value}, ${$('toneFreq').value} Hz, gain ${$('toneGain').value}, detune ${$('toneDetune').value}`);
+      });
+
+      $('playEnvelopeBtn').addEventListener('click', async () => {
+        await createTone({
+          freq: 523.25,
+          type: 'triangle',
+          gain: 0.45,
+          duration: 1.4,
+          envelope: {
+            attack: +$('attack').value,
+            decay: +$('decay').value,
+            sustain: +$('sustain').value,
+            release: +$('release').value,
+          },
+        });
+        log(`ADSR: A=${$('attack').value}s D=${$('decay').value}s S=${$('sustain').value} R=${$('release').value}s`);
+      });
+
+      $('filterLowBtn').addEventListener('click', async () => {
+        await playNoise({ filter: 'lowpass', freq: +$('filterFreq').value, q: +$('filterQ').value, gain: 0.22 });
+        log(`低通噪声: cutoff ${$('filterFreq').value} Hz, Q ${$('filterQ').value}`);
+      });
+      $('filterBandBtn').addEventListener('click', async () => {
+        await playNoise({ filter: 'bandpass', freq: +$('filterFreq').value, q: +$('filterQ').value, gain: 0.25 });
+        log(`带通噪声: center ${$('filterFreq').value} Hz, Q ${$('filterQ').value}`);
+      });
+      $('filterSweepBtn').addEventListener('click', async () => {
+        const ctx = await ensureAudio();
+        const osc = ctx.createOscillator();
+        const filt = ctx.createBiquadFilter();
+        const amp = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = 140;
+        filt.type = 'lowpass';
+        filt.frequency.setValueAtTime(120, ctx.currentTime);
+        filt.frequency.exponentialRampToValueAtTime(7000, ctx.currentTime + 2.2);
+        filt.Q.value = 8;
+        amp.gain.value = 0.0001;
+        osc.connect(filt);
+        filt.connect(amp);
+        amp.connect(state.master);
+        amp.gain.linearRampToValueAtTime(0.16, ctx.currentTime + 0.04);
+        amp.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 2.2);
+        osc.start();
+        osc.stop(ctx.currentTime + 2.25);
+        trackSource(osc, [osc, filt, amp]);
+        log('滤波扫频: 120 Hz -> 7000 Hz');
+      });
+
+      $('playLfoBtn').addEventListener('click', async () => {
+        const ctx = await ensureAudio();
+        const target = $('lfoTarget').value;
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        const voice = ctx.createOscillator();
+        const amp = ctx.createGain();
+        const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+        lfo.type = 'sine';
+        lfo.frequency.value = +$('lfoFreq').value;
+        lfoGain.gain.value = +$('lfoDepth').value;
+        voice.type = 'sine';
+        voice.frequency.value = 330;
+        amp.gain.value = 0.18;
+        if (panner) panner.pan.value = 0;
+        lfo.connect(lfoGain);
+        if (target === 'gain') {
+          lfoGain.connect(amp.gain);
+        } else if (target === 'detune') {
+          lfoGain.connect(voice.detune);
+        } else {
+          lfoGain.connect(panner.pan);
+        }
+        voice.connect(amp);
+        if (panner) {
+          amp.connect(panner);
+          panner.connect(state.master);
+        } else {
+          amp.connect(state.master);
+        }
+        lfo.start();
+        voice.start();
+        trackSource(lfo, [lfo, lfoGain]);
+        trackSource(voice, [voice, amp, panner].filter(Boolean));
+        const ids = [trackTimer(setTimeout(() => {
+          try { lfo.stop(); } catch {}
+          try { voice.stop(); } catch {}
+        }, 2600))];
+        state.lfoTimer = ids;
+        log(`LFO: target=${target}, rate=${$('lfoFreq').value}Hz, depth=${$('lfoDepth').value}`);
+      });
+
+      document.querySelectorAll('.pad').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await createTone({
+            freq: +btn.dataset.note,
+            type: 'triangle',
+            gain: 0.14,
+            duration: 0.9,
+            envelope: { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.25 },
+            pan: 0,
+          });
+          log(`音阶: ${btn.textContent.trim().replace(/\s+/g, ' ')}`);
+        });
+      });
+
+      $('majorBtn').addEventListener('click', async () => {
+        const root = 261.63;
+        [0, 4, 7].forEach((step, i) => createTone({ freq: root * Math.pow(2, step / 12), type: 'sine', gain: 0.12, duration: 1.2, envelope: { attack: 0.02, decay: 0.16, sustain: 0.5, release: 0.3 }, pan: (i - 1) * 0.2 }));
+        log('大三和弦: C E G');
+      });
+      $('minorBtn').addEventListener('click', async () => {
+        const root = 220;
+        [0, 3, 7].forEach((step, i) => createTone({ freq: root * Math.pow(2, step / 12), type: 'sine', gain: 0.12, duration: 1.2, envelope: { attack: 0.02, decay: 0.18, sustain: 0.48, release: 0.3 }, pan: (i - 1) * 0.2 }));
+        log('小三和弦: A C E');
+      });
+      $('arpBtn').addEventListener('click', async () => {
+        const ctx = await ensureAudio();
+        const notes = [261.63, 329.63, 392, 523.25];
+        notes.forEach((freq, idx) => {
+          const timerId = trackTimer(setTimeout(() => {
+            state.activeTimers.delete(timerId);
+            createTone({ freq, type: 'square', gain: 0.08, duration: 0.25, envelope: { attack: 0.005, decay: 0.05, sustain: 0.2, release: 0.08 }, pan: -0.2 + idx * 0.13 });
+          }, idx * 140));
+        });
+        log('琶音: C E G C5');
+      });
+
+      $('metroBtn').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        if (state.metroTimer) {
+          clearInterval(state.metroTimer);
+          state.metroTimer = null;
+          btn.textContent = '开始';
+          document.querySelectorAll('.step.playing').forEach((el) => el.classList.remove('playing'));
+          log('节拍器已停止');
+          return;
+        }
+        await ensureAudio();
+        btn.textContent = '停止';
+        state.metroStep = 0;
+        const paintStep = () => {
+          document.querySelectorAll('.step').forEach((el, idx) => el.classList.toggle('playing', idx === state.metroStep));
+          if (state.stepPattern[state.metroStep]) {
+            createTone({ freq: state.metroStep === 0 ? 880 : 660, type: 'square', gain: state.metroStep === 0 ? 0.18 : 0.10, duration: 0.08, envelope: { attack: 0.001, decay: 0.01, sustain: 0, release: 0.02 }, pan: 0 });
+          }
+          state.metroStep = (state.metroStep + 1) % 8;
+        };
+        paintStep();
+        state.metroTimer = setInterval(paintStep, 60000 / +$('bpm').value / 2);
+        log(`节拍器启动: ${$('bpm').value} BPM`);
+      });
+
+      $('spaceBtn').addEventListener('click', async () => {
+        state.spaceNodes?.osc?.stop?.();
+        state.spaceNodes = await buildSpaceNodes();
+        log(`空间音: pan ${$('pan').value}, delay ${$('delay').value}s, feedback ${$('feedback').value}`);
+      });
+
+      $('noiseBtn').addEventListener('click', async () => {
+        await playNoise({ filter: 'highpass', freq: 1400, q: 0.8, gain: 0.22, pan: +$('pan').value });
+        log('噪声冲击: highpass');
+      });
+
+      $('toggleVizBtn').addEventListener('click', async (e) => {
+        await ensureAudio();
+        state.vizOn = !state.vizOn;
+        e.currentTarget.textContent = state.vizOn ? '停止频谱' : '开始频谱';
+        if (state.vizOn) requestAnimationFrame(drawViz);
+        log(state.vizOn ? '频谱开启' : '频谱关闭');
+      });
+
+      $('bpm').addEventListener('input', () => {
+        if (state.metroTimer) {
+          clearInterval(state.metroTimer);
+          state.metroTimer = setInterval(() => {
+            document.querySelectorAll('.step').forEach((el, idx) => el.classList.toggle('playing', idx === state.metroStep));
+            if (state.stepPattern[state.metroStep]) {
+              createTone({ freq: state.metroStep === 0 ? 880 : 660, type: 'square', gain: state.metroStep === 0 ? 0.18 : 0.10, duration: 0.08, envelope: { attack: 0.001, decay: 0.01, sustain: 0, release: 0.02 } });
+            }
+            state.metroStep = (state.metroStep + 1) % 8;
+          }, 60000 / +$('bpm').value / 2);
+        }
+      });
+
+      ['pan', 'delay', 'feedback'].forEach((id) => {
+        $(id).addEventListener('input', () => {
+          if (state.spaceNodes) {
+            if (id === 'pan') state.spaceNodes.panner.pan.value = +$('pan').value;
+            if (id === 'delay') state.spaceNodes.delay.delayTime.value = +$('delay').value;
+            if (id === 'feedback') state.spaceNodes.feedback.gain.value = +$('feedback').value;
+          }
+        });
+      });
+
+      const steps = $('steps');
+      for (let i = 0; i < 8; i++) {
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'step' + (state.stepPattern[i] ? ' on' : '');
+        el.textContent = i + 1;
+        el.addEventListener('click', () => {
+          state.stepPattern[i] = state.stepPattern[i] ? 0 : 1;
+          el.classList.toggle('on', !!state.stepPattern[i]);
+        });
+        steps.appendChild(el);
+      }
+
+      window.addEventListener('beforeunload', () => {
+        if (state.audio) state.audio.close();
+      });
+
+      setStatus('', '未初始化');
+      log('页面已加载。先点“初始化音频上下文”。');
+    })();
+  </script>
+</body>
+</html>
