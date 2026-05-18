@@ -47,7 +47,7 @@
     .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; } .hold-record.recording { background:linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
     .call-screen { height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) auto 82px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); background:var(--surface); }
     .call-stage { position:relative; min-height:0; display:grid; place-items:center; overflow:hidden; } .wave { width:min(44vw,260px); height:120px; display:flex; align-items:center; justify-content:center; gap:8px; } .wave span { width:7px; height:28px; border-radius:9999px; background:linear-gradient(180deg,#10b981,#60a5fa); animation:wave 1s ease-in-out infinite; } .wave span:nth-child(2){animation-delay:.1s}.wave span:nth-child(3){animation-delay:.2s}.wave span:nth-child(4){animation-delay:.3s}.wave span:nth-child(5){animation-delay:.4s}
-    .caption-overlay { position:absolute; top:16px; left:16px; width:min(560px,calc(100% - 32px)); max-height:42%; overflow:hidden; padding:14px; border-radius:16px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); color:var(--muted); } .caption-overlay .live-body { margin-top:4px; display:grid; gap:4px; }
+    .caption-overlay { position:absolute; inset:0; min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr); overflow:hidden; padding:14px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); color:var(--muted); } .caption-overlay .live-body { min-height:0; margin-top:4px; display:grid; align-content:end; gap:4px; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; } .caption-overlay .live-body::-webkit-scrollbar { display:none; }
     .call-status { display:grid; justify-items:center; gap:8px; padding:8px 0 14px; color:var(--muted); } .call-status .icon-btn { background:var(--hover); } .call-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:0; min-height:72px; align-items:center; } .call-action { width:100%; min-width:0; min-height:72px; padding:4px 0; border-radius:12px; display:grid; justify-items:center; align-content:center; gap:4px; background:transparent; color:var(--muted); font-size:12px; } .call-action:hover { background:var(--hover); } .call-action .icon-btn { pointer-events:none; background:transparent; }
     dialog { width:min(680px,calc(100% - 24px)); border:0; border-radius:16px; padding:0; color:var(--text); background:var(--glass); box-shadow:var(--shadow); backdrop-filter:blur(12px) saturate(180%); transform:scale(.95); opacity:0; transition:all .2s ease-in-out; } dialog[open] { transform:scale(1); opacity:1; } dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(6px); } :root[data-theme="dark"] dialog::backdrop { background:rgba(0,0,0,.6); }
     .modal { padding:24px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:20px; font-weight:600; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:12px; } label.full, .tool-picker.full { grid-column:1/-1; }
@@ -133,7 +133,7 @@
         <section class="chat-plane">
           <div v-if="!messageGroups.length" class="empty-state"><div><strong>Gemini 语音聊天</strong></div></div>
           <div id="chat" ref="chatEl" v-show="messageGroups.length">
-          <div v-for="(item, index) in messageGroups" :key="item.message.id || index" class="group" :class="item.role === '我' ? 'user' : (item.role === '系统' ? 'system' : 'ai')">
+          <div v-for="(item, index) in messageGroups" :key="item.message.id || index" class="group" :class="item.role">
             <div class="msg">
               <template v-if="item.message.type === 'renderPage'">
                 <div class="render-card">
@@ -210,12 +210,12 @@
         <div class="wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
         <div class="caption-overlay" v-if="captionsVisible">
           <div class="live-role">字幕</div>
-          <div class="live-body">
+          <div class="live-body" ref="callCaptionEl">
             <div
               v-for="(item, index) in captionMessages"
               :key="item.message.id || index"
               class="caption-line"
-              :class="item.role === '我' ? 'user' : 'ai'"
+              :class="item.role"
             >
               <span class="caption-role">{{ item.role }}</span>
               <progressive-text
@@ -465,6 +465,12 @@
       watch: {
         themeMode() {
           this.applyTheme();
+        },
+        captionsVisible() {
+          this.scrollCallCaptions();
+        },
+        uiMode(value) {
+          if (value === 'call') this.scrollCallCaptions();
         },
       },
       computed: {
@@ -938,7 +944,7 @@
           if (!!content.outputTranscription?.text || !!content.modelTurn?.parts?.length) this.callTurnOwner = 'model';
           if (content.inputTranscription?.text) {
             this.closeAiTextSegment();
-            this.addTranscript('我', content.inputTranscription.text);
+            this.addTranscript('user', content.inputTranscription.text);
           }
           if (content.outputTranscription?.text) {
             this.ensureAiTextSegment();
@@ -994,15 +1000,15 @@
             error: toolCall.error ? String(toolCall.error) : '',
           };
 
-          if (existing) this.messageGroups.splice(existing.index, 1, { role: '系统', message: nextMessage });
-          else this.addMessage('系统', nextMessage);
+          if (existing) this.messageGroups.splice(existing.index, 1, { role: 'system', message: nextMessage });
+          else this.addMessage('system', nextMessage);
 
           nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
         },
         findToolCallMessage(id) {
           for (let index = this.messageGroups.length - 1; index >= 0; index -= 1) {
             const item = this.messageGroups[index];
-            if (item.role === '系统' && item.message?.type === 'toolCall' && item.message.id === id) {
+            if (item.role === 'system' && item.message?.type === 'toolCall' && item.message.id === id) {
               return { index, message: item.message };
             }
           }
@@ -1048,6 +1054,7 @@
             const target = this.findMessageById(messageId);
             if (target?.role === role && target.message?.type === 'text') {
               target.message.caption = text;
+              this.scrollCallCaptions();
               return;
             }
             this.addMessage(role, text, messageId);
@@ -1056,6 +1063,7 @@
           const lastItem = this.messageGroups.at(-1);
           if (lastItem?.role === role && lastItem.message?.type === 'text') {
             lastItem.message.caption = text;
+            this.scrollCallCaptions();
             return;
           }
           this.addMessage(role, text, messageId);
@@ -1067,6 +1075,7 @@
             if (target?.role === role && target.message?.type === 'text') {
               target.message.text += text;
               nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
+              this.scrollCallCaptions();
               return;
             }
             this.addMessage(role, text, messageId);
@@ -1076,6 +1085,7 @@
           if (lastItem?.role === role && lastItem.message?.type === 'text') {
             lastItem.message.text += text;
             nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
+            this.scrollCallCaptions();
             return;
           }
           this.addMessage(role, text, messageId);
@@ -1087,6 +1097,13 @@
           if (!message.id) message.id = `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
           this.messageGroups.push({ role, message });
           nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
+          this.scrollCallCaptions();
+        },
+        scrollCallCaptions() {
+          nextTick(() => {
+            const el = this.$refs.callCaptionEl;
+            if (el) el.scrollTop = el.scrollHeight;
+          });
         },
         async ensureAudio() {
           this.audioCtx ||= new AudioContext();
@@ -1213,7 +1230,7 @@
             this.interruptAiPlayback();
             this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
             this.closeAiTextSegment();
-            this.addMessage('我', value);
+            this.addMessage('user', value);
             this.text = '';
             this.textStyleHeight = '48px';
             return;
@@ -1221,7 +1238,7 @@
           if (!this.isSessionActive) {
             this.pendingInitialMessages.push({ role: 'user', parts: [{ text: value }] });
             this.closeAiTextSegment();
-            this.addMessage('我', value);
+            this.addMessage('user', value);
             this.text = '';
             this.textStyleHeight = '48px';
             this.connect();
