@@ -231,10 +231,10 @@
         <span>{{ callStatusText }}</span>
       </div>
       <footer class="call-actions">
-        <button class="call-action" type="button" @click="toggleInteractionMode"><span class="icon-btn"><component :is="muteModeIcon" /></span><span>{{ interactionMode === 'turn' ? '轮询' : (voiceEnabled ? '自由' : '静音') }}</span></button>
-        <button class="call-action" type="button"><span class="icon-btn"><screen-share-icon /></span><span>投屏</span></button>
-        <button class="call-action" type="button"><span class="icon-btn"><video-icon /></span><span>视频</span></button>
-        <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon /></span><span>挂断</span></button>
+        <button class="call-action" type="button" @click="toggleCallAudioMode"><span class="icon-btn"><component :is="muteModeIcon" /></span></button>
+        <button class="call-action" type="button"><span class="icon-btn"><screen-share-icon /></span></button>
+        <button class="call-action" type="button"><span class="icon-btn"><video-icon /></span></button>
+        <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon /></span></button>
       </footer>
     </div>
 
@@ -425,7 +425,8 @@
           processor: null,
           sessionStatus: 'idle',
           micStatus: 'idle',
-          interactionMode: localStorage.getItem('geminiInteractionMode') || 'manual',
+          callAudioMode: localStorage.getItem('geminiCallAudioMode') || 'free',
+          holdActive: false,
           voiceEnabled: JSON.parse(localStorage.getItem('geminiVoiceEnabled') || 'false'),
           text: '',
           textStyleHeight: '48px',
@@ -487,16 +488,31 @@
         },
         callStatusText() {
           if (this.isConnecting) return '正在连接中...';
-          if (this.audioNodes.length) return this.voiceEnabled ? '说话或点击打断' : '点击打断';
-          return this.voiceEnabled ? '正在听...' : '已静音';
+          if (this.audioNodes.length) return this.callAudioMode === 'free' ? '说话或点击打断' : '点击打断';
+          if (this.callAudioMode === 'mute') return '已静音';
+          return '正在听...';
         },
         callStateIcon() {
           if (this.audioNodes.length || this.isConnecting) return 'square-icon';
-          return this.voiceEnabled ? 'audio-lines-icon' : 'mic-off-icon';
+          return this.callAudioMode === 'mute' ? 'mic-off-icon' : 'audio-lines-icon';
         },
         muteModeIcon() {
-          if (this.interactionMode === 'turn') return 'repeat-icon';
-          return this.voiceEnabled ? 'mic-icon' : 'mic-off-icon';
+          if (this.callAudioMode === 'turn') return 'repeat-icon';
+          if (this.callAudioMode === 'mute') return 'mic-off-icon';
+          return 'mic-icon';
+        },
+        callAudioModeLabel() {
+          if (this.callAudioMode === 'turn') return '轮询';
+          if (this.callAudioMode === 'mute') return '静音';
+          return '自由';
+        },
+        shouldSendAudio() {
+          if (!this.isSessionReady) return false;
+          if (this.holdActive) return true;
+          if (this.uiMode !== 'call') return false;
+          if (this.callAudioMode === 'mute') return false;
+          if (this.callAudioMode === 'turn' && this.audioNodes.length > 0) return false;
+          return true;
         },
         activeRenderPage() {
           return this.renderedPages.find((page) => page.id === this.activeRenderPageId) || null;
@@ -571,7 +587,8 @@
         },
         newChat() {
           this.interruptAiPlayback();
-          this.stopMic();
+          this.holdActive = false;
+          this.stopMic({ sendEnd: false, force: true });
           this.ws?.close(1000, 'New chat');
           this.messageGroups = [];
           this.setSessionStatus('idle');
@@ -592,20 +609,28 @@
           this.uiMode = 'call';
           this.drawerOpen = false;
           if (!this.isSessionActive) this.connect();
+          this.startMic();
         },
         exitCallMode() {
           this.uiMode = 'chat';
+          this.holdActive = false;
+          this.stopMic({ sendEnd: true, force: true });
         },
         toggleInputMode() {
           this.inputMode = this.inputMode === 'voice' ? 'text' : 'voice';
           localStorage.setItem('geminiInputMode', this.inputMode);
         },
         startHoldRecord() {
-          if (!this.voiceEnabled) this.toggleVoiceEnabled();
-          this.startMic({ interruptAi: true });
+          if (this.holdActive) return;
+          this.holdActive = true;
+          this.interruptAiPlayback();
+          if (!this.isSessionActive) this.connect();
+          this.startMic();
         },
         stopHoldRecord() {
-          if (this.micStatus === 'recording') this.stopMic();
+          if (!this.holdActive) return;
+          this.holdActive = false;
+          this.stopMic({ sendEnd: true, force: true });
         },
         resizeTextInput(event) {
           const el = event.target;
@@ -760,27 +785,16 @@
           this.audioNodes = [];
           if (this.audioCtx) this.playbackTime = this.audioCtx.currentTime;
         },
-        scheduleTurnMicAfterAudio() {
-          if (this.interactionMode !== 'turn' || !this.voiceEnabled) return;
-          const audioTime = Math.max(this.playbackTime, this.audioCtx?.currentTime || 0) + 0.15;
-          const delay = Math.max(0, (audioTime - (this.audioCtx?.currentTime || 0)) * 1000);
-          const timer = setTimeout(() => this.startMic({ interruptAi: false }), delay);
-          this.playbackTimers.push(timer);
-        },
-        toggleInteractionMode() {
-          this.interactionMode = this.interactionMode === 'turn' ? 'manual' : 'turn';
-          localStorage.setItem('geminiInteractionMode', this.interactionMode);
-          if (this.voiceEnabled && this.interactionMode === 'turn' && this.isSessionReady && this.micStatus === 'idle' && !this.audioNodes.length) this.startMic({ interruptAi: false });
+        toggleCallAudioMode() {
+          const order = ['free', 'turn', 'mute'];
+          const idx = order.indexOf(this.callAudioMode);
+          this.callAudioMode = order[(idx + 1) % order.length];
+          localStorage.setItem('geminiCallAudioMode', this.callAudioMode);
         },
         toggleVoiceEnabled() {
           this.voiceEnabled = !this.voiceEnabled;
           localStorage.setItem('geminiVoiceEnabled', JSON.stringify(this.voiceEnabled));
-          if (!this.voiceEnabled) {
-            this.stopMic();
-            this.interruptAiPlayback();
-            return;
-          }
-          if (this.isSessionReady && this.micStatus === 'idle' && !this.audioNodes.length) this.startMic({ interruptAi: this.interactionMode === 'manual' });
+          if (!this.voiceEnabled) this.interruptAiPlayback();
         },
         setupMessage() {
           const setup = {
@@ -864,8 +878,10 @@
           this.ws.onerror = () => this.setSessionStatus('error');
           this.ws.onclose = (event) => {
             this.interruptAiPlayback();
-            this.stopMic();
+            this.holdActive = false;
+            this.stopMic({ sendEnd: false, force: true });
             this.setSessionStatus(event.code == 1000 ? 'session_closed' : 'socket_closed');
+            if (this.uiMode === 'call') this.uiMode = 'chat';
           };
         },
         handleMessage(msg) {
@@ -889,7 +905,6 @@
           }
           if (msg.setupComplete) {
             this.setSessionStatus('session_ready');
-            if (this.voiceEnabled) this.startMic({ interruptAi: false });
             return;
           }
           const browserFunctionCalls = (msg.toolCall?.functionCalls || []).filter((call) => browserTools.handlers?.[call.name]);
@@ -904,15 +919,12 @@
             this.interruptAiPlayback();
             this.aiAudioScheduledThisTurn = false;
             this.pendingAiMessageId = '';
-            if (this.interactionMode === 'turn' && this.voiceEnabled) this.scheduleTurnMicAfterAudio();
             return;
           }
           if (content.inputTranscription?.text) {
             this.closeAiTextSegment();
             this.addTranscript('我', content.inputTranscription.text);
           }
-          const aiStarted = !!(content.outputTranscription?.text || content.modelTurn?.parts?.length);
-          if (aiStarted && this.interactionMode === 'turn' && this.voiceEnabled && this.micStatus === 'recording') this.stopMic({ sendEnd: false });
           if (content.outputTranscription?.text) {
             this.ensureAiTextSegment();
             this.addTranscript('Gemini', content.outputTranscription.text, this.pendingAiMessageId);
@@ -938,7 +950,6 @@
             this.pendingAiCaption = '';
             this.pendingAiMessageId = '';
             this.aiAudioScheduledThisTurn = false;
-            if (this.voiceEnabled && this.interactionMode === 'turn') this.scheduleTurnMicAfterAudio();
           }
         },
         handleSystemContent(systemContent) {
@@ -1099,34 +1110,45 @@
           }
           return null;
         },
-        async startMic(options = {}) {
-          const { interruptAi = true } = options;
-          if (!this.isSessionReady || !this.voiceEnabled || this.micStatus !== 'idle') return;
+        async startMic() {
+          if (this.micStatus !== 'idle') return;
           this.micStatus = 'starting';
-          const playCue = new Audio('/speech_start.mp3');
-          try { await playCue.play(); } catch {}
           try {
-            if (interruptAi) this.interruptAiPlayback();
             await this.ensureAudio();
             this.micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
             this.source = this.audioCtx.createMediaStreamSource(this.micStream);
             this.processor = this.audioCtx.createScriptProcessor(4096, 1, 1);
             this.source.connect(this.processor); this.processor.connect(this.audioCtx.destination);
             this.micStatus = 'recording';
+            const track = this.micStream.getAudioTracks()[0];
+            if (track) track.addEventListener('ended', () => this.handleMicEnded());
             this.processor.onaudioprocess = (event) => this.sendPcm16k(event.inputBuffer.getChannelData(0), this.audioCtx.sampleRate);
           } catch (error) {
-            this.stopMic();
+            this.micStatus = 'idle';
+            this.handleMicEnded();
           }
         },
         stopMic(options = {}) {
-          const { sendEnd = true } = options;
+          const { sendEnd = true, force = false } = options;
+          if (!force && this.holdActive) return;
           const wasRecording = this.micStatus === 'recording';
           if (sendEnd && wasRecording && this.isSessionActive && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
           this.processor?.disconnect(); this.source?.disconnect(); this.micStream?.getTracks().forEach((track) => track.stop());
           this.processor = this.source = this.micStream = null; this.micStatus = 'idle';
         },
+        handleMicEnded() {
+          if (this.uiMode === 'call') {
+            this.holdActive = false;
+            this.stopMic({ sendEnd: false, force: true });
+            this.uiMode = 'chat';
+          } else if (this.holdActive) {
+            this.holdActive = false;
+            this.stopMic({ sendEnd: false, force: true });
+          }
+        },
         sendPcm16k(input, inRate) {
-          if (!this.isSessionReady || this.ws?.readyState !== WebSocket.OPEN) return;
+          if (this.ws?.readyState !== WebSocket.OPEN) return;
+          if (!this.shouldSendAudio) return;
           const ratio = inRate / 16000;
           const pcm = new Int16Array(Math.floor(input.length / ratio));
           for (let i = 0; i < pcm.length; i++) { const sample = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)])); pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff; }
