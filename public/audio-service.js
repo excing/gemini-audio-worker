@@ -15,7 +15,8 @@ export function createAudioService(options = {}) {
 
   const getVoiceEnabled = () => options.getVoiceEnabled?.() ?? true;
   const shouldSendAudio = () => options.shouldSendAudio?.() ?? false;
-  const canSendAudioInput = () => options.canSendAudioInput?.() ?? true;
+  // May be called before the websocket/session is ready; callers decide whether
+  // to buffer or send the realtime input.
   const onAudioInput = (payload) => options.onAudioInput?.(payload);
   const onCaptionDue = (payload) => options.onCaptionDue?.(payload);
   const onMicEnded = () => options.onMicEnded?.();
@@ -169,7 +170,20 @@ export function createAudioService(options = {}) {
     source.connect(micAnalyser);
     const track = micStream.getAudioTracks()[0];
     if (track) track.addEventListener('ended', onMicEnded);
-    processor.onaudioprocess = (event) => sendPcm16k(event.inputBuffer.getChannelData(0), audioCtx.sampleRate);
+    processor.onaudioprocess = function processMicAudio(event) {
+      if (!shouldSendAudio()) return;
+      const input = event.inputBuffer.getChannelData(0);
+      const ratio = audioCtx.sampleRate / 16000;
+      const pcm = new Int16Array(Math.floor(input.length / ratio));
+      for (let i = 0; i < pcm.length; i += 1) {
+        const sample = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)]));
+        pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+      }
+      onAudioInput({
+        data: b64(new Uint8Array(pcm.buffer)),
+        mimeType: 'audio/pcm;rate=16000',
+      });
+    };
     return true;
   }
 
@@ -227,25 +241,6 @@ export function createAudioService(options = {}) {
 
   function getUserWaveform(bins = 5) {
     return sampleWaveform(micAnalyser, micFreqData, bins);
-  }
-
-  function sendPcm16k(input, inRate) {
-    if (!canSendAudioInput()) return;
-    if (!shouldSendAudio()) return;
-    const ratio = inRate / 16000;
-    const pcm = new Int16Array(Math.floor(input.length / ratio));
-    for (let i = 0; i < pcm.length; i += 1) {
-      const sample = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)]));
-      pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-    }
-    onAudioInput({
-      realtimeInput: {
-        audio: {
-          data: b64(new Uint8Array(pcm.buffer)),
-          mimeType: 'audio/pcm;rate=16000',
-        },
-      },
-    });
   }
 
   function b64(bytes) {

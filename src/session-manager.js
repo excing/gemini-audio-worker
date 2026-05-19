@@ -122,14 +122,9 @@ export const createGeminiSessionManager = ({
 
       if (message?.setupComplete && !initialMessagesSent && initialMessages.length && isGeminiOpen()) {
         initialMessagesSent = true;
-        for (const turn of initialMessages) {
+        for (const realtimeInput of initialMessages) {
           if (!isGeminiOpen() || generation !== currentGeneration) break;
-          currentWs.send(JSON.stringify({
-            clientContent: {
-              turns: [turn],
-              turnComplete: true,
-            },
-          }));
+          currentWs.send(JSON.stringify(realtimeInput));
         }
       }
 

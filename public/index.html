@@ -86,7 +86,7 @@
     .empty-state { height:100%; display:grid; place-items:center; color:var(--muted); text-align:center; } .empty-state strong { display:block; color:var(--text); font-size:20px; font-weight:600; }
     .input-disabled .input-bar .icon-btn, .input-disabled .input-bar .message-field, .input-disabled .input-bar .hold-record, .input-disabled .topbar .topbar-actions .icon-btn { cursor:not-allowed; opacity:.45; pointer-events:none; }
     .input-bar { min-height:64px; justify-content:space-between; align-items: end; padding-block:8px; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; overflow:auto; border:0; outline:none; border-radius:12px; padding:13px 14px; background:var(--hover); transition:all .2s ease-in-out; }
-    .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; } .hold-record.recording { background:linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
+    .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; } .hold-record.recording { background:linear-gradient(90deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) var(--hold-progress, 0%), transparent var(--hold-progress, 0%) 100%), linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
     .call-screen { height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) auto 82px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); background:var(--surface); }
     .call-stage { position:relative; min-height:0; display:grid; place-items:center; overflow:hidden; } .wave { width:min(44vw,260px); height:120px; display:flex; align-items:center; justify-content:center; gap:8px; } .wave span { width:7px; height:calc(18px + var(--wave-level, 0) * 90px); border-radius:9999px; background:linear-gradient(180deg,#10b981,#60a5fa); opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; } .user-wave { display:inline-flex; align-items:center; justify-content:center; gap:3px; height:22px; } .user-wave span { width:3px; height:calc(4px + var(--wave-level, 0) * 18px); border-radius:9999px; background:currentColor; opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; }
     .caption-overlay { position:absolute; inset:0; min-height:0; overflow:hidden;  padding:14px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); color:var(--muted); pointer-events:none; } .caption-overlay .live-body { width:70%; height:70%; min-height:0; display:grid; align-content:start; gap:4px; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; pointer-events:auto; } .caption-overlay .live-body::-webkit-scrollbar { display:none; }
@@ -232,7 +232,7 @@
 
         <form class="input-bar" @submit.prevent="sendText">
           <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon /></button>
-          <button v-if="inputMode === 'voice'" class="hold-record" type="button" :class="{ recording: micStatus === 'recording' }" :disabled="!canToggleVoice" @pointerdown="startHoldRecord" @pointerup="stopHoldRecord" @pointerleave="stopHoldRecord">按住说话</button>
+          <button v-if="inputMode === 'voice'" class="hold-record" type="button" :class="{ recording: micStatus === 'recording' }" :style="{ '--hold-progress': (holdProgress * 100) + '%' }" @pointerdown="startHoldRecord" @pointerup="stopHoldRecord" @pointerleave="stopHoldRecord">{{ holdActive ? `松开发送 · ${holdRemainingSec}s` : '按住说话' }}</button>
           <textarea v-else class="message-field" :style="{ height: textStyleHeight }" v-model="text" rows="1" autocomplete="off" :placeholder="isConnecting ? '正在连接…' : '输入消息...'" :disabled="isConnecting" @input="resizeTextInput" @keydown="handleTextKeydown"></textarea>
           <button class="icon-btn" v-if="text.trim()" type="submit" :disabled="isConnecting" title="发送"><send-icon /></button>
           <button class="icon-btn" v-else-if="inputMode === 'voice'" type="button" title="文本输入" @click="toggleInputMode"><keyboard-icon /></button>
@@ -404,6 +404,7 @@
     const browserTools = window.BROWSER_TOOLS || { declarations: [], handlers: {} };
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
+    const HOLD_MAX_MS = 15000;
 
     const ProgressiveText = {
       props: {
@@ -482,10 +483,11 @@
           callAudioMode: localStorage.getItem('geminiCallAudioMode') || 'free',
           callTurnOwner: 'user',
           holdActive: false,
+          holdProgress: 0,
           voiceEnabled: JSON.parse(localStorage.getItem('geminiVoiceEnabled') || 'false'),
           text: '',
           textStyleHeight: '48px',
-          pendingInitialMessages: [],
+          pendingClientPayloads: [],
           pendingAiCaption: '',
           pendingAiMessageId: '',
           messageGroups: [],
@@ -511,9 +513,17 @@
         this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.allRoles[0].id;
         this.audioService = createAudioService({
           getVoiceEnabled: () => this.voiceEnabled,
-          canSendAudioInput: () => this.ws?.readyState === WebSocket.OPEN,
           shouldSendAudio: () => this.canSendAudioNow(),
-          onAudioInput: (payload) => this.ws?.send(JSON.stringify(payload)),
+          onAudioInput: (audio) => {
+            const input = {
+              realtimeInput: { audio },
+            };
+            if (this.holdActive) {
+              this.pendingClientPayloads.push(input);
+            } else {
+              this.ws?.send(JSON.stringify(input));
+            }
+          },
           onCaptionDue: ({ text, messageId }) => this.addCaption('Gemini', text, messageId),
           onMicEnded: () => this.handleMicEnded(),
         });
@@ -582,8 +592,8 @@
         showUserWave() {
           return this.callStateIcon === 'audio-lines-icon';
         },
-        shouldSendAudio() {
-          return this.canSendAudioNow();
+        holdRemainingSec() {
+          return Math.max(0, Math.ceil((1 - this.holdProgress) * (HOLD_MAX_MS / 1000)));
         },
         activeRenderPage() {
           return this.renderedPages.find((page) => page.id === this.activeRenderPageId) || null;
@@ -623,9 +633,6 @@
         canToggleAutoRead() {
           return !this.isConnecting;
         },
-        canSendText() {
-          return this.isSessionReady && !!this.text.trim();
-        },
         captionMessages() {
           return this.messageGroups
             .filter((item) => item.message?.type === 'text' && item.message.text)
@@ -661,6 +668,7 @@
         newChat() {
           this.interruptAiPlayback();
           this.holdActive = false;
+          this.stopHoldProgress();
           this.stopMic({ sendEnd: false, force: true });
           this.ws?.close(1000, 'New chat');
           this.messageGroups = [];
@@ -690,6 +698,7 @@
         exitCallMode() {
           this.uiMode = 'chat';
           this.holdActive = false;
+          this.stopHoldProgress();
           this.stopMic({ sendEnd: true, force: true });
         },
         toggleInputMode() {
@@ -705,15 +714,40 @@
               return;
             }
             if (!this.holdActive) return;
+            if (!this.canSendAudioNow()) return;
             this.interruptAiPlayback();
-            if (!this.isSessionActive) this.connect();
             this.startMic();
+            this.startHoldProgress();
           });
         },
         stopHoldRecord() {
           if (!this.holdActive) return;
           this.holdActive = false;
-          this.stopMic({ sendEnd: true, force: true });
+          this.stopHoldProgress();
+          this.sendRecord();
+          this.stopMic({ sendEnd: false, force: true });
+        },
+        startHoldProgress() {
+          this.stopHoldProgress();
+          const startTs = performance.now();
+          const tick = () => {
+            if (!this.holdActive) return;
+            const ratio = Math.min(1, (performance.now() - startTs) / HOLD_MAX_MS);
+            this.holdProgress = ratio;
+            if (ratio >= 1) {
+              this.holdRafId = null;
+              toast.info('已达 15 秒上限，已自动发送');
+              this.stopHoldRecord();
+              return;
+            }
+            this.holdRafId = requestAnimationFrame(tick);
+          };
+          this.holdRafId = requestAnimationFrame(tick);
+        },
+        stopHoldProgress() {
+          if (this.holdRafId) cancelAnimationFrame(this.holdRafId);
+          this.holdRafId = null;
+          this.holdProgress = 0;
         },
         resizeTextInput(event) {
           const el = event.target;
@@ -854,7 +888,16 @@
         setSessionStatus(next) {
           this.sessionStatus = next;
         },
+        isWebSocketOpen() {
+          return this.ws?.readyState === WebSocket.OPEN;
+        },
         canSendAudioNow() {
+          // 什么时候能发送音频, 什么时候不能发送
+          // 1. 如果当前WS未连接, 并且用户在长按说话时, 按住说话期间全部缓存
+          //    此时音频数据在本地缓存 initialMessages 里
+          //    等用户松开说话时, 连接 WS, 成功后, 发送 setup, 附带 initialMessages
+          if (!this.isWebSocketOpen() && this.holdActive && this.uiMode !== 'call' && this.inputMode === 'voice') return true;
+          // 2. 其他情况下, 发送音频数据, 必须要等到 session 准备好之后才行
           if (!this.isSessionReady) return false;
           if (this.holdActive) return true;
           if (this.uiMode !== 'call') return false;
@@ -898,9 +941,9 @@
           const browserToolNames = this.selectedBrowserToolNames(setup.autoLoadTools);
           const browserToolDeclarations = browserTools.declarations.filter((tool) => browserToolNames.includes(tool.name));
           if (browserToolDeclarations.length) setup.tools = [{ functionDeclarations: browserToolDeclarations }];
-          if (this.pendingInitialMessages.length) {
-            setup.initialMessages = this.pendingInitialMessages;
-            this.pendingInitialMessages = [];
+          if (this.pendingClientPayloads.length) {
+            setup.initialMessages = this.pendingClientPayloads;
+            this.pendingClientPayloads = [];
           }
           return { setup };
         },
@@ -979,6 +1022,7 @@
           this.ws.onclose = (event) => {
             this.interruptAiPlayback();
             this.holdActive = false;
+            this.stopHoldProgress();
             this.stopMic({ sendEnd: false, force: true });
             this.setSessionStatus(event.code == 1000 ? 'session_closed' : 'socket_closed');
             if (this.uiMode === 'call') this.uiMode = 'chat';
@@ -1005,6 +1049,7 @@
           }
           if (msg.setupComplete) {
             this.setSessionStatus('session_ready');
+            this.sendRealtimeInputs();
             this.callTurnOwner = 'user';
             if (this.uiMode === 'call' && this.callAudioMode !== 'mute') this.playReadyTone({ type: 'triangle'});
             return;
@@ -1272,32 +1317,49 @@
         handleMicEnded() {
           if (this.uiMode === 'call') {
             this.holdActive = false;
+            this.stopHoldProgress();
             this.stopMic({ sendEnd: false, force: true });
             this.uiMode = 'chat';
           } else if (this.holdActive) {
             this.holdActive = false;
+            this.stopHoldProgress();
             this.stopMic({ sendEnd: false, force: true });
           }
         },
         sendText() {
           const value = this.text.trim();
           if (!value) return;
-          if (this.canSendText) {
+          this.pendingClientPayloads.push({
+            clientContent: {
+              turns: [{ role: 'user', parts: [{ text: value }] }],
+              turnComplete: true,
+            },
+          });
+          this.sendRealtimeInputs();
+          this.closeAiTextSegment();
+          this.addMessage('user', value);
+          this.text = '';
+          this.textStyleHeight = '48px';
+        },
+        sendRecord() {
+          const hasAudioMessage = this.pendingClientPayloads?.some(item => item.realtimeInput && item.realtimeInput.audio);
+          if (!hasAudioMessage) return;
+          this.pendingClientPayloads.push({ realtimeInput: { audioStreamEnd: true } });
+          this.sendRealtimeInputs();
+        },
+        sendRealtimeInputs() {
+          if (this.pendingClientPayloads.length <= 0) return;
+          if (this.isSessionReady) {
             this.interruptAiPlayback();
-            this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true } }));
-            this.closeAiTextSegment();
-            this.addMessage('user', value);
-            this.text = '';
-            this.textStyleHeight = '48px';
+            this.pendingClientPayloads.forEach(input => {
+              this.ws.send(JSON.stringify(input));
+            });
+            this.pendingClientPayloads = [];
             return;
           }
-          if (!this.isSessionActive) {
-            this.pendingInitialMessages.push({ role: 'user', parts: [{ text: value }] });
-            this.closeAiTextSegment();
-            this.addMessage('user', value);
-            this.text = '';
-            this.textStyleHeight = '48px';
+          if (!this.isWebSocketOpen()) {
             this.connect();
+            return;
           }
         },
       },
