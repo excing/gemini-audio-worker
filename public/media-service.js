@@ -15,6 +15,7 @@ export function createMediaService(options = {}) {
   let startupTimer = null;
   let displayElement = null;
   let capturing = false;
+  let cameraFacingMode = 'user';
 
   function getCaptureVideo() {
     if (captureVideo) return captureVideo;
@@ -97,14 +98,7 @@ export function createMediaService(options = {}) {
   }
 
   function stopInternal() {
-    stopFrameLoop();
-    if (stream) {
-      stream.getTracks().forEach((track) => {
-        try { track.removeEventListener('ended', handleTrackEnded); } catch {}
-        try { track.stop(); } catch {}
-      });
-    }
-    stream = null;
+    detachStream();
     activeSource = null;
     if (captureVideo) {
       try { captureVideo.srcObject = null; } catch {}
@@ -163,26 +157,81 @@ export function createMediaService(options = {}) {
     return true;
   }
 
+  async function acquireCameraStream(facing) {
+    const base = { width: { ideal: 1280 }, height: { ideal: 720 } };
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: facing }, ...base },
+        audio: false,
+      });
+    } catch (err) {
+      if (err?.name !== 'OverconstrainedError' && err?.name !== 'ConstraintNotSatisfiedError') throw err;
+      return await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facing, ...base },
+        audio: false,
+      });
+    }
+  }
+
+  function attachStream() {
+    if (!stream) return;
+    stream.getVideoTracks().forEach((track) => track.addEventListener('ended', handleTrackEnded));
+    bindStream(getCaptureVideo());
+    if (displayElement) bindStream(displayElement);
+    startFrameLoop();
+  }
+
+  function detachStream() {
+    stopFrameLoop();
+    if (!stream) return;
+    stream.getTracks().forEach((track) => {
+      try { track.removeEventListener('ended', handleTrackEnded); } catch {}
+      try { track.stop(); } catch {}
+    });
+    stream = null;
+  }
+
   async function start(source) {
     if (activeSource === source && stream) return true;
     stopInternal();
     await checkAvailable(source);
     if (source === 'camera') {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
+      stream = await acquireCameraStream(cameraFacingMode);
     } else if (source === 'screen') {
       stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
     } else {
       return false;
     }
     activeSource = source;
-    stream.getVideoTracks().forEach((track) => track.addEventListener('ended', handleTrackEnded));
-    bindStream(getCaptureVideo());
-    if (displayElement) bindStream(displayElement);
-    startFrameLoop();
+    attachStream();
     return true;
+  }
+
+  async function switchCamera() {
+    if (activeSource !== 'camera' || !stream) {
+      const error = new Error('当前不在摄像头模式');
+      error.name = 'InvalidStateError';
+      throw error;
+    }
+    const previous = cameraFacingMode;
+    const next = previous === 'user' ? 'environment' : 'user';
+    detachStream();
+    try {
+      stream = await acquireCameraStream(next);
+      cameraFacingMode = next;
+    } catch (err) {
+      try {
+        stream = await acquireCameraStream(previous);
+      } catch {
+        stream = null;
+        activeSource = null;
+        throw err;
+      }
+      attachStream();
+      throw err;
+    }
+    attachStream();
+    return cameraFacingMode;
   }
 
   function stop() {
@@ -201,7 +250,9 @@ export function createMediaService(options = {}) {
     stop,
     destroy,
     checkAvailable,
+    switchCamera,
     setDisplayElement,
     getActiveSource: () => activeSource,
+    getCameraFacingMode: () => cameraFacingMode,
   };
 }

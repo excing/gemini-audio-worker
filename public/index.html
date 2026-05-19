@@ -249,7 +249,10 @@
           <div class="topbar-center">
             <span class="dot" :class="statusKind"></span><button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
           </div>
-        <button class="icon-btn" type="button" title="字幕" @click="captionsVisible = !captionsVisible"><component :is="captionsVisible ? 'captions-icon' : 'captions-off-icon'" /></button>
+        <div class="topbar-actions">
+          <button v-if="callMediaMode === 'video'" class="icon-btn" type="button" title="切换摄像头" :disabled="mediaStarting" @click="switchCallCamera"><switch-camera-icon /></button>
+          <button class="icon-btn" type="button" title="字幕" @click="captionsVisible = !captionsVisible"><component :is="captionsVisible ? 'captions-icon' : 'captions-off-icon'" /></button>
+        </div>
       </header>
       <section class="call-stage">
         <div class="wave" aria-hidden="true">
@@ -403,7 +406,7 @@
     import { createAudioService } from "./audio-service.js";
     import { createMediaService } from "./media-service.js";
     import {
-      AudioLines, Captions, CaptionsOff, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, ScreenShareOff, Send, Settings, Settings2, Sparkles, Square, Sun, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
+      AudioLines, Captions, CaptionsOff, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, ScreenShareOff, Send, Settings, Settings2, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
 
     const models = window.APP_MODELS || [];
@@ -1050,6 +1053,21 @@
           this.mediaService?.stop();
           this.callMediaMode = 'none';
         },
+        switchCallCamera() {
+          if (!this.mediaService || this.mediaStarting || this.callMediaMode !== 'video') return;
+          this.mediaStarting = true;
+          this.mediaService.switchCamera()
+            .catch((err) => {
+              if (!this.mediaService.getActiveSource()) {
+                this.callMediaMode = 'none';
+                this.mediaService.setDisplayElement(null);
+              }
+              this.showMediaError(err, 'camera');
+            })
+            .finally(() => {
+              this.mediaStarting = false;
+            });
+        },
         toggleVoiceEnabled() {
           this.voiceEnabled = !this.voiceEnabled;
           localStorage.setItem('geminiVoiceEnabled', JSON.stringify(this.voiceEnabled));
@@ -1511,6 +1529,7 @@
       'sparkles-icon': Sparkles,
       'square-icon': Square,
       'sun-icon': Sun,
+      'switch-camera-icon': SwitchCamera,
       'user-plus-icon': UserPlus,
       'video-icon': Video,
       'video-off-icon': VideoOff,
