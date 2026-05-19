@@ -86,7 +86,7 @@
     .empty-state { height:100%; display:grid; place-items:center; color:var(--muted); text-align:center; } .empty-state strong { display:block; color:var(--text); font-size:20px; font-weight:600; }
     .input-disabled .input-bar .icon-btn, .input-disabled .input-bar .message-field, .input-disabled .input-bar .hold-record, .input-disabled .topbar .topbar-actions .icon-btn { cursor:not-allowed; opacity:.45; pointer-events:none; }
     .input-bar { min-height:64px; justify-content:space-between; align-items: end; padding-block:8px; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; overflow:auto; border:0; outline:none; border-radius:12px; padding:13px 14px; background:var(--hover); transition:all .2s ease-in-out; }
-    .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; } .hold-record.recording { background:linear-gradient(90deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) var(--hold-progress, 0%), transparent var(--hold-progress, 0%) 100%), linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
+    .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; } .hold-record.recording { background:linear-gradient(90deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) var(--hold-progress, 0%), transparent var(--hold-progress, 0%) 100%), linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
     .call-screen { height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) auto 82px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); background:var(--surface); }
     .call-stage { position:relative; min-height:0; display:grid; place-items:center; overflow:hidden; } .wave { width:min(44vw,260px); height:120px; display:flex; align-items:center; justify-content:center; gap:8px; } .wave span { width:7px; height:calc(18px + var(--wave-level, 0) * 90px); border-radius:9999px; background:linear-gradient(180deg,#10b981,#60a5fa); opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; } .user-wave { display:inline-flex; align-items:center; justify-content:center; gap:3px; height:22px; } .user-wave span { width:3px; height:calc(4px + var(--wave-level, 0) * 18px); border-radius:9999px; background:currentColor; opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; }
     .caption-overlay { position:absolute; inset:0; min-height:0; overflow:hidden;  padding:14px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); color:var(--muted); pointer-events:none; } .caption-overlay .live-body { width:70%; height:70%; min-height:0; display:grid; align-content:start; gap:4px; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; pointer-events:auto; } .caption-overlay .live-body::-webkit-scrollbar { display:none; }
@@ -531,9 +531,13 @@
           type="button"
           :class="{ recording: micStatus === 'recording' }"
           :style="{ '--hold-progress': (holdProgress * 100) + '%' }"
-          @pointerdown="handlePointerDown"
-          @pointerup="handlePointerUp"
-          @pointerleave="handlePointerUp"
+          @mousedown="handlePointerDown"
+          @mouseup="handlePointerUp"
+          @mouseleave="handlePointerUp"
+          @touchstart.prevent="handlePointerDown"
+          @touchend.prevent="handlePointerUp"
+          @touchcancel.prevent="handlePointerUp"
+          @contextmenu.prevent
         >{{ modelValue ? \`松开发送 · \${holdRemainingSec}s\` : '按住说话' }}</button>
       `,
     };
