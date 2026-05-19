@@ -89,7 +89,9 @@
     .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; } .hold-record.recording { background:linear-gradient(90deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) var(--hold-progress, 0%), transparent var(--hold-progress, 0%) 100%), linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
     .call-screen { height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) auto 82px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); background:var(--surface); }
     .call-stage { position:relative; min-height:0; display:grid; place-items:center; overflow:hidden; } .wave { width:min(44vw,260px); height:120px; display:flex; align-items:center; justify-content:center; gap:8px; } .wave span { width:7px; height:calc(18px + var(--wave-level, 0) * 90px); border-radius:9999px; background:linear-gradient(180deg,#10b981,#60a5fa); opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; } .user-wave { display:inline-flex; align-items:center; justify-content:center; gap:3px; height:22px; } .user-wave span { width:3px; height:calc(4px + var(--wave-level, 0) * 18px); border-radius:9999px; background:currentColor; opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; }
-    .caption-overlay { position:absolute; inset:0; min-height:0; overflow:hidden;  padding:14px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); color:var(--muted); pointer-events:none; } .caption-overlay .live-body { width:70%; height:70%; min-height:0; display:grid; align-content:start; gap:4px; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; pointer-events:auto; } .caption-overlay .live-body::-webkit-scrollbar { display:none; }
+    .call-media { position:absolute; inset:0; z-index:1; display:grid; place-items:center; overflow:hidden; background:var(--surface); animation:pop .2s ease-in-out; } .call-media-video { width:100%; height:100%; object-fit:cover; background:#000; transform:scaleX(-1); } .call-media-exit { min-height:48px; padding:10px 18px; border-radius:9999px; display:inline-flex; gap:8px; align-items:center; background:var(--text); color:var(--bg); font-weight:600; box-shadow:var(--shadow); pointer-events:auto; }
+    .caption-overlay { position:absolute; inset:0; z-index:2; min-height:0; overflow:hidden;  padding:14px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); color:var(--muted); pointer-events:none; } .caption-overlay .live-body { width:70%; height:70%; min-height:0; display:grid; align-content:start; gap:4px; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; pointer-events:auto; } .caption-overlay .live-body::-webkit-scrollbar { display:none; }
+    .call-action .icon-btn.active { background:var(--text); color:var(--bg); }
     .call-status { display:grid; justify-items:center; gap:8px; padding:8px 0 14px; color:var(--muted); } .call-status .icon-btn { background:var(--hover); } .call-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:0; min-height:72px; align-items:center; } .call-action { width:100%; min-width:0; min-height:72px; padding:4px 0; border-radius:12px; display:grid; justify-items:center; align-content:center; gap:4px; background:transparent; color:var(--muted); font-size:12px; } .call-action:hover { background:var(--hover); } .call-action .icon-btn { pointer-events:none; background:transparent; }
     dialog { width:min(680px,calc(100% - 24px)); border:0; border-radius:16px; padding:0; color:var(--text); background:var(--glass); box-shadow:var(--shadow); backdrop-filter:blur(12px) saturate(180%); transform:scale(.95); opacity:0; transition:all .2s ease-in-out; } dialog[open] { transform:scale(1); opacity:1; } dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(6px); } :root[data-theme="dark"] dialog::backdrop { background:rgba(0,0,0,.6); }
     .modal { padding:24px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:20px; font-weight:600; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:12px; } label.full, .tool-picker.full { grid-column:1/-1; }
@@ -253,6 +255,12 @@
         <div class="wave" aria-hidden="true">
           <span v-for="(level, i) in aiWaveBars" :key="i" :style="{ '--wave-level': level }"></span>
         </div>
+        <div class="call-media" v-if="callMediaMode !== 'none'">
+          <video v-show="callMediaMode === 'video'" ref="callVideoEl" class="call-media-video" muted playsinline autoplay></video>
+          <button v-if="callMediaMode === 'screen'" class="call-media-exit" type="button" @click="stopCallMedia">
+            <screen-share-off-icon /><span>退出投屏</span>
+          </button>
+        </div>
         <div class="caption-overlay" v-if="captionsVisible">
           <div class="live-body" ref="callCaptionEl">
             <div
@@ -282,8 +290,8 @@
       </div>
       <footer class="call-actions">
         <button class="call-action" type="button" @click="toggleCallAudioMode"><span class="icon-btn"><component :is="muteModeIcon" /></span></button>
-        <button class="call-action" type="button"><span class="icon-btn"><screen-share-icon /></span></button>
-        <button class="call-action" type="button"><span class="icon-btn"><video-icon /></span></button>
+        <button class="call-action" type="button" :disabled="mediaStarting" @click="toggleCallScreenShare"><span class="icon-btn" :class="{ active: callMediaMode === 'screen' }"><component :is="callMediaMode === 'screen' ? 'screen-share-off-icon' : 'screen-share-icon'" /></span></button>
+        <button class="call-action" type="button" :disabled="mediaStarting" @click="toggleCallVideo"><span class="icon-btn" :class="{ active: callMediaMode === 'video' }"><component :is="callMediaMode === 'video' ? 'video-off-icon' : 'video-icon'" /></span></button>
         <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon /></span></button>
       </footer>
     </div>
@@ -393,8 +401,9 @@
     import { createApp, nextTick } from "vue";
     import { toast, Toaster } from "sonner";
     import { createAudioService } from "./audio-service.js";
+    import { createMediaService } from "./media-service.js";
     import {
-      AudioLines, Captions, CaptionsOff, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, Send, Settings, Settings2, Sparkles, Square, Sun, UserPlus, Video, Volume2, VolumeX, X,
+      AudioLines, Captions, CaptionsOff, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, ScreenShareOff, Send, Settings, Settings2, Sparkles, Square, Sun, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
 
     const models = window.APP_MODELS || [];
@@ -561,6 +570,7 @@
           roleDraft: { ...defaultConfig },
           ws: null,
           audioService: null,
+          mediaService: null,
           aiAudioScheduledThisTurn: false,
           sessionStatus: 'idle',
           micStatus: 'idle',
@@ -584,6 +594,8 @@
           uiMode: 'chat',
           inputMode: localStorage.getItem('geminiInputMode') || 'text',
           captionsVisible: true,
+          callMediaMode: 'none',
+          mediaStarting: false,
           pendingDeleteRole: null,
           editingRoleId: '',
           aiWaveBars: [0, 0, 0, 0, 0],
@@ -610,6 +622,18 @@
           onCaptionDue: ({ text, messageId }) => this.addCaption('Gemini', text, messageId),
           onMicEnded: () => this.handleMicEnded(),
         });
+        this.mediaService = createMediaService({
+          onFrame: ({ data, mimeType }) => {
+            if (this.ws?.readyState === WebSocket.OPEN) {
+              this.ws.send(JSON.stringify({ realtimeInput: { video: { data, mimeType } } }));
+            }
+          },
+          onSourceEnded: (source) => {
+            this.callMediaMode = 'none';
+            if (source === 'screen') toast.info('已停止屏幕分享');
+            else if (source === 'camera') toast.info('摄像头已关闭');
+          },
+        });
         window.addEventListener('browser-tool-render-page', this.handleRenderedPage);
         this.loadToolDeclarations();
       },
@@ -617,6 +641,7 @@
         this.stopWaveLoop();
         window.removeEventListener('browser-tool-render-page', this.handleRenderedPage);
         this.audioService?.destroy();
+        this.mediaService?.destroy();
       },
       watch: {
         themeMode() {
@@ -631,6 +656,7 @@
             this.startWaveLoop();
           } else {
             this.stopWaveLoop();
+            this.stopCallMedia();
           }
         },
       },
@@ -972,6 +998,57 @@
           const idx = order.indexOf(this.callAudioMode);
           this.callAudioMode = order[(idx + 1) % order.length];
           localStorage.setItem('geminiCallAudioMode', this.callAudioMode);
+        },
+        toggleCallVideo() {
+          if (this.callMediaMode === 'video') this.stopCallMedia();
+          else this.startCallMedia('camera');
+        },
+        toggleCallScreenShare() {
+          if (this.callMediaMode === 'screen') this.stopCallMedia();
+          else this.startCallMedia('screen');
+        },
+        startCallMedia(source) {
+          if (!this.mediaService || this.mediaStarting) return;
+          this.mediaStarting = true;
+          this.mediaService.start(source)
+            .then(() => {
+              this.callMediaMode = source === 'camera' ? 'video' : 'screen';
+              return source === 'camera' ? nextTick() : null;
+            })
+            .then(() => {
+              this.mediaService.setDisplayElement(source === 'camera' ? (this.$refs.callVideoEl || null) : null);
+            })
+            .catch((err) => {
+              this.callMediaMode = 'none';
+              this.mediaService.setDisplayElement(null);
+              this.showMediaError(err, source);
+            })
+            .finally(() => {
+              this.mediaStarting = false;
+            });
+        },
+        showMediaError(err, source) {
+          const name = err?.name || '';
+          if (name === 'InsecureContextError') {
+            toast.error('需要 HTTPS 或 localhost', { description: '浏览器要求安全上下文才能使用摄像头/屏幕分享' });
+          } else if (name === 'NotSupportedError') {
+            toast.error('当前浏览器不支持', { description: err.message || '' });
+          } else if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') {
+            if (source === 'camera') toast.error('摄像头未授权', { description: '请在浏览器设置中允许摄像头权限后重试' });
+          } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+            toast.error(source === 'camera' ? '未检测到摄像头' : '未检测到可分享屏幕');
+          } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+            toast.error(source === 'camera' ? '摄像头被占用' : '屏幕分享启动失败');
+          } else if (name === 'AbortError') {
+            // user cancelled the screen-share picker — silent
+          } else {
+            toast.error(source === 'camera' ? '摄像头启动失败' : '屏幕分享启动失败', { description: err?.message || '请稍后重试' });
+          }
+        },
+        stopCallMedia() {
+          this.mediaService?.setDisplayElement(null);
+          this.mediaService?.stop();
+          this.callMediaMode = 'none';
         },
         toggleVoiceEnabled() {
           this.voiceEnabled = !this.voiceEnabled;
@@ -1427,6 +1504,7 @@
       'phone-off-icon': PhoneOff,
       'repeat-icon': Repeat,
       'screen-share-icon': ScreenShare,
+      'screen-share-off-icon': ScreenShareOff,
       'send-icon': Send,
       'settings-icon': Settings,
       'settings-2-icon': Settings2,
@@ -1435,6 +1513,7 @@
       'sun-icon': Sun,
       'user-plus-icon': UserPlus,
       'video-icon': Video,
+      'video-off-icon': VideoOff,
       'volume-2-icon': Volume2,
       'volume-x-icon': VolumeX,
       'x-icon': X,
