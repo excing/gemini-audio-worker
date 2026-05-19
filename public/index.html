@@ -232,7 +232,7 @@
 
         <form class="input-bar" @submit.prevent="sendText">
           <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon /></button>
-          <button v-if="inputMode === 'voice'" class="hold-record" type="button" :class="{ recording: micStatus === 'recording' }" :style="{ '--hold-progress': (holdProgress * 100) + '%' }" @pointerdown="startHoldRecord" @pointerup="stopHoldRecord" @pointerleave="stopHoldRecord">{{ holdActive ? `松开发送 · ${holdRemainingSec}s` : '按住说话' }}</button>
+          <hold-record v-if="inputMode === 'voice'" v-model="holdActive" :mic-status="micStatus" :before-start="prepareHoldRecord" @release="handleHoldRelease"></hold-record>
           <textarea v-else class="message-field" :style="{ height: textStyleHeight }" v-model="text" rows="1" autocomplete="off" :placeholder="isConnecting ? '正在连接…' : '输入消息...'" :disabled="isConnecting" @input="resizeTextInput" @keydown="handleTextKeydown"></textarea>
           <button class="icon-btn" v-if="text.trim()" type="submit" :disabled="isConnecting" title="发送"><send-icon /></button>
           <button class="icon-btn" v-else-if="inputMode === 'voice'" type="button" title="文本输入" @click="toggleInputMode"><keyboard-icon /></button>
@@ -404,7 +404,6 @@
     const browserTools = window.BROWSER_TOOLS || { declarations: [], handlers: {} };
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
-    const HOLD_MAX_MS = 15000;
 
     const ProgressiveText = {
       props: {
@@ -458,6 +457,87 @@
       `,
     };
 
+    const HoldRecord = {
+      props: {
+        modelValue: { type: Boolean, default: false },
+        micStatus: { type: String, default: 'idle' },
+        maxMs: { type: Number, default: 15000 },
+        beforeStart: { type: Function, default: null },
+      },
+      emits: ['update:modelValue', 'release'],
+      data() {
+        return {
+          holdProgress: 0,
+          holdRafId: null,
+        };
+      },
+      computed: {
+        holdRemainingSec() {
+          return Math.max(0, Math.ceil((1 - this.holdProgress) * (this.maxMs / 1000)));
+        },
+      },
+      watch: {
+        modelValue(value) {
+          if (!value) this.stopProgress();
+        },
+      },
+      beforeUnmount() {
+        this.stopProgress();
+      },
+      methods: {
+        async handlePointerDown() {
+          if (this.modelValue) return;
+          this.$emit('update:modelValue', true);
+          if (this.beforeStart) {
+            let ok = false;
+            try { ok = await this.beforeStart(); }
+            catch { ok = false; }
+            if (!this.modelValue) return;
+            if (!ok) { this.$emit('update:modelValue', false); return; }
+          }
+          this.startProgress();
+        },
+        handlePointerUp() {
+          if (!this.modelValue) return;
+          this.$emit('update:modelValue', false);
+          this.$emit('release', { reason: 'pointer' });
+        },
+        startProgress() {
+          this.stopProgress();
+          const startTs = performance.now();
+          const tick = () => {
+            if (!this.modelValue) { this.holdRafId = null; return; }
+            const ratio = Math.min(1, (performance.now() - startTs) / this.maxMs);
+            this.holdProgress = ratio;
+            if (ratio >= 1) {
+              this.holdRafId = null;
+              this.$emit('update:modelValue', false);
+              this.$emit('release', { reason: 'timeout' });
+              return;
+            }
+            this.holdRafId = requestAnimationFrame(tick);
+          };
+          this.holdRafId = requestAnimationFrame(tick);
+        },
+        stopProgress() {
+          if (this.holdRafId) cancelAnimationFrame(this.holdRafId);
+          this.holdRafId = null;
+          this.holdProgress = 0;
+        },
+      },
+      template: `
+        <button
+          class="hold-record"
+          type="button"
+          :class="{ recording: micStatus === 'recording' }"
+          :style="{ '--hold-progress': (holdProgress * 100) + '%' }"
+          @pointerdown="handlePointerDown"
+          @pointerup="handlePointerUp"
+          @pointerleave="handlePointerUp"
+        >{{ modelValue ? \`松开发送 · \${holdRemainingSec}s\` : '按住说话' }}</button>
+      `,
+    };
+
     const app = createApp({
       data() {
         const defaultConfig = {
@@ -483,7 +563,6 @@
           callAudioMode: localStorage.getItem('geminiCallAudioMode') || 'free',
           callTurnOwner: 'user',
           holdActive: false,
-          holdProgress: 0,
           voiceEnabled: JSON.parse(localStorage.getItem('geminiVoiceEnabled') || 'false'),
           text: '',
           textStyleHeight: '48px',
@@ -592,9 +671,6 @@
         showUserWave() {
           return this.callStateIcon === 'audio-lines-icon';
         },
-        holdRemainingSec() {
-          return Math.max(0, Math.ceil((1 - this.holdProgress) * (HOLD_MAX_MS / 1000)));
-        },
         activeRenderPage() {
           return this.renderedPages.find((page) => page.id === this.activeRenderPageId) || null;
         },
@@ -668,7 +744,6 @@
         newChat() {
           this.interruptAiPlayback();
           this.holdActive = false;
-          this.stopHoldProgress();
           this.stopMic({ sendEnd: false, force: true });
           this.ws?.close(1000, 'New chat');
           this.messageGroups = [];
@@ -698,56 +773,25 @@
         exitCallMode() {
           this.uiMode = 'chat';
           this.holdActive = false;
-          this.stopHoldProgress();
           this.stopMic({ sendEnd: true, force: true });
         },
         toggleInputMode() {
           this.inputMode = this.inputMode === 'voice' ? 'text' : 'voice';
           localStorage.setItem('geminiInputMode', this.inputMode);
         },
-        startHoldRecord() {
-          if (this.holdActive) return;
-          this.holdActive = true;
-          this.precheckMic().then((ok) => {
-            if (!ok) {
-              this.holdActive = false;
-              return;
-            }
-            if (!this.holdActive) return;
-            if (!this.canSendAudioNow()) return;
-            this.interruptAiPlayback();
-            this.startMic();
-            this.startHoldProgress();
-          });
+        async prepareHoldRecord() {
+          const ok = await this.precheckMic();
+          if (!ok) return false;
+          if (!this.holdActive) return false;
+          if (!this.canSendAudioNow()) return false;
+          this.interruptAiPlayback();
+          this.startMic();
+          return true;
         },
-        stopHoldRecord() {
-          if (!this.holdActive) return;
-          this.holdActive = false;
-          this.stopHoldProgress();
+        handleHoldRelease({ reason } = {}) {
+          if (reason === 'timeout') toast.info('已达 15 秒上限，已自动发送');
           this.sendRecord();
           this.stopMic({ sendEnd: false, force: true });
-        },
-        startHoldProgress() {
-          this.stopHoldProgress();
-          const startTs = performance.now();
-          const tick = () => {
-            if (!this.holdActive) return;
-            const ratio = Math.min(1, (performance.now() - startTs) / HOLD_MAX_MS);
-            this.holdProgress = ratio;
-            if (ratio >= 1) {
-              this.holdRafId = null;
-              toast.info('已达 15 秒上限，已自动发送');
-              this.stopHoldRecord();
-              return;
-            }
-            this.holdRafId = requestAnimationFrame(tick);
-          };
-          this.holdRafId = requestAnimationFrame(tick);
-        },
-        stopHoldProgress() {
-          if (this.holdRafId) cancelAnimationFrame(this.holdRafId);
-          this.holdRafId = null;
-          this.holdProgress = 0;
         },
         resizeTextInput(event) {
           const el = event.target;
@@ -1022,7 +1066,6 @@
           this.ws.onclose = (event) => {
             this.interruptAiPlayback();
             this.holdActive = false;
-            this.stopHoldProgress();
             this.stopMic({ sendEnd: false, force: true });
             this.setSessionStatus(event.code == 1000 ? 'session_closed' : 'socket_closed');
             if (this.uiMode === 'call') this.uiMode = 'chat';
@@ -1317,12 +1360,10 @@
         handleMicEnded() {
           if (this.uiMode === 'call') {
             this.holdActive = false;
-            this.stopHoldProgress();
             this.stopMic({ sendEnd: false, force: true });
             this.uiMode = 'chat';
           } else if (this.holdActive) {
             this.holdActive = false;
-            this.stopHoldProgress();
             this.stopMic({ sendEnd: false, force: true });
           }
         },
@@ -1396,6 +1437,7 @@
     };
     Object.entries(lucideComponents).forEach(([name, component]) => app.component(name, component));
     app.component('progressive-text', ProgressiveText);
+    app.component('hold-record', HoldRecord);
     app.component('toaster', Toaster);
     app.mount('#app');
     document.body.classList.add('app-ready');
