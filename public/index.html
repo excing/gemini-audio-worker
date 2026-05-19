@@ -3,13 +3,53 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f9fafb" />
+  <meta name="msapplication-navbutton-color" content="#f9fafb" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Gemini 语音对话</title>
-  <script>document.documentElement.dataset.theme = localStorage.getItem('geminiThemeMode') || 'system';</script>
+  <script>
+    (() => {
+      const THEME_COLORS = {
+        light: { browser: '#f9fafb', appleStatusBar: 'default' },
+        dark: { browser: '#09090B', appleStatusBar: 'black-translucent' },
+      };
+      const root = document.documentElement;
+      const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+      const getMeta = (name) => {
+        let meta = document.querySelector(`meta[name="${name}"]`);
+        if (!meta) {
+          meta = document.createElement('meta');
+          meta.name = name;
+          document.head.appendChild(meta);
+        }
+        return meta;
+      };
+      const resolveTheme = (themeMode) => themeMode === 'system'
+        ? (media?.matches ? 'dark' : 'light')
+        : themeMode;
+
+      window.applyGeminiTheme = (themeMode = localStorage.getItem('geminiThemeMode') || 'system') => {
+        const theme = THEME_COLORS[resolveTheme(themeMode)] || THEME_COLORS.light;
+        root.dataset.theme = themeMode;
+        getMeta('theme-color').content = theme.browser;
+        getMeta('msapplication-navbutton-color').content = theme.browser;
+        getMeta('apple-mobile-web-app-status-bar-style').content = theme.appleStatusBar;
+      };
+
+      window.applyGeminiTheme();
+      const handleSystemThemeChange = () => {
+        if ((localStorage.getItem('geminiThemeMode') || 'system') === 'system') window.applyGeminiTheme('system');
+      };
+      if (media?.addEventListener) media.addEventListener('change', handleSystemThemeChange);
+      else if (media?.addListener) media.addListener(handleSystemThemeChange);
+    })();
+  </script>
   <link rel="stylesheet" href="https://esm.sh/vue-sonner@2.0.9/lib/index.css" />
   <style>
     :root { color-scheme: light dark; --bg:#f9fafb; --surface:#fff; --glass:rgba(255,255,255,.72); --hover:#f3f4f6; --line:#e5e7eb; --text:#111827; --muted:#6b7280; --soft:#f6f7f9; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --shadow:0 24px 70px rgba(17,24,39,.12); }
-    :root[data-theme="dark"] { color-scheme: dark; --bg:#1d1d1d; --surface:#000; --glass:rgba(9,9,11,.72); --hover:#18181b; --line:#27272a; --text:#fafafa; --muted:#a1a1aa; --soft:#111113; --shadow:0 24px 70px rgba(0,0,0,.42); }
-    @media (prefers-color-scheme: dark) { :root[data-theme="system"] { color-scheme: dark; --bg:#1d1d1d; --surface:#000; --glass:rgba(9,9,11,.72); --hover:#18181b; --line:#27272a; --text:#fafafa; --muted:#a1a1aa; --soft:#111113; --shadow:0 24px 70px rgba(0,0,0,.42); } }
+    :root[data-theme="dark"] { color-scheme: dark; --bg:#09090B; --surface:#000; --glass:rgba(39, 39, 39, 0.72); --hover:#18181b; --line:#27272a; --text:#fafafa; --muted:#a1a1aa; --soft:#111113; --shadow:0 24px 70px rgba(0,0,0,.42); }
+    @media (prefers-color-scheme: dark) { :root[data-theme="system"] { color-scheme: dark; --bg:#09090B; --surface:#000; --glass:rgba(39, 39, 39, 0.72); --hover:#18181b; --line:#27272a; --text:#fafafa; --muted:#a1a1aa; --soft:#111113; --shadow:0 24px 70px rgba(0,0,0,.42); } }
+    @media (prefers-color-scheme: no-preference) { :root[data-theme="system"] { color-scheme: light; --bg:#f9fafb; --surface:#fff; --glass:rgba(255,255,255,.72); --hover:#f3f4f6; --line:#e5e7eb; --text:#111827; --muted:#6b7280; --soft:#f6f7f9; --shadow:0 24px 70px rgba(17,24,39,.12); } }
     * { box-sizing:border-box; } html, body, #app { width:100%; height:100%; } body { margin:0; overflow:hidden; font:14px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--text); background:var(--bg); }
     body:not(.app-ready) #app { visibility:hidden; }
     body:not(.app-ready) { background:var(--bg); }
@@ -26,7 +66,7 @@
     .sidebar-head { justify-content:space-between; } .brand { min-width:0; font-size:16px; font-weight:600; } .brand-mark { width:32px; height:32px; border-radius:9999px; display:grid; place-items:center; background:var(--text); color:var(--bg); }
     .icon-btn { width:44px; height:44px; min-width:44px; border-radius:9999px; display:inline-grid; place-items:center; background:transparent; color:var(--text); } .icon-btn:hover, .role-row:hover, .menu-item:hover { background:var(--hover); } .icon-btn.danger { color:var(--bad); }
     .primary-btn { min-height:44px; padding:8px 12px; border-radius:9999px; display:inline-flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(135deg,#111827,#3f3f46); color:#fff; font-weight:600; }
-    :root[data-theme="dark"] .primary-btn { background:linear-gradient(135deg,#fafafa,#a1a1aa); color:#1d1d1d; }
+    :root[data-theme="dark"] .primary-btn { background:linear-gradient(135deg,#fafafa,#a1a1aa); color:#09090B; }
     .sidebar-actions { display:grid; gap:8px; } .menu-item { min-height:44px; padding:8px 12px; border-radius:12px; display:flex; justify-content: center; align-items:center; gap:10px; background:transparent; color:var(--text); text-align:left; font-weight:500; }
     .section-title { margin:0 0 8px; padding:0 8px; color:var(--muted); font-size:12px; font-weight:500; } .role-list { min-height:0; overflow:auto; display:grid; align-content:start; gap:4px; }
     .role-row { width:100%; min-width:0; min-height:48px; padding:6px 6px 6px 12px; border-radius:12px; background:transparent; text-align:left; } .role-row .icon-btn { flex:0 0 36px; width:36px; min-width:36px; height:36px; } .role-row.active { background:var(--hover); } .role-name { flex:1 1 auto; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
@@ -611,7 +651,7 @@
         closeSystemSettings() { this.$refs.systemDialog.close(); },
         closeSystemSettingsOnBackdrop(event) { if (event.target === this.$refs.systemDialog) this.closeSystemSettings(); },
         applyTheme() {
-          document.documentElement.dataset.theme = this.themeMode;
+          window.applyGeminiTheme?.(this.themeMode);
         },
         createRole() {
           this.roleDraft = this.createDefaultRole();
