@@ -392,6 +392,7 @@
 
   <script src="./constant.js"></script>
   <script src="./tools.js"></script>
+  <script src="./tool-events.js"></script>
   <script type="importmap">
     {
       "imports": {
@@ -1107,18 +1108,24 @@
         async handleBrowserToolCalls(functionCalls) {
           const functionResponses = [];
           for (const call of functionCalls) {
-            const handler = browserTools.handlers?.[call.name];
+            const { id, name, args } = call;
+            const startedAt = Date.now();
+            TOOL_EVENTS.upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'running', args: args ?? null, startedAt });
+            const handler = browserTools.handlers?.[name];
             let response;
             if (!handler) {
-              response = { error: `Unknown browser tool: ${call.name}` };
+              response = { error: `Unknown browser tool: ${name}` };
+              TOOL_EVENTS.upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
             } else {
               try {
-                response = await handler(call.args || {});
+                response = await handler(args || {});
+                TOOL_EVENTS.upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'done', args: args ?? null, response, startedAt, endedAt: Date.now() });
               } catch (error) {
                 response = { error: error.message || String(error) };
+                TOOL_EVENTS.upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
               }
             }
-            functionResponses.push({ id: call.id, name: call.name, response });
+            functionResponses.push({ id, name, response });
           }
           if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ toolResponse: { functionResponses } }));
         },
@@ -1256,54 +1263,16 @@
           const toolCall = systemContent?.toolCall;
           if (!toolCall) return;
           this.closeAiTextSegment();
-
-          const id = toolCall.id || `tool-call-${Date.now()}`;
-          const existing = this.findToolCallMessage(id);
-          const result = toolCall.result || null;
-          const images = (Array.isArray(result?.images) ? result.images : [])
-            .map((image) => this.normalizeGeneratedImage(image))
-            .filter(Boolean);
-          const nextMessage = {
-            ...(existing?.message || {}),
-            id,
-            type: 'toolCall',
-            name: toolCall.name || existing?.message?.name || 'tool',
-            status: toolCall.error ? 'error' : (result ? 'done' : 'running'),
-            prompt: typeof toolCall.prompt === 'string' ? toolCall.prompt.trim() : (existing?.message?.prompt || ''),
-            images,
-            text: String(result?.text || '').trim(),
-            error: toolCall.error ? String(toolCall.error) : '',
-          };
-
-          if (existing) this.messageGroups.splice(existing.index, 1, { role: 'system', message: nextMessage });
-          else this.addMessage('system', nextMessage);
-
-          nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
+          TOOL_EVENTS.upsertToolMessage(this.messageGroups, toolCall);
+          this.scrollChatToBottom();
         },
-        findToolCallMessage(id) {
-          for (let index = this.messageGroups.length - 1; index >= 0; index -= 1) {
-            const item = this.messageGroups[index];
-            if (item.role === 'system' && item.message?.type === 'toolCall' && item.message.id === id) {
-              return { index, message: item.message };
-            }
-          }
-          return null;
-        },
-        normalizeGeneratedImage(image) {
-          if (!image) return null;
-          if (typeof image === 'string') return { url: image };
-          if (image.url) return { url: image.url };
-          if (image.b64_json) return { url: `data:image/png;base64,${image.b64_json}` };
-          return null;
-        },
-        toolDisplayName(name) {
-          if (name === 'imageGeneration') return '图片生成';
-          return name || '工具调用';
-        },
-        toolStatusText(status) {
-          if (status === 'done') return '完成';
-          if (status === 'error') return '失败';
-          return '进行中';
+        toolDisplayName(name) { return TOOL_EVENTS.displayName(name); },
+        toolStatusText(status) { return TOOL_EVENTS.statusText(status); },
+        scrollChatToBottom() {
+          nextTick(() => {
+            const el = this.$refs.chatEl;
+            if (el) el.scrollTop = el.scrollHeight;
+          });
         },
         ensureAiTextSegment() {
           if (!this.pendingAiMessageId) this.pendingAiMessageId = `ai-msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;

@@ -11,6 +11,7 @@
 import { toolDeclarations, toolHandlers } from './tools.js';
 import { createMcpToolRegistry, getMcpServersConfig } from './mcp-client.js';
 import { createGeminiSessionManager, parseGeminiJson } from './session-manager.js';
+import { sendToolRunning, sendToolDone, sendToolError } from './tool-events.js';
 
 const seeyouGemini = {
   name: 'see_you_later',
@@ -103,40 +104,35 @@ const injectTools = (message, mcpToolDeclarations = []) => {
 };
 
 const executeToolCalls = async (ctx, functionCalls, enabledToolNames, mcpToolHandlers = {}) => {
-  console.log('-----------------------');
-  console.log('-----------------------');
-  console.log(JSON.stringify(functionCalls, null, 2));
-
   const functionResponses = [];
   const enabledToolSet = new Set(enabledToolNames);
   const allToolHandlers = { ...toolHandlers, ...mcpToolHandlers };
 
   for (const call of functionCalls) {
-    const handler = allToolHandlers[call.name];
+    const { id, name, args } = call;
+    const kind = toolHandlers[name] ? 'worker' : 'mcp';
+    const handler = allToolHandlers[name];
+    const startedAt = Date.now();
     let response;
 
-    if (!enabledToolSet.has(call.name)) {
-      response = { error: `Tool is not enabled: ${call.name}` };
+    if (!enabledToolSet.has(name)) {
+      response = { error: `Tool is not enabled: ${name}` };
+      sendToolError(ctx.server, { id, name, kind, args, error: response.error, startedAt });
     } else if (!handler) {
-      response = { error: `Unknown tool: ${call.name}` };
+      response = { error: `Unknown tool: ${name}` };
+      sendToolError(ctx.server, { id, name, kind, args, error: response.error, startedAt });
     } else {
+      sendToolRunning(ctx.server, { id, name, kind, args });
       try {
-        response = await handler(call.id, call.name, call.args || {}, ctx);
+        response = await handler(id, name, args || {}, ctx);
+        sendToolDone(ctx.server, { id, name, kind, args, response, startedAt });
       } catch (error) {
         response = { error: error.message || String(error) };
-        ctx.server.send(JSON.stringify({ systemContent: { toolCall: { id: call.id, name: call.name, error: error.message || String(error) } } }));
+        sendToolError(ctx.server, { id, name, kind, args, error: response.error, response, startedAt });
       }
     }
 
-    console.log('-----------------------');
-    console.log('-----------------------');
-    console.log(JSON.stringify(response, null, 2));
-
-    functionResponses.push({
-      id: call.id,
-      name: call.name,
-      response,
-    });
+    functionResponses.push({ id, name, response });
   }
 
   return { toolResponse: { functionResponses } };
@@ -290,6 +286,9 @@ export default {
 
               const browserFunctionCalls = functionCalls.filter((call) => !allToolHandlers[call.name]);
               if (browserFunctionCalls.length) {
+                for (const call of browserFunctionCalls) {
+                  sendToolRunning(server, { id: call.id, name: call.name, kind: 'browser', args: call.args ?? null });
+                }
                 server.send(JSON.stringify({ toolCall: { functionCalls: browserFunctionCalls } }));
               }
               return;

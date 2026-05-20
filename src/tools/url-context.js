@@ -1,8 +1,7 @@
 import { clampInteger, extractTitle, htmlToText, isAllowedFetchProtocol } from '../tool-utils.js';
 
-const handler = async (id, name, { urls = [], url = '', max_chars = 12000 } = {}) => {
+const handler = async (id, name, { urls = [], max_chars = 12000 } = {}) => {
   const requestedUrls = (Array.isArray(urls) ? urls : [urls])
-    .concat(url ? [url] : [])
     .map((item) => String(item || '').trim())
     .filter((item, index, items) => item && items.indexOf(item) === index)
     .slice(0, 5);
@@ -62,10 +61,6 @@ export default {
         type: 'array',
         description: '要读取的 URL 列表，最多 5 个。',
         items: { type: 'string' },
-      },
-      url: {
-        type: 'string',
-        description: '单个要读取的 URL。当 urls 未提供时使用。',
       },
       max_chars: {
         type: 'number',

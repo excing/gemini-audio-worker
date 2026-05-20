@@ -147,10 +147,9 @@ window.DEFAULT_ROLES = [
   {
     id: "role-smart-search",
     name: "智能搜索",
-    model: "gemini-2.5-flash-preview",
     voiceName: "Rasalgethi",
-    autoLoadTools: "webSearch,codeExecution,googleMaps,get_weather",
-    systemInstruction: "你是智能搜索助手。"
+    autoLoadTools: "webSearch,codeExecution,get_weather,urlContext,fetch,renderPage",
+    systemInstruction: "你是智能搜索助手。当需要搜索时, 搜索最新的, 然后调用 urlContext 工具读取搜索结果地址做进一步调研, 最后输出结果."
   },
   {
     id: 'role-quick-qa',

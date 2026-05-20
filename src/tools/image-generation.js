@@ -141,8 +141,6 @@ const handler = async (id, name, { prompt = '', images = [], mime_type = 'image/
     content.push({ type: 'image_url', image_url: { url: imageUrl } });
   }
 
-  server.send(JSON.stringify({ systemContent: { toolCall: { id, name, prompt } } }));
-
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -176,7 +174,6 @@ const handler = async (id, name, { prompt = '', images = [], mime_type = 'image/
   if (formatResult.images?.length === 0 && !formatResult.text) {
     throw new Error(`图片生成失败, 没有图片返回`);
   }
-  server.send(JSON.stringify({ systemContent: { toolCall: { id, name, result: formatResult } } }));
   return formatResult;
 };
 
