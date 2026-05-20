@@ -87,13 +87,6 @@
 
   const renderPage = ({ html = '' } = {}) => {
     const renderId = `render-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    window.dispatchEvent(new CustomEvent('browser-tool-render-page', {
-      detail: {
-        id: renderId,
-        html: String(html || ''),
-        title: '页面渲染',
-      },
-    }));
     return {
       ok: true,
       render_id: renderId,

@@ -30,7 +30,7 @@
       const fetchUrl = String(args?.url || '').trim();
       if (fetchUrl) display.prompt = `${method} ${fetchUrl}`;
     } else {
-      const promptValue = args?.prompt || args?.query || args?.url || args?.code || args?.html || '';
+      const promptValue = args?.prompt || args?.query || args?.url || args?.code || '';
       if (promptValue) display.prompt = String(promptValue).trim();
     }
 
@@ -51,6 +51,12 @@
           url: String(item?.url || '').trim(),
         }))
         .filter((item) => item.title || item.url);
+    }
+
+    // renderPage 专属：保留 HTML 源码，供卡片内「渲染页面 / 原代码」切换
+    if (name === 'renderPage') {
+      const htmlSource = String(args?.html || '').trim();
+      if (htmlSource) display.html = htmlSource;
     }
 
     return display;

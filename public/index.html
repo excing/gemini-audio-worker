@@ -97,12 +97,16 @@
     .modal { padding:24px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:20px; font-weight:600; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:12px; } label.full, .tool-picker.full { grid-column:1/-1; }
     input, textarea, select { width:100%; min-height:44px; border:0; border-radius:8px; padding:0 12px; outline:none; background:var(--hover); } textarea { min-height:120px; padding:12px; resize:vertical; } .modal-actions { justify-content:flex-end; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; } .tool-chip, .tool-actions button { min-height:34px; border-radius:9999px; padding:0 12px; background:var(--hover); } .tool-chip.active { background:var(--text); color:var(--bg); } .warning { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--bad); color:#fff; } .secondary-btn { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--hover); }
     .danger-note { margin:0; padding:12px; border-radius:12px; background:rgba(239,68,68,.12); color:var(--bad); font-weight:600; }
-    .render-card { display:grid; gap:8px; min-width:min(320px,70vw); max-width:100%; text-align:left; }
-    .render-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    .render-card-title { font-weight:750; }
-    .render-card-open { min-width:34px; min-height:34px; padding:0; border-radius:12px; font-size:16px; }
+    .render-block { display:grid; gap:8px; }
+    .render-block-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .render-tabs { display:inline-flex; gap:2px; padding:2px; border-radius:9999px; background:var(--hover); }
+    .render-tabs button { min-height:28px; padding:3px 12px; border-radius:9999px; font-size:12px; font-weight:700; color:var(--muted); background:transparent; }
+    .render-tabs button.active { color:var(--bg); background:var(--text); }
+    .render-card-open { min-width:34px; min-height:34px; padding:0; border-radius:12px; font-size:16px; display:inline-grid; place-items:center; }
+    .render-card-actions { display:inline-flex; align-items:center; gap:6px; }
     .render-card-preview { overflow:hidden; border:1px solid var(--line); border-radius:12px; background:white; pointer-events:none; }
     .render-card-preview iframe { width:100%; height:420px; border:0; background:white; }
+    .render-block-code { margin:0; max-height:420px; overflow:auto; padding:12px; border:1px solid var(--line); border-radius:12px; background:rgba(127,127,127,.08); white-space:pre-wrap; overflow-wrap:anywhere; font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
     .render-dialog { width:min(1120px,calc(100% - 24px)); height:min(820px,calc(100dvh - 24px)); }
     .render-modal { height:100%; padding:14px; display:grid; grid-template-rows:auto minmax(0,1fr); gap:12px; }
     .render-modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--muted); }
@@ -134,7 +138,7 @@
     [data-sonner-toaster] [data-sonner-toast] [data-close-button] { left:auto !important; right:0 !important; transform:translate(40%, -40%); width: 28px; height: 28px; }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } }
     @media (max-width:960px) { .app-shell { grid-template-columns:minmax(0,1fr); } .sidebar { position:fixed; width:280px; transform:translateX(-105%); } .drawer-open .sidebar { transform:translateX(0); } .app-shell.sidebar-collapsed { grid-template-columns:minmax(0,1fr); } .app-shell.sidebar-collapsed .sidebar { width:280px; padding:16px; } .drawer-scrim { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.28); } }
-    @media (max-width:700px) { .main { grid-template-rows:56px minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .render-card,.tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
+    @media (max-width:700px) { .main { grid-template-rows:56px minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
   </style>
 </head>
 <body>
@@ -188,18 +192,7 @@
           <div id="chat" ref="chatEl" v-show="messageGroups.length">
           <div v-for="(item, index) in messageGroups" :key="item.message.id || index" class="group" :class="item.role">
             <div class="msg">
-              <template v-if="item.message.type === 'renderPage'">
-                <div class="render-card">
-                  <div class="render-card-head">
-                    <span class="render-card-title">{{ item.message.title }}</span>
-                    <button class="secondary-btn render-card-open" type="button" title="放大预览" @click="openRenderedPage(item.message.renderId)"><maximize-2-icon /></button>
-                  </div>
-                  <div class="render-card-preview" aria-hidden="true">
-                    <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" :srcdoc="item.message.html"></iframe>
-                  </div>
-                </div>
-              </template>
-              <template v-else-if="item.message.type === 'toolCall'">
+              <template v-if="item.message.type === 'toolCall'">
                 <div class="tool-call-card">
                   <div class="tool-call-head">
                     <span class="tool-call-name">{{ toolDisplayName(item.message.name) }}</span>
@@ -225,6 +218,22 @@
                       </li>
                     </ol>
                   </details>
+                  <div class="render-block" v-if="item.message.name === 'renderPage' && item.message.html">
+                    <div class="render-block-bar">
+                      <div class="render-tabs">
+                        <button type="button" :class="{ active: (item.message.renderView || 'page') === 'page' }" @click="item.message.renderView = 'page'">预览</button>
+                        <button type="button" :class="{ active: item.message.renderView === 'code' }" @click="item.message.renderView = 'code'">源代码</button>
+                      </div>
+                      <div class="render-card-actions">
+                        <button class="secondary-btn render-card-open" type="button" title="复制源代码" @click="copyRenderSource(item.message)"><component :is="item.message.copyState === 'ok' ? 'check-icon' : 'copy-icon'" /></button>
+                        <button v-if="(item.message.renderView || 'page') === 'page'" class="secondary-btn render-card-open" type="button" title="放大预览" @click="openRenderedPage(item.message)"><maximize-2-icon /></button>
+                      </div>
+                    </div>
+                    <div v-if="(item.message.renderView || 'page') === 'page'" class="render-card-preview" aria-hidden="true">
+                      <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" :srcdoc="item.message.html"></iframe>
+                    </div>
+                    <pre v-else class="render-block-code">{{ item.message.html }}</pre>
+                  </div>
                   <p class="tool-call-text" v-if="item.message.text">{{ item.message.text }}</p>
                   <p class="tool-call-error" v-if="item.message.error">{{ item.message.error }}</p>
                 </div>
@@ -398,8 +407,11 @@
     <dialog class="render-dialog" ref="renderDialog" @click="closeRenderedPageOnBackdrop">
       <div class="render-modal">
         <div class="render-modal-head">
-          <strong>{{ activeRenderPage?.title || '页面渲染' }}</strong>
-          <button class="secondary-btn render-modal-close" type="button" title="关闭预览" @click="closeRenderedPage"><x-icon /></button>
+          <strong>{{ toolDisplayName('renderPage') }}</strong>
+          <div class="render-card-actions">
+            <button v-if="activeRenderPage" class="secondary-btn render-modal-close" type="button" title="复制源代码" @click="copyRenderSource(activeRenderPage)"><component :is="activeRenderPage.copyState === 'ok' ? 'check-icon' : 'copy-icon'" /></button>
+            <button class="secondary-btn render-modal-close" type="button" title="关闭预览" @click="closeRenderedPage"><x-icon /></button>
+          </div>
         </div>
         <iframe v-if="activeRenderPage" title="工具渲染页面预览" sandbox="allow-scripts" referrerpolicy="no-referrer" :srcdoc="activeRenderPage.html"></iframe>
       </div>
@@ -424,7 +436,7 @@
     import { createAudioService } from "./audio-service.js";
     import { createMediaService } from "./media-service.js";
     import {
-      AudioLines, Captions, CaptionsOff, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, ScreenShareOff, Send, Settings, Settings2, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
+      AudioLines, Captions, CaptionsOff, Check, Copy, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, ScreenShareOff, Send, Settings, Settings2, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
 
     const models = window.APP_MODELS || [];
@@ -434,6 +446,33 @@
     const browserTools = window.BROWSER_TOOLS || { declarations: [], handlers: {} };
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
+
+    async function copyTextToClipboard(text) {
+      if (text == null) return false;
+      const value = String(text);
+      try {
+        if (navigator.clipboard?.writeText && window.isSecureContext) {
+          await navigator.clipboard.writeText(value);
+          return true;
+        }
+      } catch (_) { /* fall back to legacy path */ }
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        textarea.style.pointerEvents = 'none';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return ok;
+      } catch (_) {
+        return false;
+      }
+    }
 
     const ProgressiveText = {
       props: {
@@ -605,8 +644,7 @@
           pendingAiCaption: '',
           pendingAiMessageId: '',
           messageGroups: [],
-          renderedPages: [],
-          activeRenderPageId: '',
+          activeRenderPage: null,
           toolDeclarations: this.loadCachedToolDeclarations(),
           toolsLoading: false,
           themeMode: localStorage.getItem('geminiThemeMode') || 'system',
@@ -656,12 +694,10 @@
             else if (source === 'camera') toast.info('摄像头已关闭');
           },
         });
-        window.addEventListener('browser-tool-render-page', this.handleRenderedPage);
         this.loadToolDeclarations();
       },
       beforeUnmount() {
         this.stopWaveLoop();
-        window.removeEventListener('browser-tool-render-page', this.handleRenderedPage);
         this.audioService?.destroy();
         this.mediaService?.destroy();
       },
@@ -722,9 +758,6 @@
         },
         showUserWave() {
           return this.callStateIcon === 'audio-lines-icon';
-        },
-        activeRenderPage() {
-          return this.renderedPages.find((page) => page.id === this.activeRenderPageId) || null;
         },
         canDeleteRole() {
           const roleId = this.editingRoleId || this.selectedRoleId;
@@ -1146,34 +1179,29 @@
           }
           if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ toolResponse: { functionResponses } }));
         },
-        handleRenderedPage(event) {
-          this.closeAiTextSegment();
-          const page = {
-            id: event.detail?.id || `render-${Date.now()}`,
-            title: event.detail?.title || '页面渲染',
-            html: String(event.detail?.html || ''),
-          };
-          this.renderedPages.push(page);
-          this.addMessage('Gemini', {
-            id: page.id,
-            type: 'renderPage',
-            renderId: page.id,
-            title: page.title,
-            html: page.html,
-          });
-          this.openRenderedPage(page.id);
-        },
-        openRenderedPage(renderId) {
-          this.activeRenderPageId = renderId;
+        openRenderedPage(message) {
+          this.activeRenderPage = message;
           nextTick(() => {
             if (!this.$refs.renderDialog.open) this.$refs.renderDialog.showModal();
           });
         },
         closeRenderedPage() {
           this.$refs.renderDialog.close();
+          this.activeRenderPage = null;
         },
         closeRenderedPageOnBackdrop(event) {
           if (event.target === this.$refs.renderDialog) this.closeRenderedPage();
+        },
+        async copyRenderSource(message) {
+          if (!message?.html) return;
+          const ok = await copyTextToClipboard(message.html);
+          if (ok) {
+            message.copyState = 'ok';
+            toast.success('已复制源代码');
+            setTimeout(() => { if (message.copyState === 'ok') message.copyState = ''; }, 1600);
+          } else {
+            toast.error('复制失败', { description: '请手动选择源代码后复制' });
+          }
         },
         async connect() {
           if (this.isSessionActive) return;
@@ -1501,6 +1529,8 @@
       'audio-lines-icon': AudioLines,
       'captions-icon': Captions,
       'captions-off-icon': CaptionsOff,
+      'check-icon': Check,
+      'copy-icon': Copy,
       'keyboard-icon': Keyboard,
       'maximize-2-icon': Maximize2,
       'menu-icon': Menu,
