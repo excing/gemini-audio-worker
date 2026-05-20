@@ -122,6 +122,14 @@
     .tool-call-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.24); border-top-color:var(--warn); border-radius:50%; animation:spin .8s linear infinite; }
     .tool-call-media { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
     .tool-call-image { display:block; width:100%; min-height: auto; object-fit:contain; border:1px solid var(--line); border-radius:12px; background:rgba(0,0,0,.22); }
+    .tool-call-results > summary { min-height:28px; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:13px; font-weight:700; color:var(--muted); list-style:none; }
+    .tool-call-results > summary::-webkit-details-marker { display:none; }
+    .tool-call-results > summary::before { content:""; width:8px; height:8px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(-45deg); transition:transform .18s ease-in-out; opacity:.72; }
+    .tool-call-results[open] > summary::before { transform:rotate(45deg); }
+    .tool-call-result-list { margin:8px 0 0; padding:8px 12px 8px 30px; border-radius:8px; background:rgba(127,127,127,.08); display:grid; gap:6px; font-size:13px; line-height:1.5; }
+    .tool-call-result-list li { overflow-wrap:anywhere; }
+    .tool-call-result-list a { color:var(--text); text-decoration:none; }
+    .tool-call-result-list a:hover { text-decoration:underline; }
     .tool-picker { display:grid; gap:10px; color:var(--muted); font-size:12px; } .tool-hint { color:var(--muted); }
     [data-sonner-toaster] [data-sonner-toast] [data-close-button] { left:auto !important; right:0 !important; transform:translate(40%, -40%); width: 28px; height: 28px; }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } }
@@ -208,6 +216,15 @@
                       <img class="tool-call-image" :src="image.url" alt="生成图片" />
                     </a>
                   </div>
+                  <details class="tool-call-results" v-if="item.message.results?.length">
+                    <summary>{{ item.message.results.length }} 条结果</summary>
+                    <ol class="tool-call-result-list">
+                      <li v-for="(result, resultIndex) in item.message.results" :key="resultIndex">
+                        <a v-if="result.url" :href="result.url" target="_blank" rel="noopener noreferrer" :title="result.url">{{ result.title || result.url }}</a>
+                        <span v-else>{{ result.title }}</span>
+                      </li>
+                    </ol>
+                  </details>
                   <p class="tool-call-text" v-if="item.message.text">{{ item.message.text }}</p>
                   <p class="tool-call-error" v-if="item.message.error">{{ item.message.error }}</p>
                 </div>

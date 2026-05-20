@@ -41,6 +41,18 @@
       if (response?.text) display.text = String(response.text).trim();
     }
 
+    // 通用：带 title/url 的结果列表（如 webSearch），任何工具只要在 response.results
+    // 里返回 [{ title, url }] 即可自动渲染为可折叠的标题列表
+    const resultList = Array.isArray(response?.results) ? response.results : [];
+    if (resultList.length) {
+      display.results = resultList
+        .map((item) => ({
+          title: String(item?.title || '').trim(),
+          url: String(item?.url || '').trim(),
+        }))
+        .filter((item) => item.title || item.url);
+    }
+
     return display;
   };
 
