@@ -31,7 +31,7 @@ export function createAudioService(options = {}) {
     clearPlaybackTimers();
     audioNodes.forEach((node) => { try { node.stop(); } catch {} });
     audioNodes = [];
-    if (audioCtx) playbackTime = audioCtx.currentTime;
+    playbackTime = 0;
   }
 
   function syncPlaybackVolume() {
