@@ -1,4 +1,4 @@
-window.APP_MODELS = [
+export const APP_MODELS = [
   {
     "name": "Gemini 3.1 Flash Preview",
     "value": "gemini-3.1-flash-preview"
@@ -9,7 +9,7 @@ window.APP_MODELS = [
   }
 ];
 
-window.APP_VOICES = [
+export const APP_VOICES = [
   {
     "name": "No Voice",
     "characteristics": "Default"
@@ -136,7 +136,7 @@ window.APP_VOICES = [
   }
 ];
 
-window.DEFAULT_ROLES = [
+export const DEFAULT_ROLES = [
   {
     id: "role-gemili-audio-chat",
     name: "Gemini 语音对话",

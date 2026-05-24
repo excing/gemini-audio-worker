@@ -419,9 +419,6 @@
     <Toaster position="top-right" :duration="3200" :theme="themeMode" rich-colors close-button></Toaster>
   </div>
 
-  <script src="./constant.js"></script>
-  <script src="./tools.js"></script>
-  <script src="./tool-events.js"></script>
   <script type="importmap">
     {
       "imports": {
@@ -435,15 +432,18 @@
     import { toast, Toaster } from "sonner";
     import { createAudioService } from "./audio-service.js";
     import { createMediaService } from "./media-service.js";
+    import { APP_MODELS, APP_VOICES, DEFAULT_ROLES } from "./constant.js";
+    import { BROWSER_TOOLS } from "./tools.js";
+    import { buildToolMessage, upsertToolMessage, displayName as toolEventDisplayName, statusText as toolEventStatusText } from "./tool-events.js";
     import {
       AudioLines, Captions, CaptionsOff, Check, Copy, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, ScreenShareOff, Send, Settings, Settings2, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
 
-    const models = window.APP_MODELS || [];
-    const voices = window.APP_VOICES || [];
+    const models = APP_MODELS;
+    const voices = APP_VOICES;
 
-    const defaultRoles = window.DEFAULT_ROLES;
-    const browserTools = window.BROWSER_TOOLS || { declarations: [], handlers: {} };
+    const defaultRoles = DEFAULT_ROLES;
+    const browserTools = BROWSER_TOOLS;
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
 
@@ -1160,19 +1160,19 @@
           for (const call of functionCalls) {
             const { id, name, args } = call;
             const startedAt = Date.now();
-            TOOL_EVENTS.upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'running', args: args ?? null, startedAt });
+            upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'running', args: args ?? null, startedAt });
             const handler = browserTools.handlers?.[name];
             let response;
             if (!handler) {
               response = { error: `Unknown browser tool: ${name}` };
-              TOOL_EVENTS.upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
+              upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
             } else {
               try {
                 response = await handler(args || {});
-                TOOL_EVENTS.upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'done', args: args ?? null, response, startedAt, endedAt: Date.now() });
+                upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'done', args: args ?? null, response, startedAt, endedAt: Date.now() });
               } catch (error) {
                 response = { error: error.message || String(error) };
-                TOOL_EVENTS.upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
+                upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
               }
             }
             functionResponses.push({ id, name, response });
@@ -1308,11 +1308,11 @@
           const toolCall = systemContent?.toolCall;
           if (!toolCall) return;
           this.closeAiTextSegment();
-          TOOL_EVENTS.upsertToolMessage(this.messageGroups, toolCall);
+          upsertToolMessage(this.messageGroups, toolCall);
           this.scrollChatToBottom();
         },
-        toolDisplayName(name) { return TOOL_EVENTS.displayName(name); },
-        toolStatusText(status) { return TOOL_EVENTS.statusText(status); },
+        toolDisplayName(name) { return toolEventDisplayName(name); },
+        toolStatusText(status) { return toolEventStatusText(status); },
         scrollChatToBottom() {
           nextTick(() => {
             const el = this.$refs.chatEl;
