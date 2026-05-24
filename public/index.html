@@ -1133,14 +1133,13 @@
         setupMessage() {
           const setup = {
             model: this.currentRole.model,
-            generationConfig: { },
-            systemInstruction: { parts: [{ text: this.currentRole.systemInstruction }] },
+            systemInstruction: this.currentRole.systemInstruction || '',
+            autoLoadTools: this.currentRole.autoLoadTools || '',
           };
-          if (this.currentRole.voiceName) setup.generationConfig.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.currentRole.voiceName } } };
-          setup.autoLoadTools = this.currentRole.autoLoadTools || '';
+          if (this.currentRole.voiceName) setup.voiceName = this.currentRole.voiceName;
           const browserToolNames = this.selectedBrowserToolNames(setup.autoLoadTools);
           const browserToolDeclarations = browserTools.declarations.filter((tool) => browserToolNames.includes(tool.name));
-          if (browserToolDeclarations.length) setup.tools = [{ functionDeclarations: browserToolDeclarations }];
+          if (browserToolDeclarations.length) setup.browserTools = browserToolDeclarations;
           if (this.pendingClientPayloads.length) {
             setup.initialMessages = this.pendingClientPayloads;
             this.pendingClientPayloads = [];
