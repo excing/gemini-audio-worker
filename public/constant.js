@@ -1,3 +1,7 @@
+export const DEFAULT_MCP_SERVERS = [
+  { "name": "instantDomainSearch", "url": "https://api.instantdomainsearch.com/mcp" },
+];
+
 export const APP_MODELS = [
   {
     "name": "Gemini 3.1 Flash Preview",

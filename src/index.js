@@ -9,7 +9,6 @@
  */
 
 import { toolDeclarations, toolHandlers } from './tools.js';
-import { createMcpToolRegistry, getMcpServersConfig } from './mcp-client.js';
 import { createGeminiSessionManager, parseGeminiJson } from './session-manager.js';
 import { sendToolRunning, sendToolDone, sendToolError } from './tool-events.js';
 
@@ -31,33 +30,19 @@ const runtimeTools = [{
   functionDeclarations: [seeyouGemini]
 }];
 
-const getAvailableToolDeclarations = (mcpToolDeclarations = []) => [
-  ...toolDeclarations,
-  ...mcpToolDeclarations,
-];
-
 const parseJson = parseGeminiJson;
 
-const getEnabledToolNames = (autoLoadTools, mcpToolDeclarations = []) => {
+const getEnabledToolNames = (autoLoadTools) => {
   if (typeof autoLoadTools !== 'string') return [];
 
   const value = autoLoadTools.trim();
   if (!value) return [];
-  if (value === '*') return getAvailableToolDeclarations(mcpToolDeclarations).map((tool) => tool.name);
+  if (value === '*') return toolDeclarations.map((tool) => tool.name);
 
-  const requestedNames = value
+  return value
     .split(',')
     .map((name) => name.trim())
     .filter((name, index, names) => name && names.indexOf(name) === index);
-
-  return requestedNames.flatMap((name) => {
-    const mcpServerPrefix = `${name}__`;
-    const matchedMcpTools = mcpToolDeclarations
-      .filter((tool) => tool.name.startsWith(mcpServerPrefix))
-      .map((tool) => tool.name);
-
-    return matchedMcpTools.length ? matchedMcpTools : [name];
-  });
 };
 
 // 将前端的本地 setup 协议转换为 Gemini Live setup 消息.
@@ -65,13 +50,14 @@ const getEnabledToolNames = (autoLoadTools, mcpToolDeclarations = []) => {
 //   model              别名, 由 models 表解析为真实 Gemini 模型 ID
 //   voiceName          可选, 包装为 generationConfig.speechConfig
 //   systemInstruction  原始文本, 包装为 { parts: [{ text }] }
-//   autoLoadTools      启用的 worker/mcp 工具名 (逗号分隔; '*' 表示全部)
-//   mcpServers         本会话 MCP 配置 (仅消费, 不下发给 Gemini)
+//   autoLoadTools      启用的 worker 工具名 (逗号分隔; '*' 表示全部); 与 worker toolDeclarations 求交后注入 Gemini
 //   initialMessages    setupComplete 后下发的 realtimeInput 序列 (仅消费, 不下发给 Gemini)
-//   browserTools       浏览器侧 functionDeclarations (扁平数组)
-const buildGeminiSetup = (localSetup = {}, mcpToolDeclarations = []) => {
+//   browserTools       浏览器侧 functionDeclarations (扁平数组), 含 MCP 工具声明; Worker 不区分来源, 一律转给 Gemini
+const buildGeminiSetup = (localSetup = {}) => {
   const resolvedModel = models[localSetup.model] ?? models.default;
-  const enabledToolNames = getEnabledToolNames(localSetup.autoLoadTools, mcpToolDeclarations);
+  const requestedNames = new Set(getEnabledToolNames(localSetup.autoLoadTools));
+  const enabledDeclarations = toolDeclarations.filter((tool) => requestedNames.has(tool.name));
+  const enabledToolNames = enabledDeclarations.map((tool) => tool.name);
 
   const generationConfig = { responseModalities: 'AUDIO' };
   if (localSetup.voiceName) {
@@ -91,8 +77,6 @@ const buildGeminiSetup = (localSetup = {}, mcpToolDeclarations = []) => {
     geminiSetup.systemInstruction = { parts: [{ text: localSetup.systemInstruction }] };
   }
 
-  const allFunctionDeclarations = [...toolDeclarations, ...mcpToolDeclarations];
-  const enabledDeclarations = allFunctionDeclarations.filter((tool) => enabledToolNames.includes(tool.name));
   // 受支持的工具概览
   // 仅支持 google search 和函数调用, 且 google search 仅 2.5 模型可用
   // https://ai.google.dev/gemini-api/docs/live-api/tools?hl=zh-CN#tools-overview
@@ -112,32 +96,30 @@ const buildGeminiSetup = (localSetup = {}, mcpToolDeclarations = []) => {
   return { message: { setup: geminiSetup }, enabledToolNames };
 };
 
-const executeToolCalls = async (ctx, functionCalls, enabledToolNames, mcpToolHandlers = {}) => {
+const executeToolCalls = async (ctx, functionCalls, enabledToolNames) => {
   const functionResponses = [];
   const enabledToolSet = new Set(enabledToolNames);
-  const allToolHandlers = { ...toolHandlers, ...mcpToolHandlers };
 
   for (const call of functionCalls) {
     const { id, name, args } = call;
-    const kind = toolHandlers[name] ? 'worker' : 'mcp';
-    const handler = allToolHandlers[name];
+    const handler = toolHandlers[name];
     const startedAt = Date.now();
     let response;
 
     if (!enabledToolSet.has(name)) {
       response = { error: `Tool is not enabled: ${name}` };
-      sendToolError(ctx.server, { id, name, kind, args, error: response.error, startedAt });
+      sendToolError(ctx.server, { id, name, kind: 'worker', args, error: response.error, startedAt });
     } else if (!handler) {
       response = { error: `Unknown tool: ${name}` };
-      sendToolError(ctx.server, { id, name, kind, args, error: response.error, startedAt });
+      sendToolError(ctx.server, { id, name, kind: 'worker', args, error: response.error, startedAt });
     } else {
-      sendToolRunning(ctx.server, { id, name, kind, args });
+      sendToolRunning(ctx.server, { id, name, kind: 'worker', args });
       try {
         response = await handler(id, name, args || {}, ctx);
-        sendToolDone(ctx.server, { id, name, kind, args, response, startedAt });
+        sendToolDone(ctx.server, { id, name, kind: 'worker', args, response, startedAt });
       } catch (error) {
         response = { error: error.message || String(error) };
-        sendToolError(ctx.server, { id, name, kind, args, error: response.error, response, startedAt });
+        sendToolError(ctx.server, { id, name, kind: 'worker', args, error: response.error, response, startedAt });
       }
     }
 
@@ -162,26 +144,15 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/tools') {
-      try {
-        if (availableToolDeclarations.length == 0) {
-          const mcpRegistry = await createMcpToolRegistry(getMcpServersConfig(env.MCP_SERVERS));
-          availableToolDeclarations.push(
-            ...getAvailableToolDeclarations(mcpRegistry.declarations).map(({ name, description }) => { return { name, description } }),
-          );
-        }
-        return Response.json(
-          { tools: availableToolDeclarations },
-          { headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' } },
-        );
-      } catch (error) {
-        return Response.json(
-          {
-            tools: getAvailableToolDeclarations([]),
-            error: error.message || String(error),
-          },
-          { headers: { 'Cache-Control': 'no-store' } },
+      if (availableToolDeclarations.length == 0) {
+        availableToolDeclarations.push(
+          ...toolDeclarations.map(({ name, description }) => ({ name, description })),
         );
       }
+      return Response.json(
+        { tools: availableToolDeclarations },
+        { headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' } },
+      );
     }
 
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
@@ -211,8 +182,6 @@ export default {
     }
 
     let enabledToolNames = [];
-    let mcpToolDeclarations = [];
-    let mcpToolHandlers = {};
 
     let geminiSession;
 
@@ -223,23 +192,9 @@ export default {
         if (message?.setup) {
           const localSetup = message.setup;
           const initialMessages = Array.isArray(localSetup.initialMessages) ? localSetup.initialMessages : [];
-          try {
-            const mcpServers = getMcpServersConfig(localSetup.mcpServers, env.MCP_SERVERS);
-            const mcpRegistry = await createMcpToolRegistry(mcpServers);
-            mcpToolDeclarations = mcpRegistry.declarations;
-            mcpToolHandlers = mcpRegistry.handlers;
-            const built = buildGeminiSetup(localSetup, mcpToolDeclarations);
-            enabledToolNames = built.enabledToolNames;
-            geminiSession.sendManagedSetup(built.message, initialMessages);
-          } catch (error) {
-            sendClientStatus({
-              type: 'warning',
-              message: `MCP 初始化失败: ${error.message || error}`,
-            });
-            const built = buildGeminiSetup(localSetup, []);
-            enabledToolNames = built.enabledToolNames;
-            geminiSession.sendManagedSetup(built.message, initialMessages);
-          }
+          const built = buildGeminiSetup(localSetup);
+          enabledToolNames = built.enabledToolNames;
+          geminiSession.sendManagedSetup(built.message, initialMessages);
         } else {
           geminiSession.send(event.data);
         }
@@ -284,18 +239,17 @@ export default {
                 functionCalls.splice(seeyoulaterAt, 1);
               }
 
-              const allToolHandlers = { ...toolHandlers, ...mcpToolHandlers };
-              const workerFunctionCalls = functionCalls.filter((call) => allToolHandlers[call.name]);
+              const workerFunctionCalls = functionCalls.filter((call) => toolHandlers[call.name]);
 
               if (workerFunctionCalls.length) {
                 const ctx = { server, geminiWs: geminiSession, env }
-                const toolResponse = await executeToolCalls(ctx, workerFunctionCalls, enabledToolNames, mcpToolHandlers);
+                const toolResponse = await executeToolCalls(ctx, workerFunctionCalls, enabledToolNames);
                 if (geminiSession.readyState === WebSocket.OPEN) {
                   geminiSession.send(JSON.stringify(toolResponse));
                 }
               }
 
-              const browserFunctionCalls = functionCalls.filter((call) => !allToolHandlers[call.name]);
+              const browserFunctionCalls = functionCalls.filter((call) => !toolHandlers[call.name]);
               if (browserFunctionCalls.length) {
                 for (const call of browserFunctionCalls) {
                   sendToolRunning(server, { id: call.id, name: call.name, kind: 'browser', args: call.args ?? null });

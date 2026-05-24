@@ -62,7 +62,7 @@
     .app-shell { --sidebar-width:320px; height:100dvh; display:grid; grid-template-columns:var(--sidebar-width) minmax(0,1fr); background:var(--bg); transition:grid-template-columns .24s ease-in-out; }
     .sidebar { position:relative; z-index:20; min-width:0; width:320px; height:100dvh; padding:16px; display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; gap:16px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); box-shadow:10px 0 40px rgba(0,0,0,.06); overflow:hidden; opacity:1; transition:width .24s ease-in-out, padding .24s ease-in-out, opacity .18s ease-in-out, transform .24s ease-in-out; }
     .app-shell.sidebar-collapsed { --sidebar-width:0px; } .app-shell.sidebar-collapsed .sidebar { width:0; padding-inline:0; opacity:0; pointer-events:none; }
-    .brand, .sidebar-head, .topbar, .role-row, .input-bar, .call-actions, .modal-actions, .tool-picker-head { display:flex; align-items:center; gap:8px; }
+    .brand, .sidebar-head, .topbar, .role-row, .input-bar, .call-actions, .modal-actions, .tool-picker-head { display:flex; justify-content: space-between; align-items:center; gap:8px; }
     .sidebar-head { justify-content:space-between; } .brand { min-width:0; font-size:16px; font-weight:600; } .brand-mark { width:32px; height:32px; border-radius:9999px; display:grid; place-items:center; background:var(--text); color:var(--bg); }
     .icon-btn { width:44px; height:44px; min-width:44px; border-radius:9999px; display:inline-grid; place-items:center; background:transparent; color:var(--text); } .icon-btn:hover, .role-row:hover, .menu-item:hover { background:var(--hover); } .icon-btn.danger { color:var(--bad); }
     .primary-btn { min-height:44px; padding:8px 12px; border-radius:9999px; display:inline-flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(135deg,#111827,#3f3f46); color:#fff; font-weight:600; }
@@ -97,6 +97,44 @@
     .modal { padding:24px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:20px; font-weight:600; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:12px; } label.full, .tool-picker.full { grid-column:1/-1; }
     input, textarea, select { width:100%; min-height:44px; border:0; border-radius:8px; padding:0 12px; outline:none; background:var(--hover); } textarea { min-height:120px; padding:12px; resize:vertical; } .modal-actions { justify-content:flex-end; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; } .tool-chip, .tool-actions button { min-height:34px; border-radius:9999px; padding:0 12px; background:var(--hover); } .tool-chip.active { background:var(--text); color:var(--bg); } .warning { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--bad); color:#fff; } .secondary-btn { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--hover); }
     .danger-note { margin:0; padding:12px; border-radius:12px; background:rgba(239,68,68,.12); color:var(--bad); font-weight:600; }
+    .system-dialog { width:min(680px,calc(100% - 24px)); height:min(840px,calc(100dvh - 12px)); border-radius:28px; }
+    .system-modal { height:100%; padding:0; gap:0; overflow:hidden; display:grid; grid-template-columns:230px minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; color:var(--text); }
+    .system-close { width:44px; height:44px; min-width:44px; border-radius:9999px; background:var(--hover); }
+    .system-mobile-title { display:none; }
+    .system-sidebar { min-width:0; padding:20px 12px; border-right:1px solid var(--line); display:grid; align-content:start; gap:18px; overflow:hidden; }
+    .system-nav { display:grid; gap:8px; overflow:auto; padding-right:0; scrollbar-width:none; }
+    .system-nav::-webkit-scrollbar { display:none; }
+    .system-nav-item { min-height:72px; padding:0 24px; border-radius:16px; display:flex; align-items:center; gap:16px; background:transparent; color:var(--text); font-size:16px; font-weight:520; text-align:left; }
+    .system-nav-item svg { width:22px; height:22px; flex:0 0 auto; }
+    .system-nav-item.active, .system-nav-item:hover { background:var(--hover); }
+    .system-main { min-width:0; min-height:0; padding:28px 32px 0; overflow:auto; display:grid; align-content:start; gap:26px; }
+    .system-page-head { min-height:48px; border-bottom:1px solid var(--line); display:flex; align-items:start; justify-content:space-between; gap:16px; }
+    .system-page-head .system-close { display:none; }
+    .system-page-title { margin:0; font-size:20px; line-height:1.2; font-weight:650; }
+    .settings-section { display:grid; border-bottom:1px solid var(--line); }
+    .settings-section-title { margin:0; padding:0 0 14px; color:var(--text); font-size:16px; line-height:1.2; font-weight:600; }
+    .setting-row { min-height:120px; display:flex; align-items:center; justify-content:space-between; gap:24px; border-top:1px solid var(--line); }
+    .setting-row:first-of-type { border-top:0; }
+    .setting-row-title { min-width:0; display:grid; gap:6px; }
+    .setting-row-title strong { font-size:14px; line-height:1.2; font-weight:520; }
+    .setting-row-title span { color:var(--muted); font-size:12px; line-height:1.35; }
+    .system-select { width:auto; min-width:170px; padding:0 44px 0 16px; border-radius:14px; background:var(--hover); color:var(--text); font-size:14px; text-align:right; }
+    .mcp-section { min-width:0; display:grid; gap:14px; }
+    .mcp-section-head { min-height:72px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .mcp-section-title { display:grid; gap:4px; min-width:0; }
+    .mcp-section-title strong { font-size:16px; line-height:1.2; }
+    .mcp-section-title span { color:var(--muted); font-size:12px; }
+    .mcp-server-list { display:grid; align-content:start; gap:10px; }
+    .mcp-server-row { min-width:0; padding:14px 0; border-top:1px solid var(--line); background:transparent; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .mcp-server-info { min-width:0; display:grid; gap:3px; }
+    .mcp-server-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:650; }
+    .mcp-server-url { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    .mcp-server-headers { width:max-content; max-width:100%; min-height:22px; padding:2px 8px; border-radius:999px; color:var(--muted); background:var(--hover); font-size:12px; }
+    .mcp-server-row-actions { flex:0 0 auto; display:flex; align-items:center; gap:4px; }
+    .mcp-empty { min-height:96px; border-top:1px solid var(--line); display:grid; place-items:center; text-align:center; color:var(--muted); }
+    .mcp-server-form { padding-top:14px; border-top:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .mcp-server-form-actions { grid-column:1/-1; display:flex; justify-content:flex-end; }
+    .system-modal .modal-actions { grid-column:2; padding:18px 32px; border-top:1px solid var(--line); background:transparent; }
     .render-block { display:grid; gap:8px; }
     .render-block-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
     .render-tabs { display:inline-flex; gap:2px; padding:2px; border-radius:9999px; background:var(--hover); }
@@ -138,7 +176,7 @@
     [data-sonner-toaster] [data-sonner-toast] [data-close-button] { left:auto !important; right:0 !important; transform:translate(40%, -40%); width: 28px; height: 28px; }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } }
     @media (max-width:960px) { .app-shell { grid-template-columns:minmax(0,1fr); } .sidebar { position:fixed; width:280px; transform:translateX(-105%); } .drawer-open .sidebar { transform:translateX(0); } .app-shell.sidebar-collapsed { grid-template-columns:minmax(0,1fr); } .app-shell.sidebar-collapsed .sidebar { width:280px; padding:16px; } .drawer-scrim { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.28); } }
-    @media (max-width:700px) { .main { grid-template-rows:56px minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
+    @media (max-width:700px) { .main { grid-template-rows:56px minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .system-dialog { width:min(680px,calc(100% - 24px)); max-width:calc(100% - 24px); height:calc(100dvh - 24px); max-height:calc(100dvh - 24px); border-radius:16px; } .system-modal { min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr) auto; } .system-sidebar { padding:10px 12px 12px; border-right:0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr auto; grid-template-areas:"title close" "nav nav"; gap:8px; overflow:hidden; } .system-sidebar .system-close { grid-area:close; width:48px; height:48px; min-width:48px; background:transparent; } .system-mobile-title { grid-area:title; display:block; margin:0; align-self:center; font-size:20px; font-weight:650; } .system-nav { grid-area:nav; display:flex; gap:8px; overflow-x:auto; padding:0; } .system-nav-item { flex:0 0 auto; min-height:56px; padding:0 16px; font-size:16px; } .system-nav-item svg { width:22px; height:22px; } .system-main { min-height:0; padding:20px 24px; gap:18px; overflow:auto; overscroll-behavior:contain; } .system-page-head { display:none; } .settings-section-title, .mcp-section-title strong { font-size:16px; } .setting-row-title strong { font-size:14px; } .setting-row { min-height:92px; align-items:center; gap:14px; } .system-select { min-width:132px; font-size:14px; } .mcp-section-head { min-height:60px; align-items:flex-start; } .mcp-server-form { grid-template-columns:1fr; } .system-modal .modal-actions { grid-column:1; min-width:0; padding:12px max(16px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); display:grid; grid-template-columns:1fr 1fr; gap:10px; } .system-modal .modal-actions .secondary-btn { width:100%; min-width:0; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
   </style>
 </head>
 <body>
@@ -376,18 +414,71 @@
       </div>
     </dialog>
 
-    <dialog ref="systemDialog" @click="closeSystemSettingsOnBackdrop">
-      <div class="modal">
-        <h2>系统配置</h2>
-        <div class="grid">
-          <label class="full">深色浅色模式<select v-model="themeMode" @change="saveThemeMode">
-            <option value="system">跟随系统</option>
-            <option value="light">浅色</option>
-            <option value="dark">深色</option>
-          </select></label>
-        </div>
+    <dialog class="system-dialog" ref="systemDialog" @click="closeSystemSettingsOnBackdrop">
+      <div class="modal system-modal">
+        <aside class="system-sidebar">
+          <h2 class="system-mobile-title">{{ systemSettingsTitle }}</h2>
+          <button class="icon-btn system-close" type="button" title="关闭" @click="closeSystemSettings"><x-icon /></button>
+          <nav class="system-nav" aria-label="系统配置分类">
+            <button class="system-nav-item" :class="{ active: systemSettingsTab === 'general' }" type="button" @click="systemSettingsTab = 'general'"><settings-icon></settings-icon><span>常规</span></button>
+            <button class="system-nav-item" :class="{ active: systemSettingsTab === 'mcp' }" type="button" @click="systemSettingsTab = 'mcp'"><sparkles-icon></sparkles-icon><span>MCP</span></button>
+          </nav>
+        </aside>
+        <main class="system-main">
+          <header class="system-page-head">
+            <h2 class="system-page-title">{{ systemSettingsTitle }}</h2>
+            <button class="icon-btn system-close" type="button" title="关闭" @click="closeSystemSettings"><x-icon /></button>
+          </header>
+          <section class="settings-section" v-if="systemSettingsTab === 'general'">
+            <h3 class="settings-section-title">界面</h3>
+            <div class="setting-row">
+              <div class="setting-row-title">
+                <strong>外观</strong>
+                <span>选择浅色、深色或跟随系统。</span>
+              </div>
+              <select class="system-select" v-model="themeMode" @change="saveThemeMode">
+                <option value="system">系统</option>
+                <option value="light">浅色</option>
+                <option value="dark">深色</option>
+              </select>
+            </div>
+          </section>
+          <section class="mcp-section" v-if="systemSettingsTab === 'mcp'">
+            <div class="mcp-section-head">
+              <div class="mcp-section-title">
+                <strong>MCP 服务器</strong>
+                <span>{{ mcpServersDraft.length }} 个服务器，工具会在保存后重新加载</span>
+              </div>
+              <button class="secondary-btn" type="button" @click="resetMcpServersDraft">恢复默认</button>
+            </div>
+            <div class="mcp-server-list" v-if="mcpServersDraft.length">
+              <div v-for="(server, index) in mcpServersDraft" :key="`${server.name}-${index}`" class="mcp-server-row">
+                <div class="mcp-server-info">
+                  <span class="mcp-server-name">{{ server.name }}</span>
+                  <span class="mcp-server-url">{{ server.url }}</span>
+                  <span class="mcp-server-headers" v-if="server.headers && Object.keys(server.headers).length">{{ formatHeaderCount(server.headers) }}</span>
+                </div>
+                <div class="mcp-server-row-actions">
+                  <button class="icon-btn" type="button" @click="editMcpServerDraft(index)" title="编辑"><settings-2-icon /></button>
+                  <button v-if="!isDefaultMcpServer(server)" class="icon-btn danger" type="button" @click="removeMcpServerDraft(index)" title="移除"><x-icon /></button>
+                </div>
+              </div>
+            </div>
+            <div class="mcp-empty" v-else>暂无 MCP 服务器</div>
+            <div class="mcp-server-form">
+              <label class="full">名称<input v-model="mcpServerForm.name" placeholder="例如 mcp1" /></label>
+              <label class="full">URL<input v-model="mcpServerForm.url" placeholder="https://example.com/mcp" /></label>
+              <label class="full">Headers (可选, JSON 对象)<textarea v-model="mcpServerForm.headers" rows="2" placeholder='{"Authorization": "Bearer ..."}'></textarea></label>
+              <div class="mcp-server-form-actions">
+                <button v-if="mcpEditingIndex !== null" class="secondary-btn" type="button" @click="cancelMcpServerEdit">取消编辑</button>
+                <button class="secondary-btn" type="button" @click="submitMcpServerDraft">{{ mcpEditingIndex === null ? '添加' : '更新' }}</button>
+              </div>
+            </div>
+          </section>
+        </main>
         <div class="modal-actions">
-          <button class="secondary-btn" type="button" @click="closeSystemSettings">关闭</button>
+          <button class="secondary-btn" type="button" @click="closeSystemSettings">取消</button>
+          <button class="secondary-btn" type="button" @click="saveSystemSettings">保存</button>
         </div>
       </div>
     </dialog>
@@ -432,8 +523,9 @@
     import { toast, Toaster } from "sonner";
     import { createAudioService } from "./audio-service.js";
     import { createMediaService } from "./media-service.js";
-    import { APP_MODELS, APP_VOICES, DEFAULT_ROLES } from "./constant.js";
+    import { APP_MODELS, APP_VOICES, DEFAULT_ROLES, DEFAULT_MCP_SERVERS } from "./constant.js";
     import { BROWSER_TOOLS } from "./tools.js";
+    import { createMcpToolRegistry } from "./mcp-client.js";
     import { buildToolMessage, upsertToolMessage, displayName as toolEventDisplayName, statusText as toolEventStatusText } from "./tool-events.js";
     import {
       AudioLines, Captions, CaptionsOff, Check, Copy, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, ScreenShareOff, Send, Settings, Settings2, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
@@ -645,8 +737,15 @@
           pendingAiMessageId: '',
           messageGroups: [],
           activeRenderPage: null,
-          toolDeclarations: this.loadCachedToolDeclarations(),
+          workerToolDeclarations: this.loadCachedToolDeclarations(),
           toolsLoading: false,
+          mcpServers: this.loadMcpServers(),
+          mcpServersDraft: [],
+          mcpServerForm: { name: '', url: '', headers: '' },
+          mcpEditingIndex: null,
+          mcpRegistry: { declarations: [], handlers: {} },
+          mcpRegistryReady: Promise.resolve(),
+          systemSettingsTab: 'general',
           themeMode: localStorage.getItem('geminiThemeMode') || 'system',
           sidebarCollapsed: false,
           drawerOpen: false,
@@ -695,6 +794,7 @@
           },
         });
         this.loadToolDeclarations();
+        this.refreshMcpRegistry();
       },
       beforeUnmount() {
         this.stopWaveLoop();
@@ -721,6 +821,13 @@
       computed: {
         allRoles() {
           return [...this.roles, ...(this.default_roles.map(role => this.normalizeRole(role)))];
+        },
+        toolDeclarations() {
+          return this.mergeToolDeclarations(
+            browserTools.declarations,
+            this.workerToolDeclarations,
+            this.mcpRegistry.declarations,
+          );
         },
         currentRole() {
           return this.getRoleById(this.selectedRoleId);
@@ -762,6 +869,9 @@
         canDeleteRole() {
           const roleId = this.editingRoleId || this.selectedRoleId;
           return !this.default_roles.some((role) => role.id === roleId);
+        },
+        systemSettingsTitle() {
+          return this.systemSettingsTab === 'mcp' ? 'MCP' : '常规';
         },
         statusText() { return this.sessionStateMeta.text; },
         statusKind() { return this.sessionStateMeta.kind; },
@@ -814,10 +924,115 @@
           localStorage.setItem('geminiThemeMode', this.themeMode);
         },
         openSystemSettings() {
+          this.mcpServersDraft = this.mcpServers.map((server) => this.cloneMcpServer(server));
+          this.mcpServerForm = { name: '', url: '', headers: '' };
+          this.mcpEditingIndex = null;
           this.$refs.systemDialog.showModal();
         },
         closeSystemSettings() { this.$refs.systemDialog.close(); },
         closeSystemSettingsOnBackdrop(event) { if (event.target === this.$refs.systemDialog) this.closeSystemSettings(); },
+        cloneMcpServer(server) {
+          if (!server) return { name: '', url: '' };
+          const cloned = { name: server.name, url: server.url };
+          if (server.headers && typeof server.headers === 'object') cloned.headers = { ...server.headers };
+          return cloned;
+        },
+        loadMcpServers() {
+          try {
+            const stored = JSON.parse(localStorage.getItem('geminiMcpServers') || 'null');
+            if (Array.isArray(stored)) return stored.map((server) => this.cloneMcpServer(server));
+          } catch {}
+          return DEFAULT_MCP_SERVERS.map((server) => this.cloneMcpServer(server));
+        },
+        saveMcpServersToStorage() {
+          localStorage.setItem('geminiMcpServers', JSON.stringify(this.mcpServers));
+        },
+        refreshMcpRegistry() {
+          this.mcpRegistryReady = createMcpToolRegistry(this.mcpServers || [])
+            .then((registry) => { this.mcpRegistry = registry; })
+            .catch((error) => {
+              console.warn('MCP registry load failed:', error);
+              this.mcpRegistry = { declarations: [], handlers: {} };
+            });
+          return this.mcpRegistryReady;
+        },
+        serializeMcpHeaders(headers) {
+          return headers && typeof headers === 'object' ? JSON.stringify(headers, null, 2) : '';
+        },
+        isDefaultMcpServer(server) {
+          return DEFAULT_MCP_SERVERS.some((item) => item.name === server?.name && item.url === server?.url);
+        },
+        createMcpServerFromForm() {
+          const name = (this.mcpServerForm.name || '').trim();
+          const url = (this.mcpServerForm.url || '').trim();
+          if (!name || !url) {
+            toast.error('请填写名称和 URL');
+            return null;
+          }
+          let headers;
+          const rawHeaders = (this.mcpServerForm.headers || '').trim();
+          if (rawHeaders) {
+            try {
+              const parsed = JSON.parse(rawHeaders);
+              if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
+              headers = parsed;
+            } catch {
+              toast.error('Headers 必须是合法的 JSON 对象');
+              return null;
+            }
+          }
+          return headers ? { name, url, headers } : { name, url };
+        },
+        submitMcpServerDraft() {
+          const server = this.createMcpServerFromForm();
+          if (!server) return;
+
+          const duplicateIndex = this.mcpServersDraft.findIndex((item, index) => item.name === server.name && index !== this.mcpEditingIndex);
+          if (duplicateIndex >= 0) {
+            toast.error(`已存在同名 MCP 服务器: ${server.name}`);
+            return;
+          }
+
+          if (this.mcpEditingIndex === null) this.mcpServersDraft.push(server);
+          else this.mcpServersDraft.splice(this.mcpEditingIndex, 1, server);
+
+          this.mcpServerForm = { name: '', url: '', headers: '' };
+          this.mcpEditingIndex = null;
+        },
+        editMcpServerDraft(index) {
+          const server = this.mcpServersDraft[index];
+          if (!server) return;
+          this.mcpEditingIndex = index;
+          this.mcpServerForm = {
+            name: server.name || '',
+            url: server.url || '',
+            headers: this.serializeMcpHeaders(server.headers),
+          };
+        },
+        cancelMcpServerEdit() {
+          this.mcpEditingIndex = null;
+          this.mcpServerForm = { name: '', url: '', headers: '' };
+        },
+        removeMcpServerDraft(index) {
+          if (this.isDefaultMcpServer(this.mcpServersDraft[index])) return;
+          this.mcpServersDraft.splice(index, 1);
+          if (this.mcpEditingIndex === index) this.cancelMcpServerEdit();
+          else if (this.mcpEditingIndex !== null && this.mcpEditingIndex > index) this.mcpEditingIndex -= 1;
+        },
+        resetMcpServersDraft() {
+          this.mcpServersDraft = DEFAULT_MCP_SERVERS.map((server) => this.cloneMcpServer(server));
+          this.cancelMcpServerEdit();
+        },
+        formatHeaderCount(headers) {
+          const count = Object.keys(headers || {}).length;
+          return `${count} header${count === 1 ? '' : 's'}`;
+        },
+        async saveSystemSettings() {
+          this.mcpServers = this.mcpServersDraft.map((server) => this.cloneMcpServer(server));
+          this.saveMcpServersToStorage();
+          this.refreshMcpRegistry();
+          this.closeSystemSettings();
+        },
         applyTheme() {
           window.applyGeminiTheme?.(this.themeMode);
         },
@@ -900,6 +1115,7 @@
           const normalized = { ...this.defaultConfig, ...role };
           normalized.id ||= `role-${Date.now()}`;
           normalized.name = (normalized.name || this.defaultConfig.name).trim();
+          delete normalized.mcpServers;
           return normalized;
         },
         loadUserRoles() {
@@ -917,9 +1133,9 @@
         loadCachedToolDeclarations() {
           try {
             const cachedTools = JSON.parse(localStorage.getItem(TOOL_CACHE_KEY) || '[]');
-            return this.mergeToolDeclarations(browserTools.declarations, Array.isArray(cachedTools) ? cachedTools : []);
+            return Array.isArray(cachedTools) ? cachedTools : [];
           } catch {
-            return this.mergeToolDeclarations(browserTools.declarations);
+            return [];
           }
         },
         mergeToolDeclarations(...toolGroups) {
@@ -936,10 +1152,9 @@
             const response = await fetch('/api/tools');
             const data = await response.json();
             if (Array.isArray(data.tools)) {
-              this.toolDeclarations = this.mergeToolDeclarations(browserTools.declarations, data.tools);
-              localStorage.setItem(TOOL_CACHE_KEY, JSON.stringify(this.toolDeclarations));
+              this.workerToolDeclarations = data.tools;
+              localStorage.setItem(TOOL_CACHE_KEY, JSON.stringify(data.tools));
             }
-            if (data.error) console.warn('Load MCP tools failed:', data.error);
           } catch (error) {
             console.warn('Load tools failed:', error);
           } finally {
@@ -1137,8 +1352,9 @@
             autoLoadTools: this.currentRole.autoLoadTools || '',
           };
           if (this.currentRole.voiceName) setup.voiceName = this.currentRole.voiceName;
-          const browserToolNames = this.selectedBrowserToolNames(setup.autoLoadTools);
-          const browserToolDeclarations = browserTools.declarations.filter((tool) => browserToolNames.includes(tool.name));
+          const selectedNames = this.selectedBrowserToolNames(setup.autoLoadTools);
+          const candidates = [...browserTools.declarations, ...this.mcpRegistry.declarations];
+          const browserToolDeclarations = candidates.filter((tool) => selectedNames.includes(tool.name));
           if (browserToolDeclarations.length) setup.browserTools = browserToolDeclarations;
           if (this.pendingClientPayloads.length) {
             setup.initialMessages = this.pendingClientPayloads;
@@ -1147,12 +1363,19 @@
           return { setup };
         },
         selectedBrowserToolNames(autoLoadTools) {
-          const browserToolNames = browserTools.declarations.map((tool) => tool.name);
+          const candidates = [...browserTools.declarations, ...this.mcpRegistry.declarations];
+          const candidateNames = candidates.map((tool) => tool.name);
           const value = (autoLoadTools || '').trim();
           if (!value) return [];
-          if (value === '*') return browserToolNames;
+          if (value === '*') return candidateNames;
           const selectedNames = value.split(',').map((name) => name.trim()).filter(Boolean);
-          return browserToolNames.filter((name) => selectedNames.includes(name));
+          // 支持 role 写 "mcp1" 拉起整个 mcp1__* 工具组
+          const expanded = selectedNames.flatMap((name) => {
+            const prefix = `${name}__`;
+            const prefixed = candidateNames.filter((candidate) => candidate.startsWith(prefix));
+            return prefixed.length ? prefixed : [name];
+          });
+          return candidateNames.filter((name) => expanded.includes(name));
         },
         async handleBrowserToolCalls(functionCalls) {
           const functionResponses = [];
@@ -1160,7 +1383,7 @@
             const { id, name, args } = call;
             const startedAt = Date.now();
             upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'running', args: args ?? null, startedAt });
-            const handler = browserTools.handlers?.[name];
+            const handler = browserTools.handlers?.[name] ?? this.mcpRegistry.handlers?.[name];
             let response;
             if (!handler) {
               response = { error: `Unknown browser tool: ${name}` };
@@ -1236,7 +1459,9 @@
             if (msg.workerStatus.type === 'gemini_close') this.ws?.close(1000, 'User disconnected');
             if (msg.workerStatus.type === 'gemini_open') {
               this.setSessionStatus('session_open');
-              this.ws.send(JSON.stringify(this.setupMessage()));
+              this.mcpRegistryReady.finally(() => {
+                if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(this.setupMessage()));
+              });
             }
             if (msg.workerStatus.type === 'session_reconnect' || msg.workerStatus.type === 'session_resuming') {
               this.setSessionStatus('session_reconnecting');
@@ -1253,7 +1478,7 @@
             if (this.uiMode === 'call' && this.callAudioMode !== 'mute') this.playReadyTone({ type: 'triangle'});
             return;
           }
-          const browserFunctionCalls = (msg.toolCall?.functionCalls || []).filter((call) => browserTools.handlers?.[call.name]);
+          const browserFunctionCalls = (msg.toolCall?.functionCalls || []).filter((call) => browserTools.handlers?.[call.name] || this.mcpRegistry.handlers?.[call.name]);
           if (browserFunctionCalls.length) {
             this.closeAiTextSegment();
             this.handleBrowserToolCalls(browserFunctionCalls);

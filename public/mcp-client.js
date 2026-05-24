@@ -8,31 +8,31 @@ const parseJson = (data) => {
   }
 };
 
-const parseMcpServersConfig = (value) => {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'string') {
-    const parsed = parseJson(value);
-    if (Array.isArray(parsed)) return parsed;
-    if (parsed && typeof parsed === 'object') return [parsed];
-    return value
-      .split(',')
-      .map((url) => url.trim())
-      .filter(Boolean);
-  }
-  if (typeof value === 'object') return [value];
-  return [];
+const sanitizeToolName = (name) => {
+  const sanitized = String(name || '')
+    .replace(/[^A-Za-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  return sanitized || 'tool';
 };
 
-export const getMcpServersConfig = (...configStr) => configStr.map(str => parseMcpServersConfig(str)).flat();
+export const normalizeMcpServers = (input) => {
+  let raw = input;
+  if (typeof raw === 'string') {
+    const parsed = parseJson(raw);
+    if (Array.isArray(parsed)) raw = parsed;
+    else if (parsed && typeof parsed === 'object') raw = [parsed];
+    else raw = raw.split(',').map((url) => url.trim()).filter(Boolean);
+  } else if (raw && !Array.isArray(raw) && typeof raw === 'object') {
+    raw = [raw];
+  }
+  if (!Array.isArray(raw)) return [];
 
-const normalizeMcpServers = (servers = []) => {
-  if (!Array.isArray(servers)) return [];
-
-  return servers
+  return raw
     .map((server, index) => {
       if (typeof server === 'string') {
-        return { name: `mcp${index + 1}`, url: server };
+        return { name: sanitizeToolName(`mcp${index + 1}`), url: server };
       }
 
       if (!server || typeof server !== 'object') return null;
@@ -44,15 +44,6 @@ const normalizeMcpServers = (servers = []) => {
       return name && url ? { name: sanitizeToolName(name), url, headers } : null;
     })
     .filter(Boolean);
-};
-
-const sanitizeToolName = (name) => {
-  const sanitized = String(name || '')
-    .replace(/[^A-Za-z0-9_]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '');
-
-  return sanitized || 'tool';
 };
 
 const createRpcBody = (method, params) => ({
@@ -75,21 +66,6 @@ const createHeaders = (server) => ({
   ...(server.headers || {}),
 });
 
-const parseRpcResponse = async (response) => {
-  const text = await response.text();
-  const contentType = response.headers.get('content-type') || '';
-
-  if (!response.ok) {
-    throw new Error(`MCP 请求失败: ${response.status} ${response.statusText}`);
-  }
-
-  if (contentType.includes('text/event-stream')) {
-    return parseServerSentEvent(text);
-  }
-
-  return parseJson(text) || {};
-};
-
 const parseServerSentEvent = (text) => {
   const events = text.split(/\n\n+/);
 
@@ -108,6 +84,21 @@ const parseServerSentEvent = (text) => {
   }
 
   return {};
+};
+
+const parseRpcResponse = async (response) => {
+  const text = await response.text();
+  const contentType = response.headers.get('content-type') || '';
+
+  if (!response.ok) {
+    throw new Error(`MCP 请求失败: ${response.status} ${response.statusText}`);
+  }
+
+  if (contentType.includes('text/event-stream')) {
+    return parseServerSentEvent(text);
+  }
+
+  return parseJson(text) || {};
 };
 
 const callMcpRpc = async (server, method, params) => {
@@ -139,19 +130,15 @@ const sendMcpNotification = async (server, method, params) => {
 };
 
 const initializeMcpServer = async (server) => {
-  try {
-    await callMcpRpc(server, 'initialize', {
-      protocolVersion: '2025-03-26',
-      capabilities: {},
-      clientInfo: {
-        name: 'gemini-audio-worker',
-        version: '1.0.0',
-      },
-    });
-    await sendMcpNotification(server, 'notifications/initialized');
-  } catch (error) {
-    server.initializeError = error;
-  }
+  await callMcpRpc(server, 'initialize', {
+    protocolVersion: '2025-03-26',
+    capabilities: {},
+    clientInfo: {
+      name: 'gemini-audio-worker',
+      version: '1.0.0',
+    },
+  });
+  await sendMcpNotification(server, 'notifications/initialized');
 };
 
 const normalizeSchemaType = (type) => {
@@ -215,25 +202,27 @@ export const createMcpToolRegistry = async (serversConfig = []) => {
   const handlers = {};
 
   for (const server of servers) {
-    await initializeMcpServer(server);
-    const listResult = await callMcpRpc(server, 'tools/list');
-    const tools = Array.isArray(listResult?.tools) ? listResult.tools : [];
+    try {
+      await initializeMcpServer(server);
+      const listResult = await callMcpRpc(server, 'tools/list');
+      const tools = Array.isArray(listResult?.tools) ? listResult.tools : [];
 
-    for (const tool of tools) {
-      if (!tool?.name) continue;
+      for (const tool of tools) {
+        if (!tool?.name) continue;
 
-      const declaration = toGeminiFunctionDeclaration(server, tool);
-      declarations.push(declaration);
-      handlers[declaration.name] = async (id, name, args = {}) => {
-        const result = await callMcpRpc(server, 'tools/call', {
+        const declaration = toGeminiFunctionDeclaration(server, tool);
+        declarations.push(declaration);
+        handlers[declaration.name] = async (args = {}) => callMcpRpc(server, 'tools/call', {
           name: tool.name,
           arguments: args,
         });
-
-        return result;
-      };
+      }
+    } catch (error) {
+      console.warn(`MCP server "${server.name}" 加载失败:`, error);
     }
   }
 
   return { declarations, handlers };
 };
+
+export const MCP_PREFIX_SEPARATOR = MCP_TOOL_NAME_SEPARATOR;
