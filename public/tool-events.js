@@ -35,11 +35,6 @@ const deriveDisplay = (name, args, response) => {
     const method = String(args?.method || 'GET').toUpperCase();
     const fetchUrl = String(args?.url || '').trim();
     if (fetchUrl) display.prompt = `${method} ${fetchUrl}`;
-  } else if (name === 'checkDomainAvailability') {
-    const domains = Array.isArray(args?.domains)
-      ? args.domains
-      : Array.isArray(response?.domains) ? response.domains : [];
-    if (domains.length) display.prompt = domains.join('\n');
   } else {
     const promptValue = args?.prompt || args?.query || args?.url || args?.code || '';
     if (promptValue) display.prompt = String(promptValue).trim();
@@ -74,12 +69,13 @@ const deriveDisplay = (name, args, response) => {
       const registeredCount = results.filter((item) => item?.isRegistered === true).length;
       const totalCount = Number.isFinite(data?.count) ? data.count : results.length;
 
+      display.prompt = '';
       display.text = `已检查 ${totalCount} 个域名，可注册 ${availableCount} 个，已注册 ${registeredCount} 个。`;
       display.results = results.map((item) => {
         const domain = [item?.label, item?.tld].filter(Boolean).join('.');
-        const status = item?.isRegistered === false ? '可注册' : item?.isRegistered === true ? '已注册' : '状态未知';
+        const status = item?.isRegistered === false ? '✅' : item?.isRegistered === true ? '❌' : '❌';
         return {
-          title: domain ? `${domain} · ${status}` : status,
+          title: domain ? `${status} ${domain}` : status,
           url: String(item?.buy_url || '').trim(),
         };
       }).filter((item) => item.title || item.url);
