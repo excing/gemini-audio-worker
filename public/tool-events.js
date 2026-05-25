@@ -6,6 +6,7 @@ const DISPLAY_NAMES = {
   urlContext: '网页内容',
   codeExecution: '代码执行',
   renderPage: '页面渲染',
+  checkDomainAvailability: '域名检查',
 };
 
 const normalizeImage = (image) => {
@@ -14,6 +15,12 @@ const normalizeImage = (image) => {
   if (image.url) return { url: image.url };
   if (image.b64_json) return { url: `data:image/png;base64,${image.b64_json}` };
   return null;
+};
+
+const getDomainAvailabilityPayload = (response) => {
+  const contentList = Array.isArray(response?.content) ? response.content : [];
+  const jsonEntry = contentList.find((item) => item?.type === 'json' && item?.data);
+  return jsonEntry?.data && typeof jsonEntry.data === 'object' ? jsonEntry.data : null;
 };
 
 // 从 args / response 派生 UI 展示字段，不保留旧 prompt/result 字段
@@ -28,6 +35,11 @@ const deriveDisplay = (name, args, response) => {
     const method = String(args?.method || 'GET').toUpperCase();
     const fetchUrl = String(args?.url || '').trim();
     if (fetchUrl) display.prompt = `${method} ${fetchUrl}`;
+  } else if (name === 'checkDomainAvailability') {
+    const domains = Array.isArray(args?.domains)
+      ? args.domains
+      : Array.isArray(response?.domains) ? response.domains : [];
+    if (domains.length) display.prompt = domains.join('\n');
   } else {
     const promptValue = args?.prompt || args?.query || args?.url || args?.code || '';
     if (promptValue) display.prompt = String(promptValue).trim();
@@ -50,6 +62,30 @@ const deriveDisplay = (name, args, response) => {
         url: String(item?.url || '').trim(),
       }))
       .filter((item) => item.title || item.url);
+  }
+
+  // checkDomainAvailability 专属：域名检查结果
+  if (name === 'checkDomainAvailability') {
+    const data = getDomainAvailabilityPayload(response);
+    const results = Array.isArray(data?.results) ? data.results : [];
+
+    if (results.length) {
+      const availableCount = results.filter((item) => item?.isRegistered === false).length;
+      const registeredCount = results.filter((item) => item?.isRegistered === true).length;
+      const totalCount = Number.isFinite(data?.count) ? data.count : results.length;
+
+      display.text = `已检查 ${totalCount} 个域名，可注册 ${availableCount} 个，已注册 ${registeredCount} 个。`;
+      display.results = results.map((item) => {
+        const domain = [item?.label, item?.tld].filter(Boolean).join('.');
+        const status = item?.isRegistered === false ? '可注册' : item?.isRegistered === true ? '已注册' : '状态未知';
+        return {
+          title: domain ? `${domain} · ${status}` : status,
+          url: String(item?.buy_url || '').trim(),
+        };
+      }).filter((item) => item.title || item.url);
+    } else if (typeof data?.message === 'string' && data.message.trim()) {
+      display.text = data.message.trim();
+    }
   }
 
   // renderPage 专属：保留 HTML 源码，供卡片内「渲染页面 / 原代码」切换
