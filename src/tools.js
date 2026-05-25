@@ -1,3 +1,4 @@
+import checkDomainAvailabilityTool from './tools/check-domain-availability.js';
 import fetchTool from './tools/fetch.js';
 import getWeatherTool from './tools/get-weather.js';
 import imageGenerationTool from './tools/image-generation.js';
@@ -9,6 +10,7 @@ export const tools = [
   webSearchTool,
   urlContextTool,
   fetchTool,
+  checkDomainAvailabilityTool,
   imageGenerationTool,
 ];
 
