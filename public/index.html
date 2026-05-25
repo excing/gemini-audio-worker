@@ -95,10 +95,10 @@
     .call-status { display:grid; justify-items:center; gap:8px; padding:8px 0 14px; color:var(--muted); } .call-status .icon-btn { background:var(--hover); } .call-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:0; min-height:72px; align-items:center; } .call-action { width:100%; min-width:0; min-height:72px; padding:4px 0; border-radius:12px; display:grid; justify-items:center; align-content:center; gap:4px; background:transparent; color:var(--muted); font-size:12px; } .call-action:hover { background:var(--hover); } .call-action .icon-btn { pointer-events:none; background:transparent; }
     dialog { width:min(680px,calc(100% - 24px)); border:0; border-radius:16px; padding:0; color:var(--text); background:var(--glass); box-shadow:var(--shadow); backdrop-filter:blur(12px) saturate(180%); transform:scale(.95); opacity:0; transition:all .2s ease-in-out; } dialog[open] { transform:scale(1); opacity:1; } dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(6px); } :root[data-theme="dark"] dialog::backdrop { background:rgba(0,0,0,.6); }
     .modal { padding:24px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:20px; font-weight:600; } .modal-head { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:12px; } .modal-close { width:44px; height:44px; min-width:44px; border-radius:9999px; background:var(--hover); } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:12px; } label.full, .tool-picker.full { grid-column:1/-1; }
-    input, textarea, select { width:100%; min-height:44px; border:0; border-radius:8px; padding:0 12px; outline:none; background:var(--hover); } textarea { min-height:120px; padding:12px; resize:vertical; } .modal-actions { justify-content:flex-end; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; } .tool-chip, .tool-actions button { min-height:34px; border-radius:9999px; padding:0 12px; background:var(--hover); } .tool-chip.active { background:var(--text); color:var(--bg); } .warning { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--bad); color:#fff; } .secondary-btn { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--hover); }
+    input, textarea, select { width:100%; min-height:44px; border:0; border-radius:8px; padding:0 12px; outline:none; background:var(--hover); } textarea { min-height:120px; padding:12px; resize:vertical; } .modal-actions { justify-content:flex-end; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; } .tool-chip, .tool-actions button { min-height:34px; border-radius:9999px; padding:0 12px; background:var(--hover); } .tool-chip.active { background:var(--text); color:var(--bg); } .tool-chip.blocked { opacity:.48; } .warning { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--bad); color:#fff; } .secondary-btn { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--hover); }
     .danger-note { margin:0; padding:12px; border-radius:12px; background:rgba(239,68,68,.12); color:var(--bad); font-weight:600; }
     .system-dialog { width:min(680px,calc(100% - 24px)); height:min(840px,calc(100dvh - 12px)); border-radius:28px; }
-    .system-modal { height:100%; padding:0; gap:0; overflow:hidden; display:grid; grid-template-columns:230px minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; color:var(--text); }
+    .system-modal { height:100%; padding:0; gap:0; overflow:hidden; display:grid; grid-template-columns:230px minmax(0,1fr); grid-template-rows:minmax(0,1fr); color:var(--text); }
     .system-close { width:44px; height:44px; min-width:44px; border-radius:9999px; background:var(--hover); }
     .system-mobile-title { display:none; }
     .system-sidebar { min-width:0; padding:20px 12px; border-right:1px solid var(--line); display:grid; align-content:start; gap:18px; overflow:hidden; }
@@ -125,7 +125,9 @@
     .mcp-section-title strong { font-size:16px; line-height:1.2; }
     .mcp-section-title span { color:var(--muted); font-size:12px; }
     .mcp-server-list { display:grid; align-content:start; gap:10px; }
+    .mcp-server-item { min-width:0; border-top:1px solid var(--line); display:grid; }
     .mcp-server-row { min-width:0; padding:14px 0; border-top:1px solid var(--line); background:transparent; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .mcp-server-item .mcp-server-row { border-top:0; }
     .mcp-server-info { min-width:0; display:grid; gap:3px; }
     .mcp-server-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:650; }
     .mcp-server-url { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
@@ -133,8 +135,8 @@
     .mcp-server-row-actions { flex:0 0 auto; display:flex; align-items:center; gap:4px; }
     .mcp-empty { min-height:96px; border-top:1px solid var(--line); display:grid; place-items:center; text-align:center; color:var(--muted); }
     .mcp-server-form { padding-top:14px; border-top:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .mcp-server-item .mcp-server-form { padding-bottom:16px; }
     .mcp-server-form-actions { grid-column:1/-1; display:flex; justify-content:flex-end; }
-    .system-modal .modal-actions { grid-column:2; padding:18px 32px; border-top:1px solid var(--line); background:transparent; }
     .render-block { display:grid; gap:8px; }
     .render-block-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
     .render-tabs { display:inline-flex; gap:2px; padding:2px; border-radius:9999px; background:var(--hover); }
@@ -176,7 +178,7 @@
     [data-sonner-toaster] [data-sonner-toast] [data-close-button] { left:auto !important; right:0 !important; transform:translate(40%, -40%); width: 28px; height: 28px; }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } }
     @media (max-width:960px) { .app-shell { grid-template-columns:minmax(0,1fr); } .sidebar { position:fixed; width:280px; transform:translateX(-105%); } .drawer-open .sidebar { transform:translateX(0); } .app-shell.sidebar-collapsed { grid-template-columns:minmax(0,1fr); } .app-shell.sidebar-collapsed .sidebar { width:280px; padding:16px; } .drawer-scrim { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.28); } }
-    @media (max-width:700px) { .main { grid-template-rows:56px minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .system-dialog { width:min(680px,calc(100% - 24px)); max-width:calc(100% - 24px); height:calc(100dvh - 24px); max-height:calc(100dvh - 24px); border-radius:16px; } .system-modal { min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr) auto; } .system-sidebar { padding:10px 12px 12px; border-right:0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr auto; grid-template-areas:"title close" "nav nav"; gap:8px; overflow:hidden; } .system-sidebar .system-close { grid-area:close; width:48px; height:48px; min-width:48px; background:transparent; } .system-mobile-title { grid-area:title; display:block; margin:0; align-self:center; font-size:20px; font-weight:650; } .system-nav { grid-area:nav; display:flex; gap:8px; overflow-x:auto; padding:0; } .system-nav-item { flex:0 0 auto; min-height:56px; padding:0 16px; font-size:16px; } .system-nav-item svg { width:22px; height:22px; } .system-main { min-height:0; padding:20px 24px; gap:18px; overflow:auto; overscroll-behavior:contain; } .system-page-head { display:none; } .settings-section-title, .mcp-section-title strong { font-size:16px; } .setting-row-title strong { font-size:14px; } .setting-row { min-height:92px; align-items:center; gap:14px; } .system-select { min-width:132px; } .mcp-section-head { min-height:60px; align-items:flex-start; } .mcp-server-form { grid-template-columns:1fr; } .system-modal .modal-actions { grid-column:1; min-width:0; padding:12px max(16px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); display:grid; grid-template-columns:1fr 1fr; gap:10px; } .system-modal .modal-actions .secondary-btn { width:100%; min-width:0; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
+    @media (max-width:700px) { .main { grid-template-rows:56px minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .system-dialog { width:min(680px,calc(100% - 24px)); max-width:calc(100% - 24px); height:calc(100dvh - 24px); max-height:calc(100dvh - 24px); border-radius:16px; } .system-modal { min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); } .system-sidebar { padding:10px 12px 12px; border-right:0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr auto; grid-template-areas:"title close" "nav nav"; gap:8px; overflow:hidden; } .system-sidebar .system-close { grid-area:close; width:48px; height:48px; min-width:48px; background:transparent; } .system-mobile-title { grid-area:title; display:block; margin:0; align-self:center; font-size:20px; font-weight:650; } .system-nav { grid-area:nav; display:flex; gap:8px; overflow-x:auto; padding:0; } .system-nav-item { flex:0 0 auto; min-height:56px; padding:0 16px; font-size:16px; } .system-nav-item svg { width:22px; height:22px; } .system-main { min-height:0; padding:20px 24px; gap:18px; overflow:auto; overscroll-behavior:contain; } .system-page-head { display:none; } .settings-section-title, .mcp-section-title strong { font-size:16px; } .setting-row-title strong { font-size:14px; } .setting-row { min-height:92px; align-items:center; gap:14px; } .system-select { min-width:132px; } .mcp-section-head { min-height:60px; align-items:flex-start; } .mcp-server-form { grid-template-columns:1fr; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
   </style>
   <style>
     select {
@@ -418,10 +420,11 @@ select::-ms-expand {
                   v-for="tool in toolDeclarations"
                   :key="tool.name"
                   class="tool-chip"
-                  :class="{ active: isToolSelected(tool.name) }"
-                  :title="tool.description || tool.name"
+                  :class="{ active: isToolSelected(tool.name), blocked: isToolConfigMissing(tool) }"
+                  :aria-disabled="isToolConfigMissing(tool)"
+                  :title="toolRoleSelectTitle(tool)"
                   type="button"
-                  @click="toggleTool(tool.name)"
+                  @click="toggleTool(tool)"
                 >{{ tool.name }}</button>
               </div>
               <span class="tool-hint" v-else>暂无可用工具</span>
@@ -474,31 +477,43 @@ select::-ms-expand {
                 <strong>MCP 服务器</strong>
                 <span>{{ mcpServersDraft.length }} 个服务器，工具会在保存后重新加载</span>
               </div>
-              <button class="secondary-btn" type="button" @click="resetMcpServersDraft">恢复默认</button>
+              <div class="mcp-server-row-actions">
+                <button class="icon-btn" type="button" title="添加服务器" @click="addMcpServerDraft"><plus-icon /></button>
+                <button class="icon-btn" type="button" title="恢复默认" @click="resetMcpServersDraft"><rotate-ccw-icon /></button>
+              </div>
             </div>
             <div class="mcp-server-list" v-if="mcpServersDraft.length">
-              <div v-for="(server, index) in mcpServersDraft" :key="`${server.name}-${index}`" class="mcp-server-row">
-                <div class="mcp-server-info">
-                  <span class="mcp-server-name">{{ server.name }}</span>
-                  <span class="mcp-server-url">{{ server.url }}</span>
-                  <span class="mcp-server-headers" v-if="server.headers && Object.keys(server.headers).length">{{ formatHeaderCount(server.headers) }}</span>
+              <div v-for="(server, index) in mcpServersDraft" :key="`${server.name}-${index}`" class="mcp-server-item">
+                <div class="mcp-server-row">
+                  <div class="mcp-server-info">
+                    <span class="mcp-server-name">{{ server.name || '未命名 MCP 服务器' }}</span>
+                    <span class="mcp-server-url">{{ server.url || '未配置 URL' }}</span>
+                    <span class="mcp-server-headers" v-if="mcpConfigTypeLabel(server)">{{ mcpConfigTypeLabel(server) }}</span>
+                    <span class="mcp-server-headers" v-if="server.headers && Object.keys(server.headers).length">{{ formatHeaderCount(server.headers) }}</span>
+                  </div>
+                  <div class="mcp-server-row-actions">
+                    <button class="icon-btn" type="button" @click="toggleMcpServerDraft(index)" :title="isMcpServerConfigOpen(index) ? '隐藏配置' : '配置'">
+                      <component :is="isMcpServerConfigOpen(index) ? 'chevron-up-icon' : 'settings-2-icon'" />
+                    </button>
+                    <button v-if="!isDefaultMcpServer(server)" class="icon-btn danger" type="button" @click="removeMcpServerDraft(index)" title="移除"><x-icon /></button>
+                  </div>
                 </div>
-                <div class="mcp-server-row-actions">
-                  <button class="icon-btn" type="button" @click="editMcpServerDraft(index)" title="编辑"><settings-2-icon /></button>
-                  <button v-if="!isDefaultMcpServer(server)" class="icon-btn danger" type="button" @click="removeMcpServerDraft(index)" title="移除"><x-icon /></button>
+                <div v-if="isMcpServerConfigOpen(index)" class="mcp-server-form">
+                  <label class="full">名称<input v-model="mcpServerForm.name" placeholder="例如 mcp1" /></label>
+                  <label class="full">URL<input v-model="mcpServerForm.url" placeholder="https://example.com/mcp" /></label>
+                  <label class="full">配置类型<select v-model="mcpServerForm.configType">
+                    <option value="none">无配置</option>
+                    <option value="headers">Headers</option>
+                  </select></label>
+                  <label v-if="mcpServerForm.configType === 'headers'" class="full">Headers (JSON 对象)<textarea v-model="mcpServerForm.headers" rows="2" placeholder='{"Authorization": "Bearer ..."}'></textarea></label>
+                  <div class="mcp-server-form-actions">
+                    <button class="secondary-btn" type="button" @click="cancelMcpServerEdit">取消</button>
+                    <button class="secondary-btn" type="button" @click="submitMcpServerDraft">保存配置</button>
+                  </div>
                 </div>
               </div>
             </div>
             <div class="mcp-empty" v-else>暂无 MCP 服务器</div>
-            <div class="mcp-server-form">
-              <label class="full">名称<input v-model="mcpServerForm.name" placeholder="例如 mcp1" /></label>
-              <label class="full">URL<input v-model="mcpServerForm.url" placeholder="https://example.com/mcp" /></label>
-              <label class="full">Headers (可选, JSON 对象)<textarea v-model="mcpServerForm.headers" rows="2" placeholder='{"Authorization": "Bearer ..."}'></textarea></label>
-              <div class="mcp-server-form-actions">
-                <button v-if="mcpEditingIndex !== null" class="secondary-btn" type="button" @click="cancelMcpServerEdit">取消编辑</button>
-                <button class="secondary-btn" type="button" @click="submitMcpServerDraft">{{ mcpEditingIndex === null ? '添加' : '更新' }}</button>
-              </div>
-            </div>
           </section>
           <section class="mcp-section" v-if="systemSettingsTab === 'tools'">
             <div class="mcp-section-head">
@@ -508,32 +523,32 @@ select::-ms-expand {
               </div>
             </div>
             <div class="mcp-server-list">
-              <div v-for="tool in browserTools.declarations" :key="tool.name" class="mcp-server-row">
-                <div class="mcp-server-info">
-                  <span class="mcp-server-name">{{ tool.name }}</span>
-                  <span class="mcp-server-url">{{ tool.description }}</span>
-                  <span class="mcp-server-headers" v-if="toolConfigSummary(tool.name)">{{ toolConfigSummary(tool.name) }}</span>
+              <div v-for="tool in browserTools.declarations" :key="tool.name" class="mcp-server-item">
+                <div class="mcp-server-row">
+                  <div class="mcp-server-info">
+                    <span class="mcp-server-name">{{ tool.name }}</span>
+                    <span class="mcp-server-url">{{ tool.description }}</span>
+                    <span class="mcp-server-headers" v-if="toolConfigTypeLabel(tool)">{{ toolConfigTypeLabel(tool) }}</span>
+                    <span class="mcp-server-headers" v-if="toolConfigSummary(tool.name)">{{ toolConfigSummary(tool.name) }}</span>
+                  </div>
+                  <div class="mcp-server-row-actions">
+                    <button v-if="toolRequiresConfig(tool)" class="icon-btn" type="button" @click="toggleToolConfig(tool.name)" :title="isToolConfigOpen(tool.name) ? '取消' : '配置'">
+                      <component :is="isToolConfigOpen(tool.name) ? 'chevron-up-icon' : 'settings-2-icon'" />
+                    </button>
+                  </div>
                 </div>
-                <div class="mcp-server-row-actions">
-                  <button class="icon-btn" type="button" @click="editToolConfig(tool.name)" title="配置"><settings-2-icon /></button>
+                <div v-if="isToolConfigOpen(tool.name)" class="mcp-server-form">
+                  <label class="full">API Key<input v-model="toolConfigForm.apiKey" placeholder="供本地工具调用时使用" /></label>
+                  <label class="full">Headers (可选, JSON 对象)<textarea v-model="toolConfigForm.headers" rows="2" placeholder='{"Authorization": "Bearer ..."}'></textarea></label>
+                  <div class="mcp-server-form-actions">
+                    <button class="secondary-btn" type="button" @click="clearToolConfig">清空配置</button>
+                    <button class="secondary-btn" type="button" @click="saveToolConfigDraft">保存配置</button>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div class="mcp-server-form">
-              <label class="full">工具名<input v-model="toolConfigForm.name" disabled placeholder="选择上方工具" /></label>
-              <label class="full">API Key<input v-model="toolConfigForm.apiKey" placeholder="可选，供本地工具调用时使用" /></label>
-              <label class="full">Headers (可选, JSON 对象)<textarea v-model="toolConfigForm.headers" rows="2" placeholder='{"Authorization": "Bearer ..."}'></textarea></label>
-              <div class="mcp-server-form-actions">
-                <button class="secondary-btn" type="button" :disabled="!toolConfigForm.name" @click="clearToolConfig">清空配置</button>
-                <button class="secondary-btn" type="button" :disabled="!toolConfigForm.name" @click="saveToolConfigDraft">保存配置</button>
               </div>
             </div>
           </section>
         </main>
-        <div class="modal-actions">
-          <button class="secondary-btn" type="button" @click="closeSystemSettings">取消</button>
-          <button class="secondary-btn" type="button" @click="saveSystemSettings">保存</button>
-        </div>
       </div>
     </dialog>
 
@@ -582,7 +597,7 @@ select::-ms-expand {
     import { createMcpToolRegistry } from "./mcp-client.js";
     import { buildToolMessage, upsertToolMessage, displayName as toolEventDisplayName, statusText as toolEventStatusText } from "./tool-events.js";
     import {
-      AudioLines, Captions, CaptionsOff, Check, Copy, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Repeat, ScreenShare, ScreenShareOff, Send, Settings, Settings2, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
+      AudioLines, Captions, CaptionsOff, Check, ChevronUp, Copy, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Plus, Repeat, RotateCcw, ScreenShare, ScreenShareOff, Send, Settings, Settings2, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
 
     const models = APP_MODELS;
@@ -797,9 +812,10 @@ select::-ms-expand {
           browserTools,
           browserToolConfigs: this.loadBrowserToolConfigs(),
           toolConfigForm: { name: '', apiKey: '', headers: '' },
+          openToolConfigName: '',
           mcpServers: this.loadMcpServers(),
           mcpServersDraft: [],
-          mcpServerForm: { name: '', url: '', headers: '' },
+          mcpServerForm: { name: '', url: '', configType: 'none', headers: '' },
           mcpEditingIndex: null,
           mcpRegistry: { declarations: [], handlers: {} },
           mcpRegistryReady: Promise.resolve(),
@@ -984,16 +1000,22 @@ select::-ms-expand {
         },
         openSystemSettings() {
           this.mcpServersDraft = this.mcpServers.map((server) => this.cloneMcpServer(server));
-          this.mcpServerForm = { name: '', url: '', headers: '' };
+          this.mcpServerForm = { name: '', url: '', configType: 'none', headers: '' };
           this.mcpEditingIndex = null;
           this.$refs.systemDialog.showModal();
         },
-        closeSystemSettings() { this.$refs.systemDialog.close(); },
+        closeSystemSettings() {
+          this.openToolConfigName = '';
+          this.toolConfigForm = { name: '', apiKey: '', headers: '' };
+          this.cancelMcpServerEdit();
+          this.$refs.systemDialog.close();
+        },
         closeSystemSettingsOnBackdrop(event) { if (event.target === this.$refs.systemDialog) this.closeSystemSettings(); },
         cloneMcpServer(server) {
           if (!server) return { name: '', url: '' };
-          const cloned = { name: server.name, url: server.url };
-          if (server.headers && typeof server.headers === 'object') cloned.headers = { ...server.headers };
+          const configType = server.configType || (server.headers && Object.keys(server.headers).length ? 'headers' : 'none');
+          const cloned = { name: server.name, url: server.url, configType };
+          if (configType !== 'none' && server.headers && typeof server.headers === 'object') cloned.headers = { ...server.headers };
           return cloned;
         },
         loadMcpServers() {
@@ -1005,6 +1027,11 @@ select::-ms-expand {
         },
         saveMcpServersToStorage() {
           localStorage.setItem('geminiMcpServers', JSON.stringify(this.mcpServers));
+        },
+        saveMcpServersDraft() {
+          this.mcpServers = this.mcpServersDraft.map((server) => this.cloneMcpServer(server));
+          this.saveMcpServersToStorage();
+          this.refreshMcpRegistry();
         },
         loadBrowserToolConfigs() {
           try {
@@ -1029,6 +1056,36 @@ select::-ms-expand {
             return null;
           }
         },
+        getToolConfigType(toolOrName) {
+          const tool = typeof toolOrName === 'string'
+            ? this.toolDeclarations.find((item) => item.name === toolOrName)
+            : toolOrName;
+          return tool?.configType || 'none';
+        },
+        toolRequiresConfig(toolOrName) {
+          return this.getToolConfigType(toolOrName) !== 'none';
+        },
+        hasToolConfig(name) {
+          const config = this.browserToolConfigs?.[name] || {};
+          const type = this.getToolConfigType(name);
+          if (type === 'apiKey') return Boolean(config.apiKey);
+          if (type === 'oauth') return Boolean(config.oauth);
+          return Boolean(config.apiKey || Object.keys(config.headers || {}).length);
+        },
+        isToolConfigMissing(toolOrName) {
+          const name = typeof toolOrName === 'string' ? toolOrName : toolOrName?.name;
+          return Boolean(name && this.toolRequiresConfig(toolOrName) && !this.hasToolConfig(name));
+        },
+        toolConfigTypeLabel(toolOrName) {
+          const type = this.getToolConfigType(toolOrName);
+          if (type === 'apiKey' && this.isToolConfigMissing(toolOrName)) return '需要 API Key';
+          if (type === 'oauth') return '需要 OAuth';
+          return '';
+        },
+        toolRoleSelectTitle(tool) {
+          if (this.isToolConfigMissing(tool)) return `${tool.name} 需要先在系统配置中完成${this.toolConfigTypeLabel(tool) || '工具'}配置`;
+          return tool.description || tool.name;
+        },
         toolConfigSummary(name) {
           const config = this.browserToolConfigs?.[name] || {};
           const parts = [];
@@ -1037,8 +1094,20 @@ select::-ms-expand {
           if (headerCount) parts.push(`${headerCount} header${headerCount === 1 ? '' : 's'}`);
           return parts.join(' · ');
         },
+        isToolConfigOpen(name) {
+          return this.openToolConfigName === name;
+        },
+        toggleToolConfig(name) {
+          if (this.isToolConfigOpen(name)) {
+            this.openToolConfigName = '';
+            this.toolConfigForm = { name: '', apiKey: '', headers: '' };
+            return;
+          }
+          this.editToolConfig(name);
+        },
         editToolConfig(name) {
           const config = this.browserToolConfigs?.[name] || {};
+          this.openToolConfigName = name;
           this.toolConfigForm = {
             name,
             apiKey: config.apiKey || '',
@@ -1071,6 +1140,7 @@ select::-ms-expand {
           this.browserToolConfigs = next;
           this.toolConfigForm = { name, apiKey: '', headers: '' };
           this.saveBrowserToolConfigsToStorage();
+          toast.success('工具配置已清空');
         },
         refreshMcpRegistry() {
           this.mcpRegistryReady = createMcpToolRegistry(this.mcpServers || [])
@@ -1087,16 +1157,21 @@ select::-ms-expand {
         isDefaultMcpServer(server) {
           return DEFAULT_MCP_SERVERS.some((item) => item.name === server?.name && item.url === server?.url);
         },
+        mcpConfigTypeLabel(server) {
+          if ((server?.configType || 'none') === 'headers') return '需要 Headers';
+          return '';
+        },
         createMcpServerFromForm() {
           const name = (this.mcpServerForm.name || '').trim();
           const url = (this.mcpServerForm.url || '').trim();
+          const configType = this.mcpServerForm.configType || 'none';
           if (!name || !url) {
             toast.error('请填写名称和 URL');
             return null;
           }
           let headers;
-          const rawHeaders = (this.mcpServerForm.headers || '').trim();
-          if (rawHeaders) {
+          const rawHeaders = configType === 'headers' ? (this.mcpServerForm.headers || '').trim() : '';
+          if (configType === 'headers' && rawHeaders) {
             try {
               const parsed = JSON.parse(rawHeaders);
               if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
@@ -1106,9 +1181,10 @@ select::-ms-expand {
               return null;
             }
           }
-          return headers ? { name, url, headers } : { name, url };
+          return headers ? { name, url, configType, headers } : { name, url, configType };
         },
         submitMcpServerDraft() {
+          if (this.mcpEditingIndex === null) return;
           const server = this.createMcpServerFromForm();
           if (!server) return;
 
@@ -1118,46 +1194,71 @@ select::-ms-expand {
             return;
           }
 
-          if (this.mcpEditingIndex === null) this.mcpServersDraft.push(server);
-          else this.mcpServersDraft.splice(this.mcpEditingIndex, 1, server);
+          this.mcpServersDraft.splice(this.mcpEditingIndex, 1, server);
 
-          this.mcpServerForm = { name: '', url: '', headers: '' };
-          this.mcpEditingIndex = null;
+          this.cancelMcpServerEdit();
+          this.saveMcpServersDraft();
+          toast.success('MCP 配置已保存');
+        },
+        isMcpServerConfigOpen(index) {
+          return this.mcpEditingIndex === index;
+        },
+        toggleMcpServerDraft(index) {
+          if (this.isMcpServerConfigOpen(index)) this.cancelMcpServerEdit();
+          else {
+            let targetIndex = index;
+            const currentIndex = this.mcpEditingIndex;
+            const currentServer = currentIndex !== null ? this.mcpServersDraft[currentIndex] : null;
+            this.cancelMcpServerEdit();
+            if (currentServer && !currentServer.name && !currentServer.url && currentIndex < index) targetIndex -= 1;
+            this.editMcpServerDraft(targetIndex);
+          }
+        },
+        addMcpServerDraft() {
+          this.cancelMcpServerEdit();
+          const server = { name: '', url: '', configType: 'none' };
+          this.mcpServersDraft.push(server);
+          this.editMcpServerDraft(this.mcpServersDraft.length - 1);
         },
         editMcpServerDraft(index) {
           const server = this.mcpServersDraft[index];
           if (!server) return;
           this.mcpEditingIndex = index;
+          const configType = server.configType || (server.headers && Object.keys(server.headers).length ? 'headers' : 'none');
           this.mcpServerForm = {
             name: server.name || '',
             url: server.url || '',
-            headers: this.serializeMcpHeaders(server.headers),
+            configType,
+            headers: configType === 'headers' ? this.serializeMcpHeaders(server.headers) : '',
           };
         },
         cancelMcpServerEdit() {
+          const index = this.mcpEditingIndex;
+          const server = index !== null ? this.mcpServersDraft[index] : null;
+          if (server && !server.name && !server.url) this.mcpServersDraft.splice(index, 1);
           this.mcpEditingIndex = null;
-          this.mcpServerForm = { name: '', url: '', headers: '' };
+          this.mcpServerForm = { name: '', url: '', configType: 'none', headers: '' };
         },
         removeMcpServerDraft(index) {
           if (this.isDefaultMcpServer(this.mcpServersDraft[index])) return;
+          const wasEditing = this.mcpEditingIndex === index;
           this.mcpServersDraft.splice(index, 1);
-          if (this.mcpEditingIndex === index) this.cancelMcpServerEdit();
+          if (wasEditing) {
+            this.mcpEditingIndex = null;
+            this.mcpServerForm = { name: '', url: '', configType: 'none', headers: '' };
+          }
           else if (this.mcpEditingIndex !== null && this.mcpEditingIndex > index) this.mcpEditingIndex -= 1;
+          this.saveMcpServersDraft();
         },
         resetMcpServersDraft() {
           this.mcpServersDraft = DEFAULT_MCP_SERVERS.map((server) => this.cloneMcpServer(server));
           this.cancelMcpServerEdit();
+          this.saveMcpServersDraft();
+          toast.success('MCP 已恢复默认');
         },
         formatHeaderCount(headers) {
           const count = Object.keys(headers || {}).length;
           return `${count} header${count === 1 ? '' : 's'}`;
-        },
-        async saveSystemSettings() {
-          this.mcpServers = this.mcpServersDraft.map((server) => this.cloneMcpServer(server));
-          this.saveMcpServersToStorage();
-          this.saveBrowserToolConfigsToStorage();
-          this.refreshMcpRegistry();
-          this.closeSystemSettings();
         },
         applyTheme() {
           window.applyGeminiTheme?.(this.themeMode);
@@ -1299,13 +1400,37 @@ select::-ms-expand {
           this.roleDraft.autoLoadTools = uniqueNames.join(',');
         },
         isToolSelected(name) { return this.selectedToolNames().includes(name); },
-        toggleTool(name) {
+        toggleTool(toolOrName) {
+          const name = typeof toolOrName === 'string' ? toolOrName : toolOrName?.name;
+          if (!name) return;
+          if (this.isToolConfigMissing(toolOrName)) {
+            toast.error(`请先配置工具 ${name}`, { description: '打开系统配置 > 工具调用，完成配置后再选择。' });
+            return;
+          }
           const names = this.selectedToolNames();
           this.updateSelectedTools(names.includes(name) ? names.filter((item) => item !== name) : [...names, name]);
         },
-        setAllTools() { this.roleDraft.autoLoadTools = '*'; },
+        setAllTools() {
+          const selectableNames = this.toolDeclarations
+            .filter((tool) => !this.isToolConfigMissing(tool))
+            .map((tool) => tool.name);
+          const blockedCount = this.toolDeclarations.length - selectableNames.length;
+          this.updateSelectedTools(selectableNames);
+          if (blockedCount) toast.warning(`已跳过 ${blockedCount} 个未配置工具`);
+        },
         clearTools() { this.roleDraft.autoLoadTools = ''; },
+        getMissingConfiguredToolNames(value = this.roleDraft.autoLoadTools) {
+          const selected = String(value || '').trim() === '*'
+            ? this.toolDeclarations.map((tool) => tool.name)
+            : String(value || '').split(',').map((name) => name.trim()).filter(Boolean);
+          return selected.filter((name) => this.isToolConfigMissing(name));
+        },
         saveRoleConfig() {
+          const missingToolNames = this.getMissingConfiguredToolNames();
+          if (missingToolNames.length) {
+            toast.error('存在未配置工具', { description: `请先配置或移除: ${missingToolNames.join(', ')}` });
+            return;
+          }
           const isCreatingRole = !this.editingRoleId;
           const targetRoleId = isCreatingRole ? this.roleDraft.id : this.editingRoleId;
           const isSystemRole = !isCreatingRole && this.default_roles.some((role) => role.id === targetRoleId);
@@ -1883,6 +2008,7 @@ select::-ms-expand {
       'captions-icon': Captions,
       'captions-off-icon': CaptionsOff,
       'check-icon': Check,
+      'chevron-up-icon': ChevronUp,
       'copy-icon': Copy,
       'keyboard-icon': Keyboard,
       'maximize-2-icon': Maximize2,
@@ -1895,7 +2021,9 @@ select::-ms-expand {
       'panel-left-close-icon': PanelLeftClose,
       'phone-icon': Phone,
       'phone-off-icon': PhoneOff,
+      'plus-icon': Plus,
       'repeat-icon': Repeat,
+      'rotate-ccw-icon': RotateCcw,
       'screen-share-icon': ScreenShare,
       'screen-share-off-icon': ScreenShareOff,
       'send-icon': Send,

@@ -1,5 +1,6 @@
 const codeExecutionDeclaration = {
   name: 'codeExecution',
+  configType: 'none',
   description: '在浏览器沙箱 Worker 中执行 JavaScript 代码，返回 console 输出、执行结果或错误。',
   parameters: {
     type: 'object',
@@ -19,6 +20,7 @@ const codeExecutionDeclaration = {
 
 const renderPageDeclaration = {
   name: 'renderPage',
+  configType: 'none',
   description: '在页面内创建沙箱 iframe，渲染传入的完整 HTML 文档。iframe 使用独立 opaque origin，并仅允许脚本执行。',
   parameters: {
     type: 'object',
@@ -34,6 +36,7 @@ const renderPageDeclaration = {
 
 const tavilySearchDeclaration = {
   name: 'tavilySearch',
+  configType: 'apiKey',
   description: '使用 Tavily Search API 执行联网搜索，返回答案、搜索结果、图片和响应时间等结构化数据。需要在工具配置中填写 Tavily API Key。',
   parameters: {
     type: 'object',

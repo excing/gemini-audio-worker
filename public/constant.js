@@ -1,5 +1,5 @@
 export const DEFAULT_MCP_SERVERS = [
-  { "name": "instantDomainSearch", "url": "https://api.instantdomainsearch.com/mcp" },
+  { "name": "instantDomainSearch", "url": "https://api.instantdomainsearch.com/mcp", "configType": "none" },
 ];
 
 export const APP_MODELS = [
