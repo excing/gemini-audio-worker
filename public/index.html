@@ -136,7 +136,7 @@
     .mcp-empty { min-height:96px; border-top:1px solid var(--line); display:grid; place-items:center; text-align:center; color:var(--muted); }
     .mcp-server-form { padding-top:14px; border-top:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .mcp-server-item .mcp-server-form { padding-bottom:16px; }
-    .mcp-server-form-actions { grid-column:1/-1; display:flex; justify-content:flex-end; }
+    .mcp-server-form-actions { grid-column:1/-1; display:flex; justify-content:flex-end; gap: 12px;; }
     .render-block { display:grid; gap:8px; }
     .render-block-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
     .render-tabs { display:inline-flex; gap:2px; padding:2px; border-radius:9999px; background:var(--hover); }
@@ -541,7 +541,7 @@ select::-ms-expand {
                   <label class="full">API Key<input v-model="toolConfigForm.apiKey" placeholder="供本地工具调用时使用" /></label>
                   <label class="full">Headers (可选, JSON 对象)<textarea v-model="toolConfigForm.headers" rows="2" placeholder='{"Authorization": "Bearer ..."}'></textarea></label>
                   <div class="mcp-server-form-actions">
-                    <button class="secondary-btn" type="button" @click="clearToolConfig">清空配置</button>
+                    <button class="secondary-btn" type="button" @click="cancelToolConfig">取消</button>
                     <button class="secondary-btn" type="button" @click="saveToolConfigDraft">保存配置</button>
                   </div>
                 </div>
@@ -1099,11 +1099,14 @@ select::-ms-expand {
         },
         toggleToolConfig(name) {
           if (this.isToolConfigOpen(name)) {
-            this.openToolConfigName = '';
-            this.toolConfigForm = { name: '', apiKey: '', headers: '' };
+            this.cancelToolConfig();
             return;
           }
           this.editToolConfig(name);
+        },
+        cancelToolConfig() {
+          this.openToolConfigName = '';
+          this.toolConfigForm = { name: '', apiKey: '', headers: '' };
         },
         editToolConfig(name) {
           const config = this.browserToolConfigs?.[name] || {};
@@ -1131,16 +1134,6 @@ select::-ms-expand {
           }
           this.saveBrowserToolConfigsToStorage();
           toast.success('工具配置已保存');
-        },
-        clearToolConfig() {
-          const name = this.toolConfigForm.name;
-          if (!name) return;
-          const next = { ...this.browserToolConfigs };
-          delete next[name];
-          this.browserToolConfigs = next;
-          this.toolConfigForm = { name, apiKey: '', headers: '' };
-          this.saveBrowserToolConfigsToStorage();
-          toast.success('工具配置已清空');
         },
         refreshMcpRegistry() {
           this.mcpRegistryReady = createMcpToolRegistry(this.mcpServers || [])
