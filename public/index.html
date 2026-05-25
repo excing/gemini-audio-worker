@@ -1396,12 +1396,13 @@ select::-ms-expand {
         toggleTool(toolOrName) {
           const name = typeof toolOrName === 'string' ? toolOrName : toolOrName?.name;
           if (!name) return;
-          if (this.isToolConfigMissing(toolOrName)) {
+          const names = this.selectedToolNames();
+          const selected = names.includes(name);
+          if (this.isToolConfigMissing(toolOrName) && !selected) {
             toast.error(`请先配置工具 ${name}`, { description: '打开系统配置 > 工具调用，完成配置后再选择。' });
             return;
           }
-          const names = this.selectedToolNames();
-          this.updateSelectedTools(names.includes(name) ? names.filter((item) => item !== name) : [...names, name]);
+          this.updateSelectedTools(selected ? names.filter((item) => item !== name) : [...names, name]);
         },
         setAllTools() {
           const selectableNames = this.toolDeclarations
