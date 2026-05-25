@@ -4,6 +4,7 @@ const DISPLAY_NAMES = {
   webSearch: '网页搜索',
   fetch: '网络请求',
   urlContext: '网页内容',
+  musicPlaylist: '音乐播放列表',
   codeExecution: '代码执行',
   renderPage: '页面渲染',
   checkDomainAvailability: '域名检查',
@@ -36,7 +37,7 @@ const deriveDisplay = (name, args, response) => {
     const fetchUrl = String(args?.url || '').trim();
     if (fetchUrl) display.prompt = `${method} ${fetchUrl}`;
   } else {
-    const promptValue = args?.prompt || args?.query || args?.url || args?.code || '';
+    const promptValue = args?.prompt || args?.query || args?.keyword || args?.url || args?.code || '';
     if (promptValue) display.prompt = String(promptValue).trim();
   }
 
@@ -57,6 +58,17 @@ const deriveDisplay = (name, args, response) => {
         url: String(item?.url || '').trim(),
       }))
       .filter((item) => item.title || item.url);
+  }
+
+  if (name === 'musicPlaylist') {
+    const playlist = Array.isArray(response?.playlist) ? response.playlist : [];
+    if (playlist.length) {
+      display.text = `返回 ${playlist.length} 首歌曲`;
+      display.results = playlist.map((item) => ({
+        title: [item?.name, item?.artist || item?.artists].filter(Boolean).join(' - '),
+        url: String(item?.playback?.audio_url || '').trim(),
+      })).filter((item) => item.title || item.url);
+    }
   }
 
   // checkDomainAvailability 专属：域名检查结果

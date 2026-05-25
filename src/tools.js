@@ -2,6 +2,7 @@ import checkDomainAvailabilityTool from './tools/check-domain-availability.js';
 import fetchTool from './tools/fetch.js';
 import getWeatherTool from './tools/get-weather.js';
 import imageGenerationTool from './tools/image-generation.js';
+import musicPlaylistTool from './tools/music-playlist.js';
 import urlContextTool from './tools/url-context.js';
 import webSearchTool from './tools/web-search.js';
 
@@ -12,6 +13,7 @@ export const tools = [
   fetchTool,
   checkDomainAvailabilityTool,
   imageGenerationTool,
+  musicPlaylistTool,
 ];
 
 export const toolDeclarations = tools.map(({ name, description, parameters }) => ({
