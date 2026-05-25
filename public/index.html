@@ -1598,13 +1598,23 @@ select::-ms-expand {
           if (this.currentRole.voiceName) setup.voiceName = this.currentRole.voiceName;
           const selectedNames = this.selectedBrowserToolNames(setup.autoLoadTools);
           const candidates = [...browserTools.declarations, ...this.mcpRegistry.declarations];
-          const browserToolDeclarations = candidates.filter((tool) => selectedNames.includes(tool.name));
+          const browserToolDeclarations = candidates
+            .filter((tool) => selectedNames.includes(tool.name))
+            .map((tool) => this.toGeminiFunctionDeclaration(tool));
           if (browserToolDeclarations.length) setup.browserTools = browserToolDeclarations;
           if (this.pendingClientPayloads.length) {
             setup.initialMessages = this.pendingClientPayloads;
             this.pendingClientPayloads = [];
           }
           return { setup };
+        },
+        toGeminiFunctionDeclaration(tool) {
+          const declaration = {
+            name: tool.name,
+            description: tool.description || '',
+          };
+          if (tool.parameters) declaration.parameters = tool.parameters;
+          return declaration;
         },
         selectedBrowserToolNames(autoLoadTools) {
           const candidates = [...browserTools.declarations, ...this.mcpRegistry.declarations];
