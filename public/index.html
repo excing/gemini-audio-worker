@@ -71,7 +71,11 @@
     .section-title { margin:0 0 8px; padding:0 8px; color:var(--muted); font-size:12px; font-weight:500; } .role-list { min-height:0; overflow:auto; display:grid; align-content:start; gap:4px; }
     .role-row { width:100%; min-width:0; min-height:48px; padding:6px 6px 6px 12px; border-radius:12px; background:transparent; text-align:left; } .role-row .icon-btn { flex:0 0 36px; width:36px; min-width:36px; height:36px; } .role-row.active { background:var(--hover); } .role-name { flex:1 1 auto; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
     .sidebar-foot { display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:8px; }
-    .main { min-width:0; height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) 76px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); }
+    .main { min-width:0; height:100dvh; display:grid; grid-template-rows:60px auto minmax(0,1fr) 76px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); }
+    .main > .topbar { grid-row:1; }
+    .main > .music-player-banner { grid-row:2; }
+    .main > .chat-plane { grid-row:3; }
+    .main > .input-bar { grid-row:4; }
     .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items: center; justify-items:center; line-height:1.2; } .chat-title { max-width:min(39vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; background:transparent; } .chat-title:hover { background:var(--hover); }
     .dot { width:8px; height:8px; border-radius:9999px; background:transparent; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.bad { background:var(--bad); }
     .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
@@ -174,11 +178,59 @@
     .tool-call-result-list li { overflow-wrap:anywhere; }
     .tool-call-result-list a { color:var(--text); text-decoration:none; }
     .tool-call-result-list a:hover { text-decoration:underline; }
+    .tool-music { display:grid; gap:10px; }
+    .tool-music-list { list-style:none; margin:0; padding:0; display:grid; gap:4px; max-height:300px; overflow-y:auto; }
+    .tool-music-row { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:10px; cursor:pointer; transition:background .15s ease-in-out; }
+    .tool-music-row:hover { background:var(--hover); }
+    .tool-music-row.active { background:var(--hover); }
+    .tool-music-row.active .tool-music-name { color:var(--ok); font-weight:700; }
+    .tool-music-row.disabled { opacity:.45; cursor:not-allowed; }
+    .tool-music-cover { width:36px; height:36px; min-width:36px; border-radius:6px; object-fit:cover; background:var(--hover); }
+    .tool-music-cover-placeholder { display:flex; align-items:center; justify-content:center; color:var(--muted); }
+    .tool-music-cover-placeholder svg { width:18px; height:18px; }
+    .tool-music-titles { flex:1; min-width:0; display:grid; }
+    .tool-music-name { font-size:13px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tool-music-artist { font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tool-music-state { width:24px; height:24px; display:flex; align-items:center; justify-content:center; color:var(--muted); }
+    .tool-music-state svg { width:16px; height:16px; }
+    .tool-music-row.active .tool-music-state { color:var(--ok); }
+    .tool-music-play-all { display:inline-flex; align-items:center; gap:6px; justify-self:start; }
+    .tool-music-play-all svg { width:14px; height:14px; }
+    .music-player-banner { background:var(--surface); border-bottom:1px solid var(--line); padding:8px 14px; display:grid; gap:10px; }
+    .music-player-banner.expanded { padding-bottom:10px; }
+    .music-player-row { display:flex; align-items:center; gap:14px; min-height:56px; }
+    .music-player-meta { display:flex; align-items:center; gap:10px; min-width:0; flex:0 0 auto; max-width:36%; }
+    .music-player-cover { width:48px; height:48px; min-width:48px; border-radius:8px; object-fit:cover; background:var(--hover); }
+    .music-player-cover-placeholder { display:flex; align-items:center; justify-content:center; color:var(--muted); }
+    .music-player-cover-placeholder svg { width:22px; height:22px; }
+    .music-player-titles { min-width:0; display:grid; }
+    .music-player-title { font-size:13px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .music-player-artist { font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .music-player-progress { flex:1; min-width:0; display:flex; align-items:center; gap:10px; }
+    .music-player-progress input[type="range"] { flex:1; min-width:0; height:4px; min-height:4px; -webkit-appearance:none; appearance:none; background:linear-gradient(to right, var(--text) 0%, var(--text) var(--progress-pct, 0%), var(--line) var(--progress-pct, 0%), var(--line) 100%); border-radius:999px; outline:none; cursor:pointer; padding:0; margin:0; }
+    .music-player-progress input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:12px; height:12px; border-radius:50%; background:var(--text); border:0; cursor:pointer; }
+    .music-player-progress input[type="range"]::-moz-range-thumb { width:12px; height:12px; border-radius:50%; background:var(--text); border:0; cursor:pointer; }
+    .music-player-progress input[type="range"]:disabled { opacity:.5; cursor:not-allowed; }
+    .music-player-time { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; min-width:36px; text-align:center; }
+    .music-player-controls { display:flex; align-items:center; gap:4px; flex:0 0 auto; }
+    .music-player-controls .icon-btn { width:36px; height:36px; min-width:36px; border-radius:9999px; background:transparent; }
+    .music-player-controls .icon-btn:hover { background:var(--hover); }
+    .music-player-controls .music-player-play { background:var(--text); color:var(--bg); }
+    .music-player-controls .music-player-play:hover { background:var(--text); opacity:.85; }
+    .music-player-controls .music-player-play:disabled { opacity:.4; cursor:not-allowed; }
+    .music-player-controls .music-player-play svg { width:18px; height:18px; }
+    .music-player-lyrics { max-height:280px; overflow-y:auto; padding:8px 4px; display:grid; gap:8px; scroll-behavior:smooth; }
+    .music-player-lyrics-empty { color:var(--muted); font-size:13px; text-align:center; padding:12px 0; }
+    .music-player-lyric-row { text-align:center; padding:4px 0; color:var(--muted); transition:color .2s ease-in-out, transform .2s ease-in-out; }
+    .music-player-lyric-original { font-size:14px; line-height:1.4; }
+    .music-player-lyric-translated { font-size:12px; line-height:1.3; opacity:.72; margin-top:2px; }
+    .music-player-lyric-row.active { color:var(--text); font-weight:700; transform:scale(1.04); }
+    .music-player-lyric-row.active .music-player-lyric-translated { opacity:.85; }
     .tool-picker { display:grid; gap:10px; color:var(--muted); font-size:12px; } .tool-hint { color:var(--muted); }
     [data-sonner-toaster] [data-sonner-toast] [data-close-button] { left:auto !important; right:0 !important; transform:translate(40%, -40%); width: 28px; height: 28px; }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } }
     @media (max-width:960px) { .app-shell { grid-template-columns:minmax(0,1fr); } .sidebar { position:fixed; width:280px; transform:translateX(-105%); } .drawer-open .sidebar { transform:translateX(0); } .app-shell.sidebar-collapsed { grid-template-columns:minmax(0,1fr); } .app-shell.sidebar-collapsed .sidebar { width:280px; padding:16px; } .drawer-scrim { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.28); } }
-    @media (max-width:700px) { .main { grid-template-rows:56px minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .system-dialog { width:min(680px,calc(100% - 24px)); max-width:calc(100% - 24px); height:calc(100dvh - 24px); max-height:calc(100dvh - 24px); border-radius:16px; } .system-modal { min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); } .system-sidebar { padding:10px 12px 12px; border-right:0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr auto; grid-template-areas:"title close" "nav nav"; gap:8px; overflow:hidden; } .system-sidebar .system-close { grid-area:close; width:48px; height:48px; min-width:48px; background:transparent; } .system-mobile-title { grid-area:title; display:block; margin:0; align-self:center; font-size:20px; font-weight:650; } .system-nav { grid-area:nav; display:flex; gap:8px; overflow-x:auto; padding:0; } .system-nav-item { flex:0 0 auto; min-height:56px; padding:0 16px; font-size:16px; } .system-nav-item svg { width:22px; height:22px; } .system-main { min-height:0; padding:20px 24px; gap:18px; overflow:auto; overscroll-behavior:contain; } .system-page-head { display:none; } .settings-section-title, .mcp-section-title strong { font-size:16px; } .setting-row-title strong { font-size:14px; } .setting-row { min-height:92px; align-items:center; gap:14px; } .system-select { min-width:132px; } .mcp-section-head { min-height:60px; align-items:flex-start; } .mcp-server-form { grid-template-columns:1fr; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
+    @media (max-width:700px) { .main { grid-template-rows:56px auto minmax(0,1fr) 68px; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .system-dialog { width:min(680px,calc(100% - 24px)); max-width:calc(100% - 24px); height:calc(100dvh - 24px); max-height:calc(100dvh - 24px); border-radius:16px; } .system-modal { min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); } .system-sidebar { padding:10px 12px 12px; border-right:0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr auto; grid-template-areas:"title close" "nav nav"; gap:8px; overflow:hidden; } .system-sidebar .system-close { grid-area:close; width:48px; height:48px; min-width:48px; background:transparent; } .system-mobile-title { grid-area:title; display:block; margin:0; align-self:center; font-size:20px; font-weight:650; } .system-nav { grid-area:nav; display:flex; gap:8px; overflow-x:auto; padding:0; } .system-nav-item { flex:0 0 auto; min-height:56px; padding:0 16px; font-size:16px; } .system-nav-item svg { width:22px; height:22px; } .system-main { min-height:0; padding:20px 24px; gap:18px; overflow:auto; overscroll-behavior:contain; } .system-page-head { display:none; } .settings-section-title, .mcp-section-title strong { font-size:16px; } .setting-row-title strong { font-size:14px; } .setting-row { min-height:92px; align-items:center; gap:14px; } .system-select { min-width:132px; } .mcp-section-head { min-height:60px; align-items:flex-start; } .mcp-server-form { grid-template-columns:1fr; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
   </style>
   <style>
     select {
@@ -215,8 +267,8 @@ select::-ms-expand {
       <div class="drawer-scrim" v-if="drawerOpen" @click="drawerOpen = false"></div>
       <aside class="sidebar">
         <div class="sidebar-head">
-          <div class="brand"><span class="brand-mark"><sparkles-icon /></span><span>Gemini 语音助手</span></div>
-          <button class="icon-btn" type="button" title="收起" @click="toggleSidebar"><panel-left-close-icon /></button>
+          <div class="brand"><span class="brand-mark"><sparkles-icon ></sparkles-icon></span><span>Gemini 语音助手</span></div>
+          <button class="icon-btn" type="button" title="收起" @click="toggleSidebar"><panel-left-close-icon ></panel-left-close-icon></button>
         </div>
         <div class="sidebar-actions">
           <button class="primary-btn" type="button" @click="newChat"><message-circle-plus-icon></message-circle-plus-icon><span>新聊天</span></button>
@@ -226,27 +278,29 @@ select::-ms-expand {
           <p class="section-title">角色列表</p>
           <button v-for="role in allRoles" :key="role.id" class="role-row" :class="{ active: selectedRoleId === role.id }" type="button" @click="selectRoleById(role.id)">
             <span class="role-name">{{ role.name }}</span>
-            <span class="icon-btn" title="打电话" @click.stop="enterCallMode(role.id)"><phone-icon /></span>
-            <span class="icon-btn" title="配置" @click.stop="openRoleConfig(role.id)"><settings-2-icon /></span>
+            <span class="icon-btn" title="打电话" @click.stop="enterCallMode(role.id)"><phone-icon ></phone-icon></span>
+            <span class="icon-btn" title="配置" @click.stop="openRoleConfig(role.id)"><settings-2-icon ></settings-2-icon></span>
           </button>
         </div>
         <div class="sidebar-foot">
-          <button class="icon-btn" type="button" :title="themeTitle" @click="cycleTheme"><component :is="themeIcon" /></button>
-          <button class="icon-btn" type="button" title="系统配置" @click="openSystemSettings"><settings-icon /></button>
+          <button class="icon-btn" type="button" :title="themeTitle" @click="cycleTheme"><component :is="themeIcon" ></component></button>
+          <button class="icon-btn" type="button" title="系统配置" @click="openSystemSettings"><settings-icon ></settings-icon></button>
         </div>
       </aside>
 
       <main class="main" :class="{ 'input-disabled': isConnecting }">
         <header class="topbar">
-          <button class="icon-btn" type="button" title="菜单" @click="toggleSidebar"><menu-icon /></button>
+          <button class="icon-btn" type="button" title="菜单" @click="toggleSidebar"><menu-icon ></menu-icon></button>
           <div class="topbar-center">
             <span class="dot" :class="statusKind"></span><button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
           </div>
           <div class="topbar-actions">
-            <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon /></button>
-            <button class="icon-btn" type="button" :title="voiceEnabled ? '关闭自动朗读' : '打开自动朗读'" @click="toggleVoiceEnabled" :disabled="!canToggleAutoRead"><component :is="voiceEnabled ? 'volume-2-icon' : 'volume-x-icon'" /></button>
+            <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon ></phone-icon></button>
+            <button class="icon-btn" type="button" :title="voiceEnabled ? '关闭自动朗读' : '打开自动朗读'" @click="toggleVoiceEnabled" :disabled="!canToggleAutoRead"><component :is="voiceEnabled ? 'volume-2-icon' : 'volume-x-icon'" ></component></button>
           </div>
         </header>
+
+        <music-player></music-player>
 
         <section class="chat-plane">
           <div v-if="!messageGroups.length" class="empty-state"><div><strong>Gemini 语音聊天</strong></div></div>
@@ -279,6 +333,33 @@ select::-ms-expand {
                       </li>
                     </ol>
                   </details>
+                  <div v-if="item.message.name === 'musicPlaylist' && item.message.playlist && item.message.playlist.length" class="tool-music">
+                    <ol class="tool-music-list">
+                      <li v-for="(song, songIndex) in item.message.playlist"
+                          :key="song.id || songIndex"
+                          class="tool-music-row"
+                          :class="{
+                            active: musicStore.playlistId === item.message.id && musicStore.currentIndex === songIndex,
+                            disabled: !song.playback || !song.playback.audio_url
+                          }"
+                          :aria-disabled="!song.playback || !song.playback.audio_url"
+                          @click="playMusicFromCard(item.message, songIndex)">
+                        <img v-if="song.cover" :src="song.cover" alt="" class="tool-music-cover" referrerpolicy="no-referrer" />
+                        <div v-else class="tool-music-cover tool-music-cover-placeholder"><music-icon></music-icon></div>
+                        <div class="tool-music-titles">
+                          <div class="tool-music-name">{{ song.name }}</div>
+                          <div class="tool-music-artist">{{ song.artist || song.artists }}</div>
+                        </div>
+                        <span class="tool-music-state" aria-hidden="true">
+                          <component v-if="musicStore.playlistId === item.message.id && musicStore.currentIndex === songIndex && musicStore.isPlaying" :is="'pause-icon'"></component>
+                          <component v-else :is="'play-icon'"></component>
+                        </span>
+                      </li>
+                    </ol>
+                    <button class="secondary-btn tool-music-play-all" type="button" @click.stop="playMusicFromCard(item.message, 0)">
+                      <play-icon></play-icon><span>全部播放</span>
+                    </button>
+                  </div>
                   <div class="render-block" v-if="item.message.name === 'renderPage' && item.message.html">
                     <div class="render-block-bar">
                       <div class="render-tabs">
@@ -286,8 +367,8 @@ select::-ms-expand {
                         <button type="button" :class="{ active: item.message.renderView === 'code' }" @click="item.message.renderView = 'code'">源代码</button>
                       </div>
                       <div class="render-card-actions">
-                        <button class="secondary-btn render-card-open" type="button" title="复制源代码" @click="copyRenderSource(item.message)"><component :is="item.message.copyState === 'ok' ? 'check-icon' : 'copy-icon'" /></button>
-                        <button v-if="(item.message.renderView || 'page') === 'page'" class="secondary-btn render-card-open" type="button" title="放大预览" @click="openRenderedPage(item.message)"><maximize-2-icon /></button>
+                        <button class="secondary-btn render-card-open" type="button" title="复制源代码" @click="copyRenderSource(item.message)"><component :is="item.message.copyState === 'ok' ? 'check-icon' : 'copy-icon'" ></component></button>
+                        <button v-if="(item.message.renderView || 'page') === 'page'" class="secondary-btn render-card-open" type="button" title="放大预览" @click="openRenderedPage(item.message)"><maximize-2-icon ></maximize-2-icon></button>
                       </div>
                     </div>
                     <div v-if="(item.message.renderView || 'page') === 'page'" class="render-card-preview" aria-hidden="true">
@@ -320,25 +401,25 @@ select::-ms-expand {
         </section>
 
         <form class="input-bar" @submit.prevent="sendText">
-          <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon /></button>
+          <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon ></phone-icon></button>
           <hold-record v-if="inputMode === 'voice'" v-model="holdActive" :mic-status="micStatus" :before-start="prepareHoldRecord" @release="handleHoldRelease"></hold-record>
           <textarea v-else class="message-field" :style="{ height: textStyleHeight }" v-model="text" rows="1" autocomplete="off" :placeholder="isConnecting ? '正在连接…' : '输入消息...'" :disabled="isConnecting" @input="resizeTextInput" @keydown="handleTextKeydown"></textarea>
-          <button class="icon-btn" v-if="text.trim()" type="submit" :disabled="isConnecting" title="发送"><send-icon /></button>
-          <button class="icon-btn" v-else-if="inputMode === 'voice'" type="button" title="文本输入" @click="toggleInputMode"><keyboard-icon /></button>
-          <button class="icon-btn" v-else type="button" title="语音输入" @click="toggleInputMode"><mic-icon /></button>
+          <button class="icon-btn" v-if="text.trim()" type="submit" :disabled="isConnecting" title="发送"><send-icon ></send-icon></button>
+          <button class="icon-btn" v-else-if="inputMode === 'voice'" type="button" title="文本输入" @click="toggleInputMode"><keyboard-icon ></keyboard-icon></button>
+          <button class="icon-btn" v-else type="button" title="语音输入" @click="toggleInputMode"><mic-icon ></mic-icon></button>
         </form>
       </main>
     </div>
 
     <div class="call-screen" v-show="uiMode === 'call'">
       <header class="topbar">
-        <button class="icon-btn" type="button" title="取消通话" @click="exitCallMode"><x-icon /></button>
+        <button class="icon-btn" type="button" title="取消通话" @click="exitCallMode"><x-icon ></x-icon></button>
           <div class="topbar-center">
             <span class="dot" :class="statusKind"></span><button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
           </div>
         <div class="topbar-actions">
-          <button v-if="callMediaMode === 'video'" class="icon-btn" type="button" title="切换摄像头" :disabled="mediaStarting" @click="switchCallCamera"><switch-camera-icon /></button>
-          <button class="icon-btn" type="button" title="字幕" @click="captionsVisible = !captionsVisible"><component :is="captionsVisible ? 'captions-icon' : 'captions-off-icon'" /></button>
+          <button v-if="callMediaMode === 'video'" class="icon-btn" type="button" title="切换摄像头" :disabled="mediaStarting" @click="switchCallCamera"><switch-camera-icon ></switch-camera-icon></button>
+          <button class="icon-btn" type="button" title="字幕" @click="captionsVisible = !captionsVisible"><component :is="captionsVisible ? 'captions-icon' : 'captions-off-icon'" ></component></button>
         </div>
       </header>
       <section class="call-stage">
@@ -348,7 +429,7 @@ select::-ms-expand {
         <div class="call-media" v-if="callMediaMode !== 'none'">
           <video v-show="callMediaMode === 'video'" ref="callVideoEl" class="call-media-video" :class="{ mirrored: cameraFacing === 'user' }" muted playsinline autoplay></video>
           <button v-if="callMediaMode === 'screen'" class="call-media-exit" type="button" @click="stopCallMedia">
-            <screen-share-off-icon /><span>退出投屏</span>
+            <screen-share-off-icon ></screen-share-off-icon><span>退出投屏</span>
           </button>
         </div>
         <div class="caption-overlay" v-if="captionsVisible">
@@ -374,15 +455,15 @@ select::-ms-expand {
           <span v-if="showUserWave" class="user-wave" aria-hidden="true">
             <span v-for="(level, i) in userWaveBars" :key="i" :style="{ '--wave-level': level }"></span>
           </span>
-          <component v-else :is="callStateIcon" />
+          <component v-else :is="callStateIcon" ></component>
         </button>
         <span>{{ callStatusText }}</span>
       </div>
       <footer class="call-actions">
-        <button class="call-action" type="button" @click="toggleCallAudioMode"><span class="icon-btn"><component :is="muteModeIcon" /></span></button>
-        <button class="call-action" type="button" :disabled="mediaStarting" @click="toggleCallScreenShare"><span class="icon-btn" :class="{ active: callMediaMode === 'screen' }"><component :is="callMediaMode === 'screen' ? 'screen-share-off-icon' : 'screen-share-icon'" /></span></button>
-        <button class="call-action" type="button" :disabled="mediaStarting" @click="toggleCallVideo"><span class="icon-btn" :class="{ active: callMediaMode === 'video' }"><component :is="callMediaMode === 'video' ? 'video-off-icon' : 'video-icon'" /></span></button>
-        <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon /></span></button>
+        <button class="call-action" type="button" @click="toggleCallAudioMode"><span class="icon-btn"><component :is="muteModeIcon" ></component></span></button>
+        <button class="call-action" type="button" :disabled="mediaStarting" @click="toggleCallScreenShare"><span class="icon-btn" :class="{ active: callMediaMode === 'screen' }"><component :is="callMediaMode === 'screen' ? 'screen-share-off-icon' : 'screen-share-icon'" ></component></span></button>
+        <button class="call-action" type="button" :disabled="mediaStarting" @click="toggleCallVideo"><span class="icon-btn" :class="{ active: callMediaMode === 'video' }"><component :is="callMediaMode === 'video' ? 'video-off-icon' : 'video-icon'" ></component></span></button>
+        <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon ></phone-off-icon></span></button>
       </footer>
     </div>
 
@@ -390,7 +471,7 @@ select::-ms-expand {
       <div class="modal">
         <div class="modal-head">
           <h2>角色配置</h2>
-          <button class="icon-btn modal-close" type="button" title="关闭" @click="closeRoleConfig"><x-icon /></button>
+          <button class="icon-btn modal-close" type="button" title="关闭" @click="closeRoleConfig"><x-icon ></x-icon></button>
         </div>
         <div class="grid">
           <label class="full">角色名<input v-model="roleDraft.name" placeholder="例如：中文助理" /></label>
@@ -445,7 +526,7 @@ select::-ms-expand {
       <div class="modal system-modal">
         <aside class="system-sidebar">
           <h2 class="system-mobile-title">{{ systemSettingsTitle }}</h2>
-          <button class="icon-btn system-close" type="button" title="关闭" @click="closeSystemSettings"><x-icon /></button>
+          <button class="icon-btn system-close" type="button" title="关闭" @click="closeSystemSettings"><x-icon ></x-icon></button>
           <nav class="system-nav" aria-label="系统配置分类">
             <button class="system-nav-item" :class="{ active: systemSettingsTab === 'general' }" type="button" @click="systemSettingsTab = 'general'"><settings-icon></settings-icon><span>常规</span></button>
             <button class="system-nav-item" :class="{ active: systemSettingsTab === 'tools' }" type="button" @click="systemSettingsTab = 'tools'"><settings-2-icon></settings-2-icon><span>工具调用</span></button>
@@ -455,7 +536,7 @@ select::-ms-expand {
         <main class="system-main">
           <header class="system-page-head">
             <h2 class="system-page-title">{{ systemSettingsTitle }}</h2>
-            <button class="icon-btn system-close" type="button" title="关闭" @click="closeSystemSettings"><x-icon /></button>
+            <button class="icon-btn system-close" type="button" title="关闭" @click="closeSystemSettings"><x-icon ></x-icon></button>
           </header>
           <section class="settings-section" v-if="systemSettingsTab === 'general'">
             <h3 class="settings-section-title">界面</h3>
@@ -478,8 +559,8 @@ select::-ms-expand {
                 <span>{{ mcpServersDraft.length }} 个服务器，工具会在保存后重新加载</span>
               </div>
               <div class="mcp-server-row-actions">
-                <button class="icon-btn" type="button" title="添加服务器" @click="addMcpServerDraft"><plus-icon /></button>
-                <button class="icon-btn" type="button" title="恢复默认" @click="resetMcpServersDraft"><rotate-ccw-icon /></button>
+                <button class="icon-btn" type="button" title="添加服务器" @click="addMcpServerDraft"><plus-icon ></plus-icon></button>
+                <button class="icon-btn" type="button" title="恢复默认" @click="resetMcpServersDraft"><rotate-ccw-icon ></rotate-ccw-icon></button>
               </div>
             </div>
             <div class="mcp-server-list" v-if="mcpServersDraft.length">
@@ -493,9 +574,9 @@ select::-ms-expand {
                   </div>
                   <div class="mcp-server-row-actions">
                     <button class="icon-btn" type="button" @click="toggleMcpServerDraft(index)" :title="isMcpServerConfigOpen(index) ? '隐藏配置' : '配置'">
-                      <component :is="isMcpServerConfigOpen(index) ? 'chevron-up-icon' : 'settings-2-icon'" />
+                      <component :is="isMcpServerConfigOpen(index) ? 'chevron-up-icon' : 'settings-2-icon'" ></component>
                     </button>
-                    <button v-if="!isDefaultMcpServer(server)" class="icon-btn danger" type="button" @click="removeMcpServerDraft(index)" title="移除"><x-icon /></button>
+                    <button v-if="!isDefaultMcpServer(server)" class="icon-btn danger" type="button" @click="removeMcpServerDraft(index)" title="移除"><x-icon ></x-icon></button>
                   </div>
                 </div>
                 <div v-if="isMcpServerConfigOpen(index)" class="mcp-server-form">
@@ -533,7 +614,7 @@ select::-ms-expand {
                   </div>
                   <div class="mcp-server-row-actions">
                     <button v-if="toolRequiresConfig(tool)" class="icon-btn" type="button" @click="toggleToolConfig(tool.name)" :title="isToolConfigOpen(tool.name) ? '取消' : '配置'">
-                      <component :is="isToolConfigOpen(tool.name) ? 'chevron-up-icon' : 'settings-2-icon'" />
+                      <component :is="isToolConfigOpen(tool.name) ? 'chevron-up-icon' : 'settings-2-icon'" ></component>
                     </button>
                   </div>
                 </div>
@@ -569,8 +650,8 @@ select::-ms-expand {
         <div class="render-modal-head">
           <strong>{{ toolDisplayName('renderPage') }}</strong>
           <div class="render-card-actions">
-            <button v-if="activeRenderPage" class="secondary-btn render-modal-close" type="button" title="复制源代码" @click="copyRenderSource(activeRenderPage)"><component :is="activeRenderPage.copyState === 'ok' ? 'check-icon' : 'copy-icon'" /></button>
-            <button class="secondary-btn render-modal-close" type="button" title="关闭预览" @click="closeRenderedPage"><x-icon /></button>
+            <button v-if="activeRenderPage" class="secondary-btn render-modal-close" type="button" title="复制源代码" @click="copyRenderSource(activeRenderPage)"><component :is="activeRenderPage.copyState === 'ok' ? 'check-icon' : 'copy-icon'" ></component></button>
+            <button class="secondary-btn render-modal-close" type="button" title="关闭预览" @click="closeRenderedPage"><x-icon ></x-icon></button>
           </div>
         </div>
         <iframe v-if="activeRenderPage" title="工具渲染页面预览" sandbox="allow-scripts" referrerpolicy="no-referrer" :srcdoc="activeRenderPage.html"></iframe>
@@ -596,8 +677,9 @@ select::-ms-expand {
     import { BROWSER_TOOLS } from "./tools.js";
     import { createMcpToolRegistry } from "./mcp-client.js";
     import { buildToolMessage, upsertToolMessage, displayName as toolEventDisplayName, statusText as toolEventStatusText } from "./tool-events.js";
+    import { musicPlayerStore, loadPlaylist as loadMusicPlaylist, MusicPlayer } from "./music-player.js";
     import {
-      AudioLines, Captions, CaptionsOff, Check, ChevronUp, Copy, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, PanelLeftClose, Phone, PhoneOff, Plus, Repeat, RotateCcw, ScreenShare, ScreenShareOff, Send, Settings, Settings2, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
+      AudioLines, Captions, CaptionsOff, Check, ChevronDown, ChevronUp, Copy, Keyboard, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, Music, PanelLeftClose, Pause, Phone, PhoneOff, Play, Plus, Repeat, RotateCcw, ScreenShare, ScreenShareOff, Send, Settings, Settings2, SkipBack, SkipForward, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
 
     const models = APP_MODELS;
@@ -834,6 +916,7 @@ select::-ms-expand {
           aiWaveBars: [0, 0, 0, 0, 0],
           userWaveBars: [0, 0, 0, 0, 0],
           waveRafId: null,
+          musicStore: musicPlayerStore,
         };
       },
       mounted() {
@@ -1795,6 +1878,10 @@ select::-ms-expand {
         },
         toolDisplayName(name) { return toolEventDisplayName(name); },
         toolStatusText(status) { return toolEventStatusText(status); },
+        playMusicFromCard(message, startIndex) {
+          if (!message?.playlist?.length) return;
+          loadMusicPlaylist(message.id, message.playlist, startIndex);
+        },
         scrollChatToBottom() {
           nextTick(() => {
             const el = this.$refs.chatEl;
@@ -2012,6 +2099,7 @@ select::-ms-expand {
       'captions-icon': Captions,
       'captions-off-icon': CaptionsOff,
       'check-icon': Check,
+      'chevron-down-icon': ChevronDown,
       'chevron-up-icon': ChevronUp,
       'copy-icon': Copy,
       'keyboard-icon': Keyboard,
@@ -2022,9 +2110,12 @@ select::-ms-expand {
       'mic-off-icon': MicOff,
       'monitor-icon': Monitor,
       'moon-icon': Moon,
+      'music-icon': Music,
       'panel-left-close-icon': PanelLeftClose,
+      'pause-icon': Pause,
       'phone-icon': Phone,
       'phone-off-icon': PhoneOff,
+      'play-icon': Play,
       'plus-icon': Plus,
       'repeat-icon': Repeat,
       'rotate-ccw-icon': RotateCcw,
@@ -2033,6 +2124,8 @@ select::-ms-expand {
       'send-icon': Send,
       'settings-icon': Settings,
       'settings-2-icon': Settings2,
+      'skip-back-icon': SkipBack,
+      'skip-forward-icon': SkipForward,
       'sparkles-icon': Sparkles,
       'square-icon': Square,
       'sun-icon': Sun,
@@ -2047,6 +2140,7 @@ select::-ms-expand {
     Object.entries(lucideComponents).forEach(([name, component]) => app.component(name, component));
     app.component('progressive-text', ProgressiveText);
     app.component('hold-record', HoldRecord);
+    app.component('music-player', MusicPlayer);
     app.component('toaster', Toaster);
     app.mount('#app');
     document.body.classList.add('app-ready');

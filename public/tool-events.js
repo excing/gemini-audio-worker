@@ -63,11 +63,7 @@ const deriveDisplay = (name, args, response) => {
   if (name === 'musicPlaylist') {
     const playlist = Array.isArray(response?.playlist) ? response.playlist : [];
     if (playlist.length) {
-      display.text = `返回 ${playlist.length} 首歌曲`;
-      display.results = playlist.map((item) => ({
-        title: [item?.name, item?.artist || item?.artists].filter(Boolean).join(' - '),
-        url: String(item?.playback?.audio_url || '').trim(),
-      })).filter((item) => item.title || item.url);
+      display.playlist = playlist;
     }
   }
 
