@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#f9fafb" />
   <meta name="msapplication-navbutton-color" content="#f9fafb" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Gemini 语音对话</title>
+  <title>BingwuAI 语音助手</title>
+  <link rel="icon" href="./favicon.svg" />
   <script>
     (() => {
       const THEME_COLORS = {
@@ -56,14 +57,14 @@
     .boot-screen { position:fixed; inset:0; z-index:9999; display:grid; place-items:center; background:var(--bg); color:var(--text); transition:opacity .2s ease-in-out, visibility .2s ease-in-out; }
     .boot-screen.hidden { opacity:0; visibility:hidden; pointer-events:none; }
     .boot-card { display:grid; justify-items:center; gap:14px; padding:20px 24px; text-align:center; }
-    .boot-logo { width:52px; height:52px; border-radius:9999px; display:grid; place-items:center; background:var(--text); color:var(--bg); }
+    .boot-logo { width:52px; height:52px; border-radius:9999px; display:block; object-fit:contain; }
     .boot-spinner { width:28px; height:28px; border-radius:50%; border:3px solid rgba(127,127,127,.24); border-top-color:var(--text); animation:spin .8s linear infinite; }
     button { border:0; cursor:pointer; transition:all .2s ease-in-out; } button:active { transform:scale(.97); } button:disabled { cursor:not-allowed; opacity:.45; transform:none; }
     .app-shell { --sidebar-width:320px; height:100dvh; display:grid; grid-template-columns:var(--sidebar-width) minmax(0,1fr); background:var(--bg); transition:grid-template-columns .24s ease-in-out; }
     .sidebar { position:relative; z-index:20; min-width:0; width:320px; height:100dvh; padding:16px; display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; gap:16px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); box-shadow:10px 0 40px rgba(0,0,0,.06); overflow:hidden; opacity:1; transition:width .24s ease-in-out, padding .24s ease-in-out, opacity .18s ease-in-out, transform .24s ease-in-out; }
     .app-shell.sidebar-collapsed { --sidebar-width:0px; } .app-shell.sidebar-collapsed .sidebar { width:0; padding-inline:0; opacity:0; pointer-events:none; }
     .brand, .sidebar-head, .topbar, .role-row, .input-bar, .call-actions, .modal-actions, .tool-picker-head { display:flex; justify-content: space-between; align-items:center; gap:8px; }
-    .sidebar-head { justify-content:space-between; } .brand { min-width:0; font-size:16px; font-weight:600; } .brand-mark { width:32px; height:32px; border-radius:9999px; display:grid; place-items:center; background:var(--text); color:var(--bg); }
+    .sidebar-head { justify-content:space-between; } .brand { min-width:0; font-size:16px; font-weight:600; } .brand-mark { width:32px; height:32px; border-radius:9999px; display:block; object-fit:contain; }
     .icon-btn { width:44px; height:44px; min-width:44px; border-radius:9999px; display:inline-grid; place-items:center; background:transparent; color:var(--text); } .icon-btn:hover, .role-row:hover, .menu-item:hover { background:var(--hover); } .icon-btn.danger { color:var(--bad); }
     .primary-btn { min-height:44px; padding:8px 12px; border-radius:9999px; display:inline-flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(135deg,#111827,#3f3f46); color:#fff; font-weight:600; }
     :root[data-theme="dark"] .primary-btn { background:linear-gradient(135deg,#fafafa,#a1a1aa); color:#09090B; }
@@ -257,9 +258,9 @@ select::-ms-expand {
 <body>
   <div id="boot-screen" class="boot-screen" aria-live="polite" aria-label="正在加载">
     <div class="boot-card">
-      <div class="boot-logo" aria-hidden="true">G</div>
+      <img class="boot-logo" src="./favicon.svg" alt="" aria-hidden="true" />
       <div class="boot-spinner" aria-hidden="true"></div>
-      <div>正在加载 Gemini 语音助手</div>
+      <div>正在加载 BingwuAI 语音助手</div>
     </div>
   </div>
   <div id="app">
@@ -267,7 +268,7 @@ select::-ms-expand {
       <div class="drawer-scrim" v-if="drawerOpen" @click="drawerOpen = false"></div>
       <aside class="sidebar">
         <div class="sidebar-head">
-          <div class="brand"><span class="brand-mark"><sparkles-icon ></sparkles-icon></span><span>Gemini 语音助手</span></div>
+          <div class="brand"><img class="brand-mark" src="./favicon.svg" alt="" aria-hidden="true" /><span>BingwuAI 语音助手</span></div>
           <button class="icon-btn" type="button" title="收起" @click="toggleSidebar"><panel-left-close-icon ></panel-left-close-icon></button>
         </div>
         <div class="sidebar-actions">
@@ -303,7 +304,7 @@ select::-ms-expand {
         <music-player></music-player>
 
         <section class="chat-plane">
-          <div v-if="!messageGroups.length" class="empty-state"><div><strong>Gemini 语音聊天</strong></div></div>
+          <div v-if="!messageGroups.length" class="empty-state"><div><strong>BingwuAI 语音助手</strong></div></div>
           <div id="chat" ref="chatEl" v-show="messageGroups.length">
           <div v-for="(item, index) in messageGroups" :key="item.message.id || index" class="group" :class="item.role">
             <div class="msg">
@@ -862,7 +863,7 @@ select::-ms-expand {
     const app = createApp({
       data() {
         const defaultConfig = {
-          name: 'Gemini 语音对话',
+          name: 'BingwuAI 语音助手',
           model: 'gemini-3.1-flash-preview',
           voiceName: 'Kore',
           systemInstruction: 'You are a concise, friendly Chinese voice assistant.',

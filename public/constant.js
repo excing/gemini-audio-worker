@@ -143,7 +143,7 @@ export const APP_VOICES = [
 export const DEFAULT_ROLES = [
   {
     id: "role-gemili-audio-chat",
-    name: "Gemini 语音对话",
+    name: "BingwuAI 语音助手",
     voiceName: "Kore",
     autoLoadTools: 'get_weather',
     systemInstruction: "You are a concise, friendly Chinese voice assistant."
