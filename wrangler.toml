@@ -2,6 +2,12 @@ name = "gemini-audio-worker"
 main = "src/index.js"
 compatibility_date = "2026-05-09"
 
+# 需要的 secrets (用 `wrangler secret put <NAME>` 配置):
+#   GEMINI_API_KEY        Gemini Live API key
+#   GITHUB_CLIENT_ID      GitHub App 的 Client ID (也可放在 [vars])
+#   GITHUB_CLIENT_SECRET  GitHub App 的 Client Secret
+# GitHub App Callback URL 需要包含 https://<your-domain>/api/github/auth/callback
+
 [assets]
 directory = "./public"
 binding = "ASSETS"

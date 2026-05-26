@@ -1,4 +1,6 @@
-export const DEFAULT_MCP_SERVERS = [];
+export const DEFAULT_MCP_SERVERS = [
+  { "name": "github", "url": "https://api.githubcopilot.com/mcp", "configType": "oauth" },
+];
 
 export const APP_MODELS = [
   {

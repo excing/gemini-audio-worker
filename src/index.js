@@ -11,6 +11,7 @@
 import { toolDeclarations, toolHandlers } from './tools.js';
 import { createGeminiSessionManager, parseGeminiJson } from './session-manager.js';
 import { sendToolRunning, sendToolDone, sendToolError } from './tool-events.js';
+import { handleGithubRequest } from './github/index.js';
 
 const seeyouGemini = {
   name: 'see_you_later',
@@ -153,6 +154,11 @@ export default {
         { tools: availableToolDeclarations },
         { headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' } },
       );
+    }
+
+    if (url.pathname.startsWith('/api/github/')) {
+      const response = await handleGithubRequest(request, env, url);
+      if (response) return response;
     }
 
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
