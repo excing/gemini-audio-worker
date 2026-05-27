@@ -1,4 +1,157 @@
-const codeExecutionDeclaration = {
+const serializeValue = (value) => {
+  if (typeof value === 'undefined') return 'undefined';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+};
+
+const codeExecutionHandler = ({ code = '', timeout_ms = 3000 } = {}) => new Promise((resolve) => {
+  const timeout = Math.max(1, Math.min(Number(timeout_ms) || 3000, 10000));
+  const workerSource = `
+    const serializeValue = ${serializeValue.toString()};
+    const logs = [];
+    ['log', 'info', 'warn', 'error'].forEach((level) => {
+      console[level] = (...args) => logs.push({ level, message: args.map(serializeValue).join(' ') });
+    });
+    self.onmessage = async (event) => {
+      try {
+        const fn = new Function('"use strict"; return (async () => {\\n' + event.data + '\\n})()');
+        const result = await fn();
+        self.postMessage({ ok: true, result: serializeValue(result), logs });
+      } catch (error) {
+        self.postMessage({ ok: false, error: error?.stack || error?.message || String(error), logs });
+      }
+    };
+  `;
+  const blobUrl = URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' }));
+  const worker = new Worker(blobUrl);
+  const cleanup = () => {
+    worker.terminate();
+    URL.revokeObjectURL(blobUrl);
+  };
+  const timer = setTimeout(() => {
+    cleanup();
+    resolve({ ok: false, error: `Execution timed out after ${timeout}ms`, logs: [] });
+  }, timeout);
+
+  worker.onmessage = (event) => {
+    clearTimeout(timer);
+    cleanup();
+    resolve(event.data);
+  };
+  worker.onerror = (error) => {
+    clearTimeout(timer);
+    cleanup();
+    resolve({ ok: false, error: error.message || String(error), logs: [] });
+  };
+  worker.postMessage(String(code));
+});
+
+const renderPageHandler = ({ html = '' } = {}) => {
+  const renderId = `render-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return {
+    ok: true,
+    render_id: renderId,
+    message: '页面已渲染，并已加入消息列表。',
+    sandbox: 'allow-scripts',
+    origin: 'opaque',
+  };
+};
+
+const clampNumber = (value, fallback, min, max) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(min, Math.min(Math.trunc(number), max));
+};
+
+const parseBooleanSelect = (value) => {
+  if (typeof value === 'boolean') return value;
+  const text = String(value ?? '').trim().toLowerCase();
+  if (!text || text === 'false') return false;
+  if (text === 'true') return true;
+  return text;
+};
+
+const compactStringArray = (value) => Array.isArray(value)
+  ? value.map((item) => String(item || '').trim()).filter(Boolean)
+  : [];
+
+const tavilySearchHandler = async ({
+  query = '',
+  topic = 'general',
+  search_depth = 'basic',
+  max_results = 5,
+  chunks_per_source,
+  time_range = '',
+  start_date = '',
+  end_date = '',
+  include_answer = 'false',
+  include_raw_content = 'false',
+  include_images = false,
+  include_image_descriptions = false,
+  include_domains = [],
+  exclude_domains = [],
+  auto_parameters = false,
+} = {}, { apiKey = '', headers = {} } = {}) => {
+  const searchQuery = String(query || '').trim();
+  const tavilyApiKey = String(apiKey || '').trim();
+  if (!searchQuery) throw new Error('Tavily search query 不能为空');
+  if (!tavilyApiKey && !headers.Authorization && !headers.authorization) {
+    throw new Error('Tavily API Key 未配置，请在系统配置的工具调用中为 tavilySearch 填写 API Key');
+  }
+
+  const body = {
+    query: searchQuery,
+    topic: ['general', 'news', 'finance'].includes(topic) ? topic : 'general',
+    search_depth: search_depth === 'advanced' ? 'advanced' : 'basic',
+    max_results: clampNumber(max_results, 5, 0, 20),
+    include_answer: parseBooleanSelect(include_answer),
+    include_raw_content: parseBooleanSelect(include_raw_content),
+    include_images: Boolean(include_images),
+    include_image_descriptions: Boolean(include_image_descriptions),
+    auto_parameters: Boolean(auto_parameters),
+  };
+
+  if (body.search_depth === 'advanced' && chunks_per_source !== undefined) {
+    body.chunks_per_source = clampNumber(chunks_per_source, 3, 1, 3);
+  }
+  if (time_range) body.time_range = String(time_range).trim();
+  if (start_date) body.start_date = String(start_date).trim();
+  if (end_date) body.end_date = String(end_date).trim();
+  const includedDomains = compactStringArray(include_domains);
+  const excludedDomains = compactStringArray(exclude_domains);
+  if (includedDomains.length) body.include_domains = includedDomains;
+  if (excludedDomains.length) body.exclude_domains = excludedDomains;
+
+  const requestHeaders = {
+    'Content-Type': 'application/json',
+    ...(tavilyApiKey ? { Authorization: `Bearer ${tavilyApiKey}` } : {}),
+    ...(headers && typeof headers === 'object' ? headers : {}),
+  };
+
+  const response = await fetch('https://api.tavily.com/search', {
+    method: 'POST',
+    headers: requestHeaders,
+    body: JSON.stringify(body),
+  });
+  const responseText = await response.text();
+  let data;
+  try {
+    data = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    data = responseText;
+  }
+  if (!response.ok) {
+    const message = data?.detail || data?.error || response.statusText || 'Tavily search failed';
+    throw new Error(`Tavily search failed (${response.status}): ${serializeValue(message)}`);
+  }
+  return data;
+};
+
+const codeExecution = {
   name: 'codeExecution',
   configType: 'none',
   description: '在浏览器沙箱 Worker 中执行 JavaScript 代码，返回 console 输出、执行结果或错误。',
@@ -16,9 +169,10 @@ const codeExecutionDeclaration = {
     },
     required: ['code'],
   },
+  handler: codeExecutionHandler,
 };
 
-const renderPageDeclaration = {
+const renderPage = {
   name: 'renderPage',
   configType: 'none',
   description: '在页面内创建沙箱 iframe，渲染传入的完整 HTML 文档。iframe 使用独立 opaque origin，并仅允许脚本执行。',
@@ -32,9 +186,10 @@ const renderPageDeclaration = {
     },
     required: ['html'],
   },
+  handler: renderPageHandler,
 };
 
-const tavilySearchDeclaration = {
+const tavilySearch = {
   name: 'tavilySearch',
   configType: 'apiKey',
   description: '使用 Tavily Search API 执行联网搜索，返回答案、搜索结果、图片和响应时间等结构化数据。需要在工具配置中填写 Tavily API Key。',
@@ -111,162 +266,27 @@ const tavilySearchDeclaration = {
     },
     required: ['query'],
   },
+  handler: tavilySearchHandler,
 };
 
-const serializeValue = (value) => {
-  if (typeof value === 'undefined') return 'undefined';
-  if (typeof value === 'string') return value;
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-};
+export const tools = [
+  codeExecution,
+  renderPage,
+  tavilySearch,
+];
 
-const codeExecution = ({ code = '', timeout_ms = 3000 } = {}) => new Promise((resolve) => {
-  const timeout = Math.max(1, Math.min(Number(timeout_ms) || 3000, 10000));
-  const workerSource = `
-    const serializeValue = ${serializeValue.toString()};
-    const logs = [];
-    ['log', 'info', 'warn', 'error'].forEach((level) => {
-      console[level] = (...args) => logs.push({ level, message: args.map(serializeValue).join(' ') });
-    });
-    self.onmessage = async (event) => {
-      try {
-        const fn = new Function('"use strict"; return (async () => {\\n' + event.data + '\\n})()');
-        const result = await fn();
-        self.postMessage({ ok: true, result: serializeValue(result), logs });
-      } catch (error) {
-        self.postMessage({ ok: false, error: error?.stack || error?.message || String(error), logs });
-      }
-    };
-  `;
-  const blobUrl = URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' }));
-  const worker = new Worker(blobUrl);
-  const cleanup = () => {
-    worker.terminate();
-    URL.revokeObjectURL(blobUrl);
-  };
-  const timer = setTimeout(() => {
-    cleanup();
-    resolve({ ok: false, error: `Execution timed out after ${timeout}ms`, logs: [] });
-  }, timeout);
+export const toolDeclarations = tools.map(({ name, configType, description, parameters }) => ({
+  name,
+  configType,
+  description,
+  parameters,
+}));
 
-  worker.onmessage = (event) => {
-    clearTimeout(timer);
-    cleanup();
-    resolve(event.data);
-  };
-  worker.onerror = (error) => {
-    clearTimeout(timer);
-    cleanup();
-    resolve({ ok: false, error: error.message || String(error), logs: [] });
-  };
-  worker.postMessage(String(code));
-});
-
-const renderPage = ({ html = '' } = {}) => {
-  const renderId = `render-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  return {
-    ok: true,
-    render_id: renderId,
-    message: '页面已渲染，并已加入消息列表。',
-    sandbox: 'allow-scripts',
-    origin: 'opaque',
-  };
-};
-
-const clampNumber = (value, fallback, min, max) => {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return fallback;
-  return Math.max(min, Math.min(Math.trunc(number), max));
-};
-
-const parseBooleanSelect = (value) => {
-  if (typeof value === 'boolean') return value;
-  const text = String(value ?? '').trim().toLowerCase();
-  if (!text || text === 'false') return false;
-  if (text === 'true') return true;
-  return text;
-};
-
-const compactStringArray = (value) => Array.isArray(value)
-  ? value.map((item) => String(item || '').trim()).filter(Boolean)
-  : [];
-
-const tavilySearch = async ({
-  query = '',
-  topic = 'general',
-  search_depth = 'basic',
-  max_results = 5,
-  chunks_per_source,
-  time_range = '',
-  start_date = '',
-  end_date = '',
-  include_answer = 'false',
-  include_raw_content = 'false',
-  include_images = false,
-  include_image_descriptions = false,
-  include_domains = [],
-  exclude_domains = [],
-  auto_parameters = false,
-} = {}, { apiKey = '', headers = {} } = {}) => {
-  const searchQuery = String(query || '').trim();
-  const tavilyApiKey = String(apiKey || '').trim();
-  if (!searchQuery) throw new Error('Tavily search query 不能为空');
-  if (!tavilyApiKey && !headers.Authorization && !headers.authorization) {
-    throw new Error('Tavily API Key 未配置，请在系统配置的工具调用中为 tavilySearch 填写 API Key');
-  }
-
-  const body = {
-    query: searchQuery,
-    topic: ['general', 'news', 'finance'].includes(topic) ? topic : 'general',
-    search_depth: search_depth === 'advanced' ? 'advanced' : 'basic',
-    max_results: clampNumber(max_results, 5, 0, 20),
-    include_answer: parseBooleanSelect(include_answer),
-    include_raw_content: parseBooleanSelect(include_raw_content),
-    include_images: Boolean(include_images),
-    include_image_descriptions: Boolean(include_image_descriptions),
-    auto_parameters: Boolean(auto_parameters),
-  };
-
-  if (body.search_depth === 'advanced' && chunks_per_source !== undefined) {
-    body.chunks_per_source = clampNumber(chunks_per_source, 3, 1, 3);
-  }
-  if (time_range) body.time_range = String(time_range).trim();
-  if (start_date) body.start_date = String(start_date).trim();
-  if (end_date) body.end_date = String(end_date).trim();
-  const includedDomains = compactStringArray(include_domains);
-  const excludedDomains = compactStringArray(exclude_domains);
-  if (includedDomains.length) body.include_domains = includedDomains;
-  if (excludedDomains.length) body.exclude_domains = excludedDomains;
-
-  const requestHeaders = {
-    'Content-Type': 'application/json',
-    ...(tavilyApiKey ? { Authorization: `Bearer ${tavilyApiKey}` } : {}),
-    ...(headers && typeof headers === 'object' ? headers : {}),
-  };
-
-  const response = await fetch('https://api.tavily.com/search', {
-    method: 'POST',
-    headers: requestHeaders,
-    body: JSON.stringify(body),
-  });
-  const responseText = await response.text();
-  let data;
-  try {
-    data = responseText ? JSON.parse(responseText) : null;
-  } catch {
-    data = responseText;
-  }
-  if (!response.ok) {
-    const message = data?.detail || data?.error || response.statusText || 'Tavily search failed';
-    throw new Error(`Tavily search failed (${response.status}): ${serializeValue(message)}`);
-  }
-  return data;
-};
+export const toolHandlers = Object.fromEntries(
+  tools.map(({ name, handler }) => [name, handler]),
+);
 
 export const BROWSER_TOOLS = {
-  declarations: [codeExecutionDeclaration, renderPageDeclaration, tavilySearchDeclaration],
-  handlers: { codeExecution, renderPage, tavilySearch },
+  declarations: toolDeclarations,
+  handlers: toolHandlers,
 };
