@@ -8,12 +8,12 @@ import webSearchTool from './tools/web-search.js';
 
 export const tools = [
   getWeatherTool,
-  // webSearchTool,
-  // urlContextTool,
-  // fetchTool,
-  // checkDomainAvailabilityTool,
-  // imageGenerationTool,
-  // musicPlaylistTool,
+  webSearchTool,
+  urlContextTool,
+  fetchTool,
+  checkDomainAvailabilityTool,
+  imageGenerationTool,
+  musicPlaylistTool,
 ];
 
 export const toolDeclarations = tools.map(({ name, description, parameters }) => ({
