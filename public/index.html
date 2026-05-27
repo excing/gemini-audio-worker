@@ -1170,10 +1170,22 @@ select::-ms-expand {
           if (configType !== 'none' && server.headers && typeof server.headers === 'object') cloned.headers = { ...server.headers };
           return cloned;
         },
+        mergeDefaultMcpServers(servers = []) {
+          const merged = servers.map((server) => this.cloneMcpServer(server));
+          const keys = new Set(merged.map((server) => `${server.name || ''}\n${server.url || ''}`));
+          DEFAULT_MCP_SERVERS.forEach((server) => {
+            const key = `${server.name || ''}\n${server.url || ''}`;
+            if (!keys.has(key)) {
+              merged.push(this.cloneMcpServer(server));
+              keys.add(key);
+            }
+          });
+          return merged;
+        },
         loadMcpServers() {
           try {
             const stored = JSON.parse(localStorage.getItem('geminiMcpServers') || 'null');
-            if (Array.isArray(stored) && stored.length) return stored.map((server) => this.cloneMcpServer(server));
+            if (Array.isArray(stored) && stored.length) return this.mergeDefaultMcpServers(stored);
           } catch {}
           return DEFAULT_MCP_SERVERS.map((server) => this.cloneMcpServer(server));
         },
