@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>GitHub 授权回调</title>
+  <style>
+    body { font: 14px/1.6 system-ui, -apple-system, sans-serif; color: #111827; background: #f9fafb; padding: 40px; text-align: center; }
+  </style>
+</head>
+<body>
+  <p id="msg">正在完成 GitHub 授权…</p>
+  <script>
+    (async function() {
+      const msg = document.getElementById('msg');
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        const error = urlParams.get('error');
+
+        if (error) {
+          throw new Error(urlParams.get('error_description') || error);
+        }
+
+        const storedState = sessionStorage.getItem('gh_oauth_state');
+        const codeVerifier = sessionStorage.getItem('gh_oauth_verifier');
+
+        if (!code || !state || state !== storedState || !codeVerifier) {
+          throw new Error('无效或过期的 OAuth 状态');
+        }
+
+        const response = await fetch('/api/github/auth/callback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code,
+            code_verifier: codeVerifier,
+            redirect_uri: `${window.location.origin}/github/auth/callback.html`
+          })
+        });
+
+        const payload = await response.json();
+
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: 'github-oauth', payload }, window.location.origin);
+          msg.textContent = payload.ok ? '授权成功，窗口将自动关闭…' : ('授权失败: ' + (payload.error || ''));
+          setTimeout(() => { window.close(); }, 600);
+        } else {
+          msg.textContent = payload.ok ? '授权成功，请回到原窗口。' : ('授权失败: ' + (payload.error || ''));
+        }
+      } catch (err) {
+        msg.textContent = '回调处理失败: ' + (err.message || err);
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: 'github-oauth', payload: { ok: false, error: err.message || String(err) } }, window.location.origin);
+          setTimeout(() => { window.close(); }, 2000);
+        }
+      } finally {
+        sessionStorage.removeItem('gh_oauth_state');
+        sessionStorage.removeItem('gh_oauth_verifier');
+      }
+    })();
+  </script>
+</body>
+</html>

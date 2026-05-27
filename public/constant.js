@@ -2,6 +2,8 @@ export const DEFAULT_MCP_SERVERS = [
   { "name": "github", "url": "https://api.githubcopilot.com/mcp", "configType": "oauth" },
 ];
 
+export const GITHUB_CLIENT_ID = 'Iv23liURRc9BpTV8YQJ1';
+
 export const APP_MODELS = [
   {
     "name": "Gemini 3.1 Flash Preview",

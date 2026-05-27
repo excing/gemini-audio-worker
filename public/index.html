@@ -682,6 +682,7 @@ select::-ms-expand {
     import { createMcpToolRegistry } from "./mcp-client.js";
     import { buildToolMessage, upsertToolMessage, displayName as toolEventDisplayName, statusText as toolEventStatusText } from "./tool-events.js";
     import { musicPlayerStore, loadPlaylist as loadMusicPlaylist, MusicPlayer } from "./music-player.js";
+    import { GitHubService } from "./github-service.js";
     import {
       AudioLines, Captions, CaptionsOff, Check, ChevronDown, ChevronUp, Copy, Github, Keyboard, LogIn, LogOut, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, Music, PanelLeftClose, Pause, Phone, PhoneOff, Play, Plus, Repeat, RotateCcw, ScreenShare, ScreenShareOff, Send, Settings, Settings2, SkipBack, SkipForward, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
@@ -694,7 +695,6 @@ select::-ms-expand {
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
     const BROWSER_TOOL_CONFIG_KEY = 'geminiBrowserToolConfigs';
-    const MCP_OAUTH_TOKEN_KEY = 'geminiMcpOauthTokens';
 
     async function copyTextToClipboard(text) {
       if (text == null) return false;
@@ -906,7 +906,7 @@ select::-ms-expand {
           mcpEditingIndex: null,
           mcpRegistry: { declarations: [], handlers: {} },
           mcpRegistryReady: Promise.resolve(),
-          mcpOauthTokens: this.loadMcpOauthTokens(),
+          mcpOauthTokens: {},
           mcpOauthPending: '',
           systemSettingsTab: 'general',
           themeMode: localStorage.getItem('geminiThemeMode') || 'system',
@@ -925,6 +925,15 @@ select::-ms-expand {
           waveRafId: null,
           musicStore: musicPlayerStore,
         };
+      },
+      created() {
+        this.githubService = new GitHubService({
+          onTokensChanged: (tokens) => {
+            this.mcpOauthTokens = tokens;
+            this.refreshMcpRegistry();
+          }
+        });
+        this.mcpOauthTokens = this.githubService.tokens;
       },
       mounted() {
         this.roles = this.loadUserRoles();
@@ -966,6 +975,7 @@ select::-ms-expand {
         this.stopWaveLoop();
         this.audioService?.destroy();
         this.mediaService?.destroy();
+        this.githubService?.destroy();
         window.removeEventListener('message', this.handleOauthMessage);
       },
       watch: {
@@ -1249,82 +1259,39 @@ select::-ms-expand {
           if (type === 'oauth') return this.hasMcpOauthToken(server) ? '已连接' : '需要授权';
           return '';
         },
-        loadMcpOauthTokens() {
-          try {
-            const stored = JSON.parse(localStorage.getItem(MCP_OAUTH_TOKEN_KEY) || '{}');
-            return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
-          } catch {
-            return {};
-          }
-        },
-        saveMcpOauthTokens() {
-          localStorage.setItem(MCP_OAUTH_TOKEN_KEY, JSON.stringify(this.mcpOauthTokens || {}));
-        },
         isMcpOauthServer(server) {
-          return (server?.configType || 'none') === 'oauth';
+          return this.githubService?.isMcpOauthServer(server) ?? false;
         },
         hasMcpOauthToken(server) {
-          const name = server?.name;
-          return Boolean(name && this.mcpOauthTokens?.[name]?.access_token);
+          // Keep Vue reactivity tracked
+          const _ = this.mcpOauthTokens;
+          return this.githubService?.hasMcpOauthToken(server) ?? false;
         },
         applyMcpOauth(servers) {
-          const result = [];
-          for (const server of servers || []) {
-            if (!this.isMcpOauthServer(server)) {
-              result.push(server);
-              continue;
-            }
-            const token = this.mcpOauthTokens?.[server?.name]?.access_token;
-            if (!token) continue;
-            result.push({
-              ...server,
-              headers: { ...(server.headers || {}), Authorization: `Bearer ${token}` },
-            });
-          }
-          return result;
+          // Keep Vue reactivity tracked
+          const _ = this.mcpOauthTokens;
+          return this.githubService?.applyMcpOauth(servers) ?? servers;
         },
-        connectMcpOauth(server) {
-          if (!server?.name) return;
-          this.mcpOauthPending = server.name;
-          const url = `/api/github/auth/start?server=${encodeURIComponent(server.name)}&t=${Date.now()}`;
-          const features = 'popup=yes,width=720,height=820,left=120,top=80';
-          const popup = window.open(url, 'github-oauth', features);
-          if (!popup) {
-            this.mcpOauthPending = '';
-            toast.error('无法打开授权窗口, 请允许弹窗');
+        async connectMcpOauth(server) {
+          try {
+            await this.githubService?.connectMcpOauth(server);
+          } catch (err) {
+            toast.error(err.message || '连接失败');
           }
         },
         disconnectMcpOauth(server) {
-          if (!server?.name) return;
-          const next = { ...this.mcpOauthTokens };
-          if (!(server.name in next)) return;
-          delete next[server.name];
-          this.mcpOauthTokens = next;
-          this.saveMcpOauthTokens();
-          this.refreshMcpRegistry();
+          this.githubService?.disconnectMcpOauth(server);
           toast.success(`已断开 ${server.name}`);
         },
         handleOauthMessage(event) {
-          if (event.origin !== window.location.origin) return;
-          const data = event.data;
-          if (!data || data.type !== 'github-oauth') return;
-          const payload = data.payload || {};
-          const serverName = this.mcpOauthPending
-            || (this.mcpServers || []).find((server) => this.isMcpOauthServer(server))?.name
-            || '';
-          this.mcpOauthPending = '';
-          if (!payload.ok) {
-            toast.error(`GitHub 授权失败: ${payload.error || '未知错误'}`);
-            return;
+          try {
+            const serverName = this.githubService?.handleOauthMessage(event);
+            if (serverName) {
+              toast.success(`已连接 ${serverName}`);
+            }
+          } catch (err) {
+            toast.error(`GitHub 授权失败: ${err.message || '未知错误'}`);
           }
-          if (!serverName) {
-            toast.error('没有匹配的 MCP 服务器接收授权');
-            return;
-          }
-          this.mcpOauthTokens = { ...this.mcpOauthTokens, [serverName]: payload };
-          this.saveMcpOauthTokens();
-          this.refreshMcpRegistry();
-          toast.success(`已连接 ${serverName}`);
         },
         createMcpServerFromForm() {
           const name = (this.mcpServerForm.name || '').trim();
