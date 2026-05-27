@@ -205,3 +205,16 @@ export async function handleGithubOauthRefresh(request, env, url) {
     headers: { 'Content-Type': 'application/json' }
   });
 }
+
+export async function handleGithubOauthHook(request, env, url) {
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ ok: false, error: 'Method Not Allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  return new Response({
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
