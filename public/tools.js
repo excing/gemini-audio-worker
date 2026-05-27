@@ -270,9 +270,9 @@ const tavilySearch = {
 };
 
 export const tools = [
-  codeExecution,
-  renderPage,
-  tavilySearch,
+  // codeExecution,
+  // renderPage,
+  // tavilySearch,
 ];
 
 export const toolDeclarations = tools.map(({ name, configType, description, parameters }) => ({

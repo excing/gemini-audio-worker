@@ -517,8 +517,8 @@ select::-ms-expand {
       </div>
       <footer class="call-actions">
         <button class="call-action" type="button" @click="toggleCallAudioMode"><span class="icon-btn"><component :is="muteModeIcon" ></component></span></button>
-        <button class="call-action" type="button" :disabled="mediaStarting" @click="toggleCallScreenShare"><span class="icon-btn" :class="{ active: callMediaMode === 'screen' }"><component :is="callMediaMode === 'screen' ? 'screen-share-off-icon' : 'screen-share-icon'" ></component></span></button>
-        <button class="call-action" type="button" :disabled="mediaStarting" @click="toggleCallVideo"><span class="icon-btn" :class="{ active: callMediaMode === 'video' }"><component :is="callMediaMode === 'video' ? 'video-off-icon' : 'video-icon'" ></component></span></button>
+        <button class="call-action" type="button" disabled @click="toggleCallScreenShare"><span class="icon-btn" :class="{ active: callMediaMode === 'screen' }"><component :is="callMediaMode === 'screen' ? 'screen-share-off-icon' : 'screen-share-icon'" ></component></span></button>
+        <button class="call-action" type="button" disabled @click="toggleCallVideo"><span class="icon-btn" :class="{ active: callMediaMode === 'video' }"><component :is="callMediaMode === 'video' ? 'video-off-icon' : 'video-icon'" ></component></span></button>
         <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon ></phone-off-icon></span></button>
       </footer>
     </div>
@@ -585,8 +585,8 @@ select::-ms-expand {
           <button class="icon-btn system-close" type="button" title="关闭" @click="closeSystemSettings"><x-icon ></x-icon></button>
           <nav class="system-nav" aria-label="系统配置分类">
             <button class="system-nav-item" :class="{ active: systemSettingsTab === 'general' }" type="button" @click="systemSettingsTab = 'general'"><settings-icon></settings-icon><span>常规</span></button>
-            <button class="system-nav-item" :class="{ active: systemSettingsTab === 'tools' }" type="button" @click="systemSettingsTab = 'tools'"><settings-2-icon></settings-2-icon><span>工具调用</span></button>
-            <button class="system-nav-item" :class="{ active: systemSettingsTab === 'mcp' }" type="button" @click="systemSettingsTab = 'mcp'"><sparkles-icon></sparkles-icon><span>MCP</span></button>
+            <!-- <button class="system-nav-item" :class="{ active: systemSettingsTab === 'tools' }" type="button" @click="systemSettingsTab = 'tools'"><settings-2-icon></settings-2-icon><span>工具调用</span></button> -->
+            <!-- <button class="system-nav-item" :class="{ active: systemSettingsTab === 'mcp' }" type="button" @click="systemSettingsTab = 'mcp'"><sparkles-icon></sparkles-icon><span>MCP</span></button> -->
           </nav>
         </aside>
         <main class="system-main">
