@@ -6,8 +6,56 @@
   <meta name="theme-color" content="#f9fafb" />
   <meta name="msapplication-navbutton-color" content="#f9fafb" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>BingwuAI 语音助手</title>
+  <meta name="description" content="BingwuAI 是语音优先的 AI 助手, 支持实时语音对话、网页搜索、网页阅读、图片生成、天气查询、音乐播放、域名查询和 GitHub 仓库协作。" />
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+  <meta name="application-name" content="BingwuAI 语音助手" />
+  <meta name="apple-mobile-web-app-title" content="BingwuAI" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:site_name" content="BingwuAI" />
+  <meta property="og:title" content="BingwuAI 语音助手 - 实时语音 AI 与实用工具" />
+  <meta property="og:description" content="用语音和 AI 完成搜索、网页阅读、图片生成、天气、音乐、域名查询和 GitHub 仓库协作。" />
+  <meta property="og:image" content="/favicon.svg" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="BingwuAI 语音助手" />
+  <meta name="twitter:description" content="语音优先的 AI 助手, 集成搜索、网页阅读、图片生成、天气、音乐、域名查询和 GitHub 协作。" />
+  <meta name="twitter:image" content="/favicon.svg" />
+  <title>BingwuAI - 实时语音 AI 与实用工具</title>
   <link rel="icon" href="./favicon.svg" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "#website",
+          "name": "BingwuAI",
+          "alternateName": "BingwuAI 语音助手",
+          "inLanguage": "zh-CN",
+          "description": "语音优先的 AI 助手, 集成实时语音对话、网页搜索、网页阅读、图片生成、天气查询、音乐播放、域名查询和 GitHub 仓库协作。"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "#app",
+          "name": "BingwuAI 语音助手",
+          "applicationCategory": "ProductivityApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "zh-CN",
+          "isAccessibleForFree": true,
+          "description": "BingwuAI 是一个语音优先 AI 助手, 支持实时语音对话、网页搜索、网页阅读、图片生成、天气查询、音乐播放、域名查询, 并可通过 MCP 与 GitHub 仓库协作。",
+          "featureList": [
+            "实时语音对话",
+            "网页搜索与网页内容阅读",
+            "图片生成",
+            "天气查询",
+            "音乐播放",
+            "域名可用性查询",
+            "GitHub 仓库检索、代码读取与文件更新"
+          ]
+        }
+      ]
+    }
+  </script>
   <script>
     (() => {
       const THEME_COLORS = {
@@ -59,6 +107,9 @@
     .boot-card { display:grid; justify-items:center; gap:14px; padding:20px 24px; text-align:center; }
     .boot-logo { width:52px; height:52px; border-radius:9999px; display:block; object-fit:contain; }
     .boot-spinner { width:28px; height:28px; border-radius:50%; border:3px solid rgba(127,127,127,.24); border-top-color:var(--text); animation:spin .8s linear infinite; }
+    .seo-summary { max-width:680px; margin:0; color:var(--muted); font-size:13px; }
+    .seo-summary h1 { margin:0 0 8px; color:var(--text); font-size:20px; line-height:1.2; }
+    .seo-summary p { margin:0; }
     button { border:0; cursor:pointer; transition:all .2s ease-in-out; } button:active { transform:scale(.97); } button:disabled { cursor:not-allowed; opacity:.45; transform:none; }
     .app-shell { --sidebar-width:320px; height:100dvh; display:grid; grid-template-columns:var(--sidebar-width) minmax(0,1fr); background:var(--bg); transition:grid-template-columns .24s ease-in-out; }
     .sidebar { position:relative; z-index:20; min-width:0; width:320px; height:100dvh; padding:16px; display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; gap:16px; background:var(--glass); backdrop-filter:blur(12px) saturate(180%); box-shadow:10px 0 40px rgba(0,0,0,.06); overflow:hidden; opacity:1; transition:width .24s ease-in-out, padding .24s ease-in-out, opacity .18s ease-in-out, transform .24s ease-in-out; }
@@ -261,6 +312,10 @@ select::-ms-expand {
       <img class="boot-logo" src="./favicon.svg" alt="" aria-hidden="true" />
       <div class="boot-spinner" aria-hidden="true"></div>
       <div>正在加载 BingwuAI 语音助手</div>
+      <section class="seo-summary" aria-label="产品介绍">
+        <h1>BingwuAI 语音助手</h1>
+        <p>BingwuAI 是语音优先的 AI 助手, 支持实时语音对话、网页搜索、网页阅读、图片生成、天气查询、音乐播放、域名查询和 GitHub 仓库协作。</p>
+      </section>
     </div>
   </div>
   <div id="app">
