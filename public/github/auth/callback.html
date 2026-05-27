@@ -41,18 +41,22 @@
 
         const payload = await response.json();
 
+        if (!payload.ok) {
+          throw new Error('授权失败: ' + (payload.error || ''));
+        }
+
         if (window.opener && !window.opener.closed) {
           window.opener.postMessage({ type: 'github-oauth', payload }, window.location.origin);
-          msg.textContent = payload.ok ? '授权成功，窗口将自动关闭…' : ('授权失败: ' + (payload.error || ''));
+          msg.textContent = '授权成功，窗口将自动关闭…';
           setTimeout(() => { window.close(); }, 600);
         } else {
-          msg.textContent = payload.ok ? '授权成功，请回到原窗口。' : ('授权失败: ' + (payload.error || ''));
+          msg.textContent = '授权成功，请回到原窗口。';
         }
       } catch (err) {
         msg.textContent = '回调处理失败: ' + (err.message || err);
         if (window.opener && !window.opener.closed) {
           window.opener.postMessage({ type: 'github-oauth', payload: { ok: false, error: err.message || String(err) } }, window.location.origin);
-          setTimeout(() => { window.close(); }, 2000);
+          setTimeout(() => { window.close(); }, 5000);
         }
       } finally {
         sessionStorage.removeItem('gh_oauth_state');

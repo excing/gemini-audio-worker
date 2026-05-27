@@ -98,7 +98,7 @@ export class GitHubService {
     authorizeUrl.searchParams.set('code_challenge', codeChallenge);
     authorizeUrl.searchParams.set('code_challenge_method', 'S256');
 
-    const features = 'popup=yes,width=720,height=820,left=120,top=80';
+    const features = 'popup=yes,width=768,height=820,left=120,top=80';
     const popup = window.open(authorizeUrl.toString(), 'github-oauth', features);
     if (!popup) {
       this.mcpOauthPending = '';

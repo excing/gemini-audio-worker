@@ -43,16 +43,18 @@ export async function handleGithubOauthCallback(request, env, url) {
 
   let tokenResponse;
   try {
+    const params = new URLSearchParams({
+      client_id: env.GITHUB_CLIENT_ID,
+      client_secret: env.GITHUB_CLIENT_SECRET,
+      code,
+      redirect_uri,
+      code_verifier,
+    });    
+    
     tokenResponse = await fetch(GITHUB_TOKEN_URL, {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: env.GITHUB_CLIENT_ID,
-        client_secret: env.GITHUB_CLIENT_SECRET,
-        code,
-        redirect_uri,
-        code_verifier,
-      }),
+      body: params,
     });
   } catch (error) {
     return new Response(JSON.stringify({ ok: false, error: `Token 请求失败: ${error.message || error}` }), {
@@ -61,18 +63,18 @@ export async function handleGithubOauthCallback(request, env, url) {
     });
   }
 
-  if (!tokenResponse.ok) {
-    return new Response(JSON.stringify({ ok: false, error: `Token 交换失败: HTTP ${tokenResponse.status}` }), {
+  let data;
+  try { data = await tokenResponse.json(); }
+  catch {
+    return new Response(JSON.stringify({ ok: false, error: `解析 token 响应失败: HTTP ${tokenResponse.status}` }), {
       status: tokenResponse.status,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 
-  let data;
-  try { data = await tokenResponse.json(); }
-  catch {
-    return new Response(JSON.stringify({ ok: false, error: '解析 token 响应失败' }), {
-      status: 500,
+  if (!tokenResponse.ok) {
+    return new Response(JSON.stringify({ ok: false, error: `Token 交换失败: HTTP ${tokenResponse.status}, ${JSON.stringify(data)}` }), {
+      status: tokenResponse.status,
       headers: { 'Content-Type': 'application/json' }
     });
   }
