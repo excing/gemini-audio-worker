@@ -172,7 +172,7 @@ const handler = async (id, name, { prompt = '', images = [], mime_type = 'image/
 
   const formatResult = formatImageGenerationResponse(result);
   if (formatResult.images?.length === 0 && !formatResult.text) {
-    throw new Error(`图片生成失败, 没有图片返回`);
+    throw new Error(`图片生成失败: ${responseText}`);
   }
   return formatResult;
 };

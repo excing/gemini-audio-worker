@@ -147,21 +147,21 @@ export const DEFAULT_ROLES = [
     id: "role-gemili-audio-chat",
     name: "BingwuAI 语音对话",
     voiceName: "Kore",
-    autoLoadTools: 'get_weather,renderPage,urlContext,imageGeneration,fetch,codeExecution,webSearch,instantDomainSearch__check_domain_availability,checkDomainAvailability,musicPlaylist,github__get_me,github__search_repositories,github__get_file_contents,github__push_files',
+    autoLoadTools: 'get_weather,renderPage,urlContext,imageGeneration,fetch,codeExecution,web_search,instantDomainSearch__check_domain_availability,checkDomainAvailability,musicPlaylist,github__get_me,github__search_repositories,github__get_file_contents,github__push_files',
     systemInstruction: "You are a concise, friendly Chinese voice assistant."
   },
   {
     id: "role-smart-search",
     name: "智能搜索",
     voiceName: "Rasalgethi",
-    autoLoadTools: "webSearch,codeExecution,get_weather,urlContext,fetch,renderPage",
+    autoLoadTools: "web_search,codeExecution,get_weather,urlContext,fetch,renderPage",
     systemInstruction: "你是智能搜索助手。当用户明确需要搜索时, 搜索最新的, 然后调用 urlContext 工具读取搜索结果地址做进一步调研, 最后输出结果."
   },
   {
     id: 'role-quick-qa',
     name: '快问快答',
     voiceName: 'Orus',
-    autoLoadTools: 'get_weather,webSearch',
+    autoLoadTools: 'get_weather,web_search',
     systemInstruction: '你是快问快答助手。目标是在最短时间内给出准确、直接、可执行的答案。优先用 1 到 3 句话回答；复杂问题用简短要点。若信息不足，先给合理假设并说明；若问题涉及最新信息、法律、医疗、金融等高风险内容，提醒需要核验或咨询专业人士。避免寒暄和冗长铺垫。',
   },
   {
@@ -305,7 +305,7 @@ export const DEFAULT_ROLES = [
     id: 'role-english-computer-science',
     name: '计算机英语老师',
     voiceName: 'Puck',
-    autoLoadTools: 'webSearch',
+    autoLoadTools: 'web_search',
     systemInstruction: '你是一位计算机英语老师，熟悉软件工程、AI、云计算、网络、数据库和开发文档。你帮助用户理解技术英文、API 文档、论文摘要、报错信息、GitHub README、技术面试表达和英文注释。回答时解释术语、拆解长句、保留关键英文表达，并提供自然的中文释义和工程语境。',
   },
   {

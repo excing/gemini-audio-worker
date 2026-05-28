@@ -1,7 +1,8 @@
 const DISPLAY_NAMES = {
   imageGeneration: '图片生成',
   get_weather: '天气查询',
-  webSearch: '网页搜索',
+  web_search: '网页搜索',
+  duckduckgo_search: 'DuckDuckGo 搜索',
   fetch: '网络请求',
   urlContext: '网页内容',
   musicPlaylist: '音乐播放列表',
@@ -22,6 +23,25 @@ const getDomainAvailabilityPayload = (response) => {
   const contentList = Array.isArray(response?.content) ? response.content : [];
   const jsonEntry = contentList.find((item) => item?.type === 'json' && item?.data);
   return jsonEntry?.data && typeof jsonEntry.data === 'object' ? jsonEntry.data : null;
+};
+
+const formatUrlTitle = (url) => {
+  try {
+    const { hostname, pathname } = new URL(url);
+    const path = pathname.replace(/\/+$/, '');
+    return path && path !== '/' ? `${hostname}${path}` : hostname;
+  } catch {
+    return url;
+  }
+};
+
+const normalizeResultItem = (item) => {
+  const url = String(item?.url || '').trim();
+  const title = String(item?.title || item?.name || item?.source || '').trim();
+  return {
+    title: title || (url ? formatUrlTitle(url) : ''),
+    url,
+  };
 };
 
 // 从 args / response 派生 UI 展示字段，不保留旧 prompt/result 字段
@@ -48,15 +68,25 @@ const deriveDisplay = (name, args, response) => {
     if (response?.text) display.text = String(response.text).trim();
   }
 
+  // web_search 专属：后端返回 { answer, sources }，前端展示为摘要 + 可点击来源列表
+  if (name === 'web_search') {
+    const answer = String(response?.answer || '').trim();
+    if (answer) display.text = answer;
+
+    const sources = Array.isArray(response?.sources) ? response.sources : [];
+    if (sources.length) {
+      display.results = sources
+        .map(normalizeResultItem)
+        .filter((item) => item.title || item.url);
+    }
+  }
+
   // 通用：带 title/url 的结果列表（如 webSearch），任何工具只要在 response.results
   // 里返回 [{ title, url }] 即可自动渲染为可折叠的标题列表
   const resultList = Array.isArray(response?.results) ? response.results : [];
-  if (resultList.length) {
+  if (resultList.length && !display.results?.length) {
     display.results = resultList
-      .map((item) => ({
-        title: String(item?.title || '').trim(),
-        url: String(item?.url || '').trim(),
-      }))
+      .map(normalizeResultItem)
       .filter((item) => item.title || item.url);
   }
 

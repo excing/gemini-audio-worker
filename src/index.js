@@ -81,7 +81,7 @@ const buildGeminiSetup = (localSetup = {}) => {
   // 受支持的工具概览
   // 仅支持 google search 和函数调用, 且 google search 仅 2.5 模型可用
   // https://ai.google.dev/gemini-api/docs/live-api/tools?hl=zh-CN#tools-overview
-  const indexWebSearchAtBut2_5 = resolvedModel.includes('2.5') ? enabledDeclarations.findIndex(item => item.name === 'webSearch') : -1;
+  const indexWebSearchAtBut2_5 = resolvedModel.includes('2.5') ? enabledDeclarations.findIndex(item => item.name === 'web_search') : -1;
   const enabledNativeTools = indexWebSearchAtBut2_5 !== -1 ? [{ googleSearch: {} }] : [];
   if (indexWebSearchAtBut2_5 !== -1) enabledDeclarations.splice(indexWebSearchAtBut2_5, 1);
 

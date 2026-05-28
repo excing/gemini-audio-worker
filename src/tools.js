@@ -5,6 +5,7 @@ import imageGenerationTool from './tools/image-generation.js';
 import musicPlaylistTool from './tools/music-playlist.js';
 import urlContextTool from './tools/url-context.js';
 import webSearchTool from './tools/web-search.js';
+import duckduckgoSearchTool from './tools/duckduckgo-search.js';
 
 export const tools = [
   getWeatherTool,
@@ -14,6 +15,7 @@ export const tools = [
   checkDomainAvailabilityTool,
   imageGenerationTool,
   musicPlaylistTool,
+  duckduckgoSearchTool,
 ];
 
 export const toolDeclarations = tools.map(({ name, description, parameters }) => ({

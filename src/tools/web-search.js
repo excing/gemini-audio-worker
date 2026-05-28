@@ -1,126 +1,155 @@
-import { decodeHtmlEntities, stripHtml } from '../tool-utils.js';
+const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
+const OPENAI_DEFAULT_BASE_URL = 'https://api.openai.com/v1';
+const SEARCH_EFFORT_VALUES = new Set(['low', 'medium', 'high', 'xhigh']);
 
-const normalizeDuckDuckGoUrl = (value = '') => {
-  const decodedValue = decodeHtmlEntities(value).trim();
+const SEARCH_PROMPT = `You are an expert web research assistant with access to real-time web search.
 
+Search the web thoroughly before answering. Prefer authoritative, primary, and recent sources when recency matters.
+Cross-check important claims across multiple sources. Include concise citations as URLs in a final Sources section.
+Answer in the user's language unless the user asks otherwise.`;
+
+const getLocalTimeInfo = () => {
+  const now = new Date();
+  return [
+    `Current date: ${now.toISOString().slice(0, 10)}`,
+    `Current time: ${now.toISOString()}`,
+  ].join('\n');
+};
+
+const buildUserPrompt = (query, platform) => {
+  const parts = [
+    getLocalTimeInfo(),
+    '',
+    `Search query: ${query}`,
+  ];
+
+  const platformText = String(platform || '').trim();
+  if (platformText) {
+    parts.push('', `Focus on these platforms or source types when relevant: ${platformText}`);
+  }
+
+  return parts.join('\n');
+};
+
+const parseJsonOrRaw = (value) => {
   try {
-    const url = new URL(decodedValue, 'https://duckduckgo.com');
-    const redirectedUrl = url.searchParams.get('uddg');
-    return redirectedUrl ? decodeURIComponent(redirectedUrl) : url.href;
+    return value ? JSON.parse(value) : null;
   } catch {
-    return decodedValue;
+    return { raw: value };
   }
 };
 
-const extractDuckDuckGoResultDate = (block) => {
-  const extrasMatch = block.match(/<div[^>]+class="[^"]*result__extras[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i);
-  if (!extrasMatch) return '';
+const extractUrls = (text) => {
+  const urlRegex = /https?:\/\/[^\s<>"')\]]+/gi;
+  const seen = new Set();
+  const urls = [];
 
-  const extrasText = stripHtml(extrasMatch[1]);
-  const dateMatch = extrasText.match(/\b\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?)?\b/);
-  return dateMatch ? dateMatch[0] : '';
-};
-
-const parseDuckDuckGoResults = (html, maxResults) => {
-  const results = [];
-  const titleRegex = /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-  const seenUrls = new Set();
-  const titleMatches = [...html.matchAll(titleRegex)];
-
-  for (let index = 0; index < titleMatches.length && results.length < maxResults; index += 1) {
-    const titleMatch = titleMatches[index];
-    const nextTitleMatch = titleMatches[index + 1];
-    const block = html.slice(titleMatch.index, nextTitleMatch?.index || html.length);
-
-    const url = normalizeDuckDuckGoUrl(titleMatch[1]);
-    const title = stripHtml(titleMatch[2]);
-    const snippetMatch = block.match(/<a[^>]+class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/i)
-      || block.match(/<div[^>]+class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-    const snippet = snippetMatch ? stripHtml(snippetMatch[1]) : '';
-    const date = extractDuckDuckGoResultDate(block);
-
-    if (!title || !url || seenUrls.has(url)) continue;
-    seenUrls.add(url);
-    results.push({ title, url, snippet, date });
+  for (const match of String(text || '').matchAll(urlRegex)) {
+    const url = match[0].replace(/[.,;:!?]+$/, '');
+    if (seen.has(url)) continue;
+    seen.add(url);
+    urls.push(url);
   }
 
-  return results;
+  return urls;
 };
 
-const handler = async (id, name, { query, max_results = 5, region = 'wt-wt', safe_search = 'moderate', timeRange = '' } = {}) => {
+const splitAnswerAndSources = (text) => {
+  const value = String(text || '').trim();
+  const sourcesHeading = value.match(/\n(?:#{1,6}\s*)?(?:sources|references|citations|信源|来源|参考资料)[:：]?\s*\n/i);
+
+  if (!sourcesHeading) {
+    const urls = extractUrls(value);
+    return {
+      answer: value,
+      sources: urls.map((url) => ({ url })),
+    };
+  }
+
+  const answer = value.slice(0, sourcesHeading.index).trim();
+  const sourcesText = value.slice(sourcesHeading.index + sourcesHeading[0].length).trim();
+  const urls = extractUrls(sourcesText);
+
+  return {
+    answer: answer || value,
+    sources: urls.map((url) => ({ url })),
+  };
+};
+
+const handler = async (id, name, { query = '', platform = '', effort = 'medium' } = {}, { env }) => {
   const searchQuery = String(query || '').trim();
   if (!searchQuery) {
-    throw new Error('DuckDuckGo 搜索关键词不能为空');
+    throw new Error('web_search 搜索关键词不能为空');
   }
 
-  const maxResults = Math.min(Math.max(Number.parseInt(max_results, 10) || 5, 1), 10);
-  const safeSearchMap = {
-    strict: '1',
-    moderate: '-1',
-    off: '-2',
-  };
-  const searchParams = new URLSearchParams({
-    q: searchQuery,
-    kl: String(region || '').trim() || '',
-    kp: safeSearchMap[String(safe_search || 'moderate').trim().toLowerCase()] || '-1',
-  });
-  const _timeRange = String(timeRange || '').trim().toLowerCase();
-
-  if (['d', 'w', 'm', 'y'].includes(_timeRange)) {
-    searchParams.set('df', _timeRange);
+  if (!env.OPENAI_API_KEY) {
+    throw new Error('Worker 缺少 OPENAI_API_KEY secret');
   }
 
-  const response = await fetch('https://html.duckduckgo.com/html/', {
+  const model = String(env.OPENAI_SEARCH_MODEL || '').trim();
+  if (!model) {
+    throw new Error('Worker 缺少 OPENAI_SEARCH_MODEL 配置');
+  }
+
+  const searchEffort = SEARCH_EFFORT_VALUES.has(effort) ? effort : 'medium';
+  const baseUrl = trimTrailingSlash(env.OPENAI_BASE_URL || OPENAI_DEFAULT_BASE_URL);
+  const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
-      'User-Agent': 'gemini-audio-worker/1.0',
-      Accept: 'text/html,application/xhtml+xml',
-      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
     },
-    body: searchParams.toString(),
+    body: JSON.stringify({
+      model: `${model}-${searchEffort}`,
+      messages: [
+        { role: 'system', content: SEARCH_PROMPT },
+        { role: 'user', content: buildUserPrompt(searchQuery, platform) },
+      ],
+      stream: false,
+    }),
   });
 
   if (!response.ok) {
-    throw new Error(`DuckDuckGo 请求失败: ${response.status} ${response.statusText}`);
+    const errorText = await response.text();
+    throw new Error(`web_search 请求失败: ${response.status} ${response.statusText}: ${errorText}`);
   }
 
-  const html = await response.text();
+  const raw = parseJsonOrRaw(await response.text());
+  const answerText = raw?.choices?.[0]?.message?.content || '';
+
+  if (!answerText.trim()) {
+    throw new Error('web_search 未返回有效内容');
+  }
+
+  const { answer, sources } = splitAnswerAndSources(answerText);
 
   return {
     query: searchQuery,
-    results: parseDuckDuckGoResults(html, maxResults),
-    raw: {
-      source: 'DuckDuckGo HTML',
-      endpoint: 'https://html.duckduckgo.com/html/',
-    },
+    answer,
+    sources,
+    sources_count: sources.length,
   };
 };
 
 export default {
-  name: 'webSearch',
+  name: 'web_search',
   description: '联网搜索网页信息，返回标题、链接、摘要和可用的结果时间。',
   parameters: {
     type: 'object',
     properties: {
       query: {
         type: 'string',
-        description: '搜索关键词。',
+        description: '搜索关键词或需要调研的问题。',
       },
-      max_results: {
-        type: 'number',
-        description: '最多返回结果数量，默认 5，最大 10。',
-      },
-      region: {
+      platform: {
         type: 'string',
-        description: '可选地区代码，例如 wt-wt、us-en、cn-zh。默认 wt-wt。',
+        description: '可选，聚焦的平台或来源类型，例如 GitHub、Reddit、官方文档、新闻网站。',
       },
-      safe_search: {
+      effort: {
         type: 'string',
-        description: '安全搜索级别：strict、moderate 或 off。默认 moderate。',
-      },
-      timeRange: {
-        type: 'string',
-        description: '可选时间范围：d(最近一天)、w(最近一周)、m(最近一月)、y(最近一年)，不填表示所有时间。',
+        enum: ['low', 'medium', 'high', 'xhigh'],
+        default: 'medium',
+        description: '可选，控制搜索模型的思考程度。可选值：low、medium、high、xhigh；默认 medium。',
       },
     },
     required: ['query'],
