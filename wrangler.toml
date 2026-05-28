@@ -1,4 +1,4 @@
-name = "gemini-audio-worker"
+name = "gemini-audio-worker-dev"
 main = "src/index.js"
 compatibility_date = "2026-05-09"
 
