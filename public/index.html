@@ -223,8 +223,7 @@
     .tool-call-badge.error { color:var(--bad); }
     .tool-call-prompt, .tool-call-text, .tool-call-error { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
     .tool-call-prompt { color:var(--text); }
-    .tool-call-text { width:100%; padding:0; border:0; display:block; background:transparent; color:var(--muted); text-align:left; font:inherit; }
-    .tool-call-text.clamped { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+    .tool-call-text { color:var(--muted); }
     .tool-call-error { color:#ffd5da; }
     .tool-call-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.24); border-top-color:var(--warn); border-radius:50%; animation:spin .8s linear infinite; }
     .tool-call-media { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
@@ -439,15 +438,7 @@ select::-ms-expand {
                     </div>
                     <pre v-else class="render-block-code">{{ item.message.html }}</pre>
                   </div>
-                  <button
-                    class="tool-call-text"
-                    :class="{ clamped: !item.message.textExpanded }"
-                    v-if="item.message.text"
-                    type="button"
-                    :aria-expanded="Boolean(item.message.textExpanded)"
-                    title="点击展开或收起"
-                    @click.stop="toggleToolCallText(item.message)"
-                  >{{ item.message.text }}</button>
+                  <p class="tool-call-text" v-if="item.message.text">{{ item.message.text }}</p>
                   <p class="tool-call-error" v-if="item.message.error">{{ item.message.error }}</p>
                 </div>
               </template>
@@ -2050,10 +2041,6 @@ select::-ms-expand {
         },
         toolDisplayName(name) { return toolEventDisplayName(name); },
         toolStatusText(status) { return toolEventStatusText(status); },
-        toggleToolCallText(message) {
-          if (!message?.text) return;
-          message.textExpanded = !message.textExpanded;
-        },
         playMusicFromCard(message, startIndex) {
           if (!message?.playlist?.length) return;
           loadMusicPlaylist(message.id, message.playlist, startIndex);
