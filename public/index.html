@@ -132,7 +132,13 @@
     .dot { width:8px; height:8px; border-radius:9999px; background:transparent; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.bad { background:var(--bad); }
     .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
     .group { max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
-    .msg { padding:10px 14px; border-radius:12px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; } .ai .msg { padding:10px 5px } .user .msg { background:var(--text); color:var(--bg); } .system .msg { background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(245,158,11,.12)); color:var(--text); }
+    .msg { padding:10px 14px; border-radius:12px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; } .ai .msg { padding:6px 8px } .user .msg { background:var(--text); color:var(--bg); } .system .msg { background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(245,158,11,.12)); color:var(--text); }
+    .message-toolbar { min-height:30px; display:flex; align-items:center; gap:4px; opacity:.72; transition:opacity .16s ease-in-out; }
+    .group:hover .message-toolbar, .message-toolbar:focus-within { opacity:1; }
+    .message-action { width:30px; height:30px; min-width:30px; border-radius:9999px; display:inline-grid; place-items:center; background:transparent; color:var(--muted); }
+    .message-action:hover { background:var(--hover); color:var(--text); }
+    .message-action svg { width:15px; height:15px; }
+    .user .message-toolbar { justify-content:flex-end; }
     .progressive-text { white-space:pre-wrap; overflow-wrap:anywhere; } .progressive-text-played { color:inherit; opacity:1; transition:opacity .2s ease-in-out; } .progressive-text-pending { color:inherit; opacity:.42; transition:opacity .2s ease-in-out; } .caption-line { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; align-items:start; padding:4px 0; } .caption-text { min-width:0; color:inherit; font-size:15px; line-height:1.5; } .caption-line.user .caption-text { color:var(--muted); opacity:.72; } .caption-line.ai .caption-text { color:var(--text); }
     .thought-card summary { min-height:28px; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:13px; font-weight:700; list-style:none; }
     .thought-card summary::-webkit-details-marker { display:none; }
@@ -456,10 +462,15 @@ select::-ms-expand {
                   v-if="item.message.type === 'text'"
                   :text="item.message.text"
                   :caption="item.message.caption"
-                  :active="item.role === 'Gemini'"
+                  :active="item.role === 'ai'"
                 ></progressive-text>
                 <template v-else>{{ item.message.text || item.message }}</template>
               </template>
+            </div>
+            <div v-if="canShowMessageToolbar(item)" class="message-toolbar">
+              <button class="message-action" type="button" :title="item.message.toolbarCopyState === 'ok' ? '已复制' : '复制'" @click="copyMessage(item.message)">
+                <component :is="item.message.toolbarCopyState === 'ok' ? 'check-icon' : 'copy-icon'" ></component>
+              </button>
             </div>
           </div>
           </div>
@@ -509,7 +520,7 @@ select::-ms-expand {
                 class="caption-text"
                 :text="item.message.text"
                 :caption="item.message.caption"
-                :active="item.role === 'Gemini'"
+                :active="item.role === 'ai'"
               ></progressive-text>
             </div>
           </div>
@@ -1009,7 +1020,7 @@ select::-ms-expand {
               this.ws?.send(JSON.stringify(input));
             }
           },
-          onCaptionDue: ({ text, messageId }) => this.addCaption('Gemini', text, messageId),
+          onCaptionDue: ({ text, messageId }) => this.addCaption('ai', text, messageId),
           onMicEnded: () => this.handleMicEnded(),
         });
         this.mediaService = createMediaService({
@@ -1892,6 +1903,41 @@ select::-ms-expand {
             toast.error('复制失败', { description: '请手动选择源代码后复制' });
           }
         },
+        canShowMessageToolbar(item) {
+          return ['user', 'ai'].includes(item?.role) && Boolean(this.getMessageCopyText(item?.message));
+        },
+        getMessageCopyText(message) {
+          if (!message) return '';
+          if (message.type === 'text') return message.text || '';
+          if (message.type === 'thought') return message.text || '';
+          if (message.type === 'toolCall') {
+            const parts = [];
+            if (message.prompt) parts.push(message.prompt);
+            if (message.text) parts.push(message.text);
+            if (message.error) parts.push(message.error);
+            if (message.html) parts.push(message.html);
+            if (message.results?.length) {
+              parts.push(message.results.map((result) => result.url ? `${result.title || result.url}\n${result.url}` : result.title).filter(Boolean).join('\n\n'));
+            }
+            if (message.playlist?.length) {
+              parts.push(message.playlist.map((song) => [song.name, song.artist || song.artists].filter(Boolean).join(' - ')).filter(Boolean).join('\n'));
+            }
+            return parts.filter(Boolean).join('\n\n');
+          }
+          return typeof message.text === 'string' ? message.text : '';
+        },
+        async copyMessage(message) {
+          const text = this.getMessageCopyText(message);
+          if (!text) return;
+          const ok = await copyTextToClipboard(text);
+          if (ok) {
+            message.toolbarCopyState = 'ok';
+            toast.success('已复制消息');
+            setTimeout(() => { if (message.toolbarCopyState === 'ok') message.toolbarCopyState = ''; }, 1600);
+          } else {
+            toast.error('复制失败', { description: '请手动选择消息后复制' });
+          }
+        },
         async connect() {
           if (this.isSessionActive) return;
           this.ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
@@ -1966,7 +2012,7 @@ select::-ms-expand {
           }
           if (content.outputTranscription?.text) {
             this.ensureAiTextSegment();
-            this.addTranscript('Gemini', content.outputTranscription.text, this.pendingAiMessageId);
+            this.addTranscript('ai', content.outputTranscription.text, this.pendingAiMessageId);
             this.pendingAiCaption += content.outputTranscription.text;
           }
           for (const part of content.modelTurn?.parts || []) {
@@ -1976,7 +2022,7 @@ select::-ms-expand {
                 this.addThought(part.text);
               } else {
                 this.ensureAiTextSegment();
-                this.addTranscript('Gemini', part.text, this.pendingAiMessageId);
+                this.addTranscript('ai', part.text, this.pendingAiMessageId);
                 this.pendingAiCaption += part.text;
               }
             }
@@ -2029,12 +2075,12 @@ select::-ms-expand {
         addThought(text) {
           if (!text) return;
           const lastItem = this.messageGroups.at(-1);
-          if (lastItem?.role === 'Gemini' && lastItem.message?.type === 'thought') {
+          if (lastItem?.role === 'ai' && lastItem.message?.type === 'thought') {
             lastItem.message.text += text;
             nextTick(() => { this.$refs.chatEl.scrollTop = this.$refs.chatEl.scrollHeight; });
             return;
           }
-          this.addMessage('Gemini', { type: 'thought', text, title: '思考过程' });
+          this.addMessage('ai', { type: 'thought', text, title: '思考过程' });
         },
         addCaption(role, text, messageId = '') {
           if (!text) return;
