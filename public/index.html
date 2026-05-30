@@ -130,16 +130,30 @@
     .main > .input-bar { grid-row:4; }
     .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items: center; justify-items:center; line-height:1.2; } .chat-title { max-width:min(39vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; background:transparent; } .chat-title:hover { background:var(--hover); }
     .dot { width:8px; height:8px; border-radius:9999px; background:transparent; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.bad { background:var(--bad); }
-    .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
-    .group { max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
-    .msg { padding:10px 14px; border-radius:12px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; } .ai .msg { padding:6px 8px } .user .msg { background:var(--text); color:var(--bg); } .system .msg { background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(245,158,11,.12)); color:var(--text); }
+    .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; overflow-x:hidden; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
+    .group { min-width:0; max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
+    .msg { min-width:0; max-width:100%; padding:10px 14px; border-radius:12px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; } .ai .msg { padding:6px 8px } .user .msg { background:var(--text); color:var(--bg); } .system .msg { background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(245,158,11,.12)); color:var(--text); }
+    .markdown-body { min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+    .markdown-body > :first-child { margin-top:0; }
+    .markdown-body > :last-child { margin-bottom:0; }
+    .markdown-body p, .markdown-body ul, .markdown-body ol, .markdown-body blockquote, .markdown-body pre, .markdown-body table { margin:0 0 10px; }
+    .markdown-body ul, .markdown-body ol { padding-left:1.4em; }
+    .markdown-body li + li { margin-top:4px; }
+    .markdown-body a { color:inherit; text-decoration:underline; text-underline-offset:2px; }
+    .markdown-body code { padding:2px 5px; border-radius:6px; background:rgba(127,127,127,.16); font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    .markdown-body pre { max-width:100%; overflow:auto; padding:10px 12px; border-radius:8px; background:rgba(127,127,127,.12); }
+    .markdown-body pre code { padding:0; background:transparent; white-space:pre; }
+    .markdown-body blockquote { padding-left:10px; border-left:3px solid rgba(127,127,127,.35); color:var(--muted); }
+    .markdown-body table { width:100%; max-width:100%; border-collapse:collapse; display:block; overflow:auto; }
+    .markdown-body th, .markdown-body td { padding:6px 8px; border:1px solid var(--line); }
+    .markdown-body img { max-width:100%; height:auto; border-radius:8px; }
     .message-toolbar { min-height:30px; display:flex; align-items:center; gap:4px; opacity:.72; transition:opacity .16s ease-in-out; }
     .group:hover .message-toolbar, .message-toolbar:focus-within { opacity:1; }
     .message-action { width:30px; height:30px; min-width:30px; border-radius:9999px; display:inline-grid; place-items:center; background:transparent; color:var(--muted); }
     .message-action:hover { background:var(--hover); color:var(--text); }
     .message-action svg { width:15px; height:15px; }
     .user .message-toolbar { justify-content:flex-end; }
-    .progressive-text { white-space:pre-wrap; overflow-wrap:anywhere; } .progressive-text-played { color:inherit; opacity:1; transition:opacity .2s ease-in-out; } .progressive-text-pending { color:inherit; opacity:.42; transition:opacity .2s ease-in-out; } .caption-line { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; align-items:start; padding:4px 0; } .caption-text { min-width:0; color:inherit; font-size:15px; line-height:1.5; } .caption-line.user .caption-text { color:var(--muted); opacity:.72; } .caption-line.ai .caption-text { color:var(--text); }
+    .caption-line { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; align-items:start; padding:4px 0; } .caption-text { min-width:0; color:inherit; font-size:15px; line-height:1.5; } .caption-line.user .caption-text { color:var(--muted); opacity:.72; } .caption-line.ai .caption-text { color:var(--text); }
     .thought-card summary { min-height:28px; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:13px; font-weight:700; list-style:none; }
     .thought-card summary::-webkit-details-marker { display:none; }
     .thought-card summary::before { content:""; width:8px; height:8px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(-45deg); transition:transform .18s ease-in-out; opacity:.72; }
@@ -214,7 +228,7 @@
     .render-modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--muted); }
     .render-modal iframe { width:100%; min-height:100%; border:1px solid var(--line); border-radius:16px; background:white; }
     .render-modal-close { min-width:42px; min-height:42px; padding:0; border-radius:14px; font-size:22px; line-height:1; }
-    .tool-call-card { display:grid; gap:10px; min-width:min(320px,72vw); max-width:min(560px,76vw); text-align:left; }
+    .tool-call-card { min-width:0; width:100%; max-width:100%; display:grid; gap:10px; text-align:left; }
     .tool-call-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
     .tool-call-name { font-size:13px; font-weight:800; color:var(--muted); }
     .tool-call-badge { flex:0 0 auto; min-height:24px; padding:2px 9px; border:1px solid var(--line); border-radius:999px; font-size:12px; font-weight:750; color:var(--muted); background:rgba(255,255,255,.08); display:inline-flex; align-items:center; gap:6px; }
@@ -224,6 +238,7 @@
     .tool-call-prompt, .tool-call-text, .tool-call-error { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
     .tool-call-prompt { color:var(--text); }
     .tool-call-text { color:var(--muted); }
+    .tool-call-text.markdown-body { white-space:normal; }
     .tool-call-error { color:#ffd5da; }
     .tool-call-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.24); border-top-color:var(--warn); border-radius:50%; animation:spin .8s linear infinite; }
     .tool-call-media { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
@@ -438,7 +453,11 @@ select::-ms-expand {
                     </div>
                     <pre v-else class="render-block-code">{{ item.message.html }}</pre>
                   </div>
-                  <p class="tool-call-text" v-if="item.message.text">{{ item.message.text }}</p>
+                  <markdown-text
+                    v-if="item.message.text"
+                    class="tool-call-text"
+                    :text="item.message.text"
+                  ></markdown-text>
                   <p class="tool-call-error" v-if="item.message.error">{{ item.message.error }}</p>
                 </div>
               </template>
@@ -449,12 +468,10 @@ select::-ms-expand {
                 </details>
               </template>
               <template v-else>
-                <progressive-text
+                <markdown-text
                   v-if="item.message.type === 'text'"
                   :text="item.message.text"
-                  :caption="item.message.caption"
-                  :active="item.role === 'ai'"
-                ></progressive-text>
+                ></markdown-text>
                 <template v-else>{{ item.message.text || item.message }}</template>
               </template>
             </div>
@@ -507,12 +524,10 @@ select::-ms-expand {
               class="caption-line"
               :class="item.role"
             >
-              <progressive-text
+              <markdown-text
                 class="caption-text"
                 :text="item.message.text"
-                :caption="item.message.caption"
-                :active="item.role === 'ai'"
-              ></progressive-text>
+              ></markdown-text>
             </div>
           </div>
         </div>
@@ -740,6 +755,8 @@ select::-ms-expand {
   </script>
   <script type="module">
     import { createApp, nextTick } from "vue";
+    import MarkdownIt from "https://esm.sh/markdown-it@14.1.0";
+    import DOMPurify from "https://esm.sh/dompurify@3.4.7";
     import { toast, Toaster } from "sonner";
     import { createAudioService } from "./audio-service.js";
     import { createMediaService } from "./media-service.js";
@@ -755,6 +772,26 @@ select::-ms-expand {
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
     const BROWSER_TOOL_CONFIG_KEY = 'geminiBrowserToolConfigs';
+    const markdown = new MarkdownIt({
+      breaks: true,
+      html: false,
+      linkify: true,
+      typographer: true,
+    });
+
+    const defaultLinkOpen = markdown.renderer.rules.link_open || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+    markdown.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+      const token = tokens[idx];
+      const targetIndex = token.attrIndex('target');
+      const relIndex = token.attrIndex('rel');
+      if (targetIndex < 0) token.attrPush(['target', '_blank']);
+      else token.attrs[targetIndex][1] = '_blank';
+      if (relIndex < 0) token.attrPush(['rel', 'noopener noreferrer']);
+      else token.attrs[relIndex][1] = 'noopener noreferrer';
+      return defaultLinkOpen(tokens, idx, options, env, self);
+    };
+
+    const renderMarkdown = (text) => DOMPurify.sanitize(markdown.render(String(text || '')));
 
     async function copyTextToClipboard(text) {
       if (text == null) return false;
@@ -783,56 +820,16 @@ select::-ms-expand {
       }
     }
 
-    const ProgressiveText = {
+    const MarkdownText = {
       props: {
         text: { type: String, default: '' },
-        caption: { type: String, default: '' },
-        active: { type: Boolean, default: false },
       },
       computed: {
-        parts() {
-          const text = String(this.text || '');
-          if (!this.active) return { played: text, pending: '' };
-
-          const caption = String(this.caption || '');
-          if (!text || !caption) return { played: '', pending: text };
-          if (text.startsWith(caption)) return { played: caption, pending: text.slice(caption.length) };
-
-          const compactText = text.replace(/\s+/g, '');
-          const compactCaption = caption.replace(/\s+/g, '');
-          if (!compactCaption) return { played: '', pending: text };
-
-          let matched = 0;
-          for (let i = 0; i < text.length && matched < compactCaption.length; i += 1) {
-            if (/\s/.test(text[i])) continue;
-            if (text[i] !== compactCaption[matched]) break;
-            matched += 1;
-          }
-          if (matched === compactCaption.length) {
-            let playedEnd = 0;
-            let seen = 0;
-            while (playedEnd < text.length && seen < matched) {
-              if (!/\s/.test(text[playedEnd])) seen += 1;
-              playedEnd += 1;
-            }
-            return { played: text.slice(0, playedEnd), pending: text.slice(playedEnd) };
-          }
-
-          const index = text.indexOf(caption);
-          if (index >= 0) {
-            const playedEnd = index + caption.length;
-            return { played: text.slice(0, playedEnd), pending: text.slice(playedEnd) };
-          }
-
-          const fallbackLength = Math.min(text.length, caption.length);
-          return { played: text.slice(0, fallbackLength), pending: text.slice(fallbackLength) };
+        html() {
+          return renderMarkdown(this.text);
         },
       },
-      template: `
-        <span class="progressive-text">
-          <span v-if="parts.played" class="progressive-text-played">{{ parts.played }}</span><span v-if="parts.pending" class="progressive-text-pending">{{ parts.pending }}</span>
-        </span>
-      `,
+      template: '<div class="markdown-body" v-html="html"></div>',
     };
 
     const HoldRecord = {
@@ -2304,7 +2301,7 @@ select::-ms-expand {
       'x-icon': X,
     };
     Object.entries(lucideComponents).forEach(([name, component]) => app.component(name, component));
-    app.component('progressive-text', ProgressiveText);
+    app.component('markdown-text', MarkdownText);
     app.component('hold-record', HoldRecord);
     app.component('music-player', MusicPlayer);
     app.component('toaster', Toaster);
