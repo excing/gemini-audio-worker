@@ -791,7 +791,9 @@ select::-ms-expand {
       return defaultLinkOpen(tokens, idx, options, env, self);
     };
 
-    const renderMarkdown = (text) => DOMPurify.sanitize(markdown.render(String(text || '')));
+    const renderMarkdown = (text) => DOMPurify.sanitize(markdown.render(String(text || '')), {
+      ADD_ATTR: ['target'],
+    });
 
     async function copyTextToClipboard(text) {
       if (text == null) return false;
