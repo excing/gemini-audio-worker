@@ -3,6 +3,7 @@ export const DEFAULT_MCP_SERVERS = [
 ];
 
 export const GITHUB_CLIENT_ID = 'Iv23liL6wh9gTPmGbD83';
+export const GITHUB_APP_SLUG = 'bingwuai';
 
 export const APP_MODELS = [
   {

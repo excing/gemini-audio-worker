@@ -1,11 +1,13 @@
-import { GITHUB_CLIENT_ID } from "./constant.js";
+import { GITHUB_APP_SLUG, GITHUB_CLIENT_ID } from "./constant.js";
 
 const MCP_OAUTH_TOKEN_KEY = 'geminiMcpOauthTokens';
+const GITHUB_INSTALLATIONS_URL = 'https://api.github.com/user/installations';
 
 export class GitHubService {
   constructor(options = {}) {
     this.tokens = this.loadMcpOauthTokens();
     this.mcpOauthPending = '';
+    this.mcpOauthPopup = null;
     this.onTokensChanged = options.onTokensChanged || (() => {});
     this.refreshIntervals = {};
     
@@ -22,9 +24,9 @@ export class GitHubService {
     }
   }
 
-  saveMcpOauthTokens() {
+  saveMcpOauthTokens(options = {}) {
     localStorage.setItem(MCP_OAUTH_TOKEN_KEY, JSON.stringify(this.tokens));
-    this.onTokensChanged(this.tokens);
+    this.onTokensChanged(this.tokens, options);
   }
 
   isMcpOauthServer(server) {
@@ -34,16 +36,59 @@ export class GitHubService {
   hasMcpOauthToken(server) {
     const name = server?.name;
     const tokenData = name ? this.tokens[name] : null;
+    return this.isTokenUsable(tokenData);
+  }
+
+  isTokenUsable(tokenData) {
     if (!tokenData?.access_token) return false;
-    
-    // Check if token is expired (or close to expiring in 30 seconds)
-    if (tokenData.expires_in && tokenData.received_at) {
-      const expiresAt = tokenData.received_at + tokenData.expires_in * 1000;
-      if (Date.now() >= expiresAt - 30000) {
-        return false;
-      }
-    }
-    return true;
+    if (!tokenData.expires_in || !tokenData.received_at) return true;
+    const expiresAt = tokenData.received_at + tokenData.expires_in * 1000;
+    return Date.now() < expiresAt - 30000;
+  }
+
+  getTokenData(server) {
+    const name = server?.name;
+    return name ? this.tokens[name] || null : null;
+  }
+
+  hasGithubAppSlug() {
+    return Boolean(GITHUB_APP_SLUG);
+  }
+
+  getGithubInstallations(server) {
+    const installations = this.getTokenData(server)?.installations;
+    return Array.isArray(installations) ? installations : [];
+  }
+
+  hasGithubInstallation(server) {
+    return this.getGithubInstallations(server).length > 0;
+  }
+
+  getGithubInstallationSummary(server) {
+    const installations = this.getGithubInstallations(server);
+    if (!installations.length) return '';
+    const logins = installations.map((item) => item.account_login).filter(Boolean);
+    if (!logins.length) return `${installations.length} 个安装`;
+    if (logins.length <= 2) return logins.join(', ');
+    return `${logins.slice(0, 2).join(', ')} 等 ${logins.length} 个安装`;
+  }
+
+  getGithubInstallationUrl(server) {
+    const installation = this.getGithubInstallations(server)[0];
+    return installation?.html_url || '';
+  }
+
+  getGithubInstallUrl() {
+    if (!GITHUB_APP_SLUG) return '';
+    const state = this.createState();
+    sessionStorage.setItem('gh_install_state', state);
+    const installUrl = new URL(`https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`);
+    installUrl.searchParams.set('state', state);
+    return installUrl.toString();
+  }
+
+  getGithubInstallError(server) {
+    return this.getTokenData(server)?.installations_error || '';
   }
 
   applyMcpOauth(servers) {
@@ -53,38 +98,44 @@ export class GitHubService {
         result.push(server);
         continue;
       }
-      const token = this.tokens[server?.name]?.access_token;
-      if (!token) continue;
+      const tokenData = this.tokens[server?.name];
+      if (!this.isTokenUsable(tokenData)) continue;
       result.push({
         ...server,
-        headers: { ...(server.headers || {}), Authorization: `Bearer ${token}` },
+        headers: { ...(server.headers || {}), Authorization: `Bearer ${tokenData.access_token}` },
       });
     }
     return result;
+  }
+
+  base64UrlEncode(bytes) {
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  randomBytes(length = 32) {
+    const buffer = new Uint8Array(length);
+    crypto.getRandomValues(buffer);
+    return buffer;
+  }
+
+  createState() {
+    return this.base64UrlEncode(this.randomBytes(24));
   }
 
   async connectMcpOauth(server) {
     if (!server?.name) return;
     this.mcpOauthPending = server.name;
 
-    const base64UrlEncode = (bytes) => {
-      let binary = '';
-      for (const byte of bytes) binary += String.fromCharCode(byte);
-      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    };
-    const randomBytes = (length = 32) => {
-      const buffer = new Uint8Array(length);
-      crypto.getRandomValues(buffer);
-      return buffer;
-    };
     const sha256 = async (input) => {
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
       return new Uint8Array(digest);
     };
 
-    const state = base64UrlEncode(randomBytes(24));
-    const codeVerifier = base64UrlEncode(randomBytes(32));
-    const codeChallenge = base64UrlEncode(await sha256(codeVerifier));
+    const state = this.createState();
+    const codeVerifier = this.base64UrlEncode(this.randomBytes(32));
+    const codeChallenge = this.base64UrlEncode(await sha256(codeVerifier));
 
     sessionStorage.setItem('gh_oauth_state', state);
     sessionStorage.setItem('gh_oauth_verifier', codeVerifier);
@@ -104,6 +155,7 @@ export class GitHubService {
       this.mcpOauthPending = '';
       throw new Error('无法打开授权窗口, 请允许弹窗');
     }
+    this.mcpOauthPopup = popup;
   }
 
   disconnectMcpOauth(server) {
@@ -115,7 +167,7 @@ export class GitHubService {
     }
   }
 
-  handleOauthMessage(event) {
+  async handleOauthMessage(event) {
     if (event.origin !== window.location.origin) return null;
     const data = event.data;
     if (!data || data.type !== 'github-oauth') return null;
@@ -135,8 +187,92 @@ export class GitHubService {
     this.tokens = { ...this.tokens, [serverName]: payload };
     this.saveMcpOauthTokens();
     this.startAutoRefresh(serverName, payload);
+    await this.refreshGithubInstallations({ name: serverName });
 
     return serverName;
+  }
+
+  async refreshGithubInstallations(server) {
+    if (!server?.name) return [];
+    const tokenData = this.tokens[server.name];
+    if (!this.isTokenUsable(tokenData)) return [];
+    if (!GITHUB_APP_SLUG) {
+      this.tokens = {
+        ...this.tokens,
+        [server.name]: {
+          ...tokenData,
+          installations: [],
+          installations_error: '未配置 GitHub App slug',
+          installations_checked_at: Date.now(),
+        }
+      };
+      this.saveMcpOauthTokens({ refreshRegistry: false });
+      return [];
+    }
+
+    try {
+      const response = await fetch(GITHUB_INSTALLATIONS_URL, {
+        headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: `Bearer ${tokenData.access_token}`,
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const installations = (data.installations || [])
+        .filter((item) => item?.app_slug === GITHUB_APP_SLUG)
+        .map((item) => ({
+          id: item.id,
+          account_id: item.account?.id ?? null,
+          account_login: item.account?.login || '',
+          account_type: item.account?.type || '',
+          app_slug: item.app_slug || '',
+          html_url: item.html_url || '',
+          repository_selection: item.repository_selection || '',
+          permissions: item.permissions || {},
+          suspended: Boolean(item.suspended_at),
+        }));
+
+      this.tokens = {
+        ...this.tokens,
+        [server.name]: {
+          ...tokenData,
+          installations,
+          installations_error: '',
+          installations_checked_at: Date.now(),
+        }
+      };
+      this.saveMcpOauthTokens({ refreshRegistry: false });
+      return installations;
+    } catch (error) {
+      this.tokens = {
+        ...this.tokens,
+        [server.name]: {
+          ...tokenData,
+          installations: [],
+          installations_error: error.message || '检查安装状态失败',
+          installations_checked_at: Date.now(),
+        }
+      };
+      this.saveMcpOauthTokens({ refreshRegistry: false });
+      return [];
+    }
+  }
+
+  openGithubInstallation(server) {
+    const manageUrl = this.getGithubInstallationUrl(server);
+    const url = manageUrl || this.getGithubInstallUrl();
+    if (!url) {
+      throw new Error('未配置 GitHub App slug');
+    }
+    if (!manageUrl && this.mcpOauthPopup && !this.mcpOauthPopup.closed) {
+      this.mcpOauthPopup.location.href = url;
+      this.mcpOauthPopup.focus();
+      return;
+    }
+    const popup = window.open(url, 'github-installation', 'popup=yes,width=980,height=860,left=120,top=60');
+    if (!popup) throw new Error('无法打开安装窗口, 请允许弹窗');
   }
 
   // Implementation of Token Refresh

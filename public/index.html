@@ -208,7 +208,9 @@
     .mcp-server-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:650; }
     .mcp-server-url { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
     .mcp-server-headers { width:max-content; max-width:100%; min-height:22px; padding:2px 8px; border-radius:999px; color:var(--muted); background:var(--hover); font-size:12px; }
+    .mcp-server-headers.warning-chip { color:var(--bad); background:rgba(239,68,68,.12); }
     .mcp-server-row-actions { flex:0 0 auto; display:flex; align-items:center; gap:4px; }
+    .mcp-action-btn { min-height:36px; padding:6px 12px; }
     .mcp-empty { min-height:96px; border-top:1px solid var(--line); display:grid; place-items:center; text-align:center; color:var(--muted); }
     .mcp-server-form { padding-top:14px; border-top:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .mcp-server-item .mcp-server-form { padding-bottom:16px; }
@@ -652,9 +654,13 @@ select::-ms-expand {
                     <span class="mcp-server-name">{{ server.name || '未命名 MCP 服务器' }}</span>
                     <span class="mcp-server-url">{{ server.url || '未配置 URL' }}</span>
                     <span class="mcp-server-headers" v-if="mcpConfigTypeLabel(server)">{{ mcpConfigTypeLabel(server) }}</span>
+                    <span class="mcp-server-headers" v-if="githubInstallationSummary(server)">{{ githubInstallationSummary(server) }}</span>
+                    <span class="mcp-server-headers warning-chip" v-if="githubInstallationError(server)">{{ githubInstallationError(server) }}</span>
                     <span class="mcp-server-headers" v-if="server.headers && Object.keys(server.headers).length">{{ formatHeaderCount(server.headers) }}</span>
                   </div>
                   <div class="mcp-server-row-actions">
+                    <button v-if="isMcpOauthServer(server) && hasMcpOauthToken(server) && !hasGithubInstallation(server) && hasGithubAppSlug()" class="secondary-btn mcp-action-btn" type="button" :title="githubInstallTitle(server)" @click="openGithubInstallation(server)">安装</button>
+                    <button v-if="isMcpOauthServer(server) && hasMcpOauthToken(server) && hasGithubInstallation(server)" class="icon-btn" type="button" :title="`检查 ${server.name} 安装状态`" @click="refreshGithubInstallations(server)"><rotate-ccw-icon ></rotate-ccw-icon></button>
                     <button v-if="isMcpOauthServer(server) && hasMcpOauthToken(server)" class="icon-btn" type="button" :title="`断开 ${server.name}`" @click="disconnectMcpOauth(server)"><log-out-icon ></log-out-icon></button>
                     <button v-else-if="isMcpOauthServer(server)" class="icon-btn" type="button" :title="`连接 ${server.name}`" @click="connectMcpOauth(server)"><log-in-icon ></log-in-icon></button>
                     <button class="icon-btn" type="button" @click="toggleMcpServerDraft(index)" :title="isMcpServerConfigOpen(index) ? '隐藏配置' : '配置'">
@@ -987,9 +993,9 @@ select::-ms-expand {
       },
       created() {
         this.githubService = new GitHubService({
-          onTokensChanged: (tokens) => {
+          onTokensChanged: (tokens, options = {}) => {
             this.mcpOauthTokens = tokens;
-            this.refreshMcpRegistry();
+            if (options.refreshRegistry !== false) this.refreshMcpRegistry();
           }
         });
         this.mcpOauthTokens = this.githubService.tokens;
@@ -1029,6 +1035,7 @@ select::-ms-expand {
         this.refreshMcpRegistry();
         this.handleOauthMessage = this.handleOauthMessage.bind(this);
         window.addEventListener('message', this.handleOauthMessage);
+        this.refreshStoredGithubInstallations();
       },
       beforeUnmount() {
         this.stopWaveLoop();
@@ -1327,7 +1334,10 @@ select::-ms-expand {
         mcpConfigTypeLabel(server) {
           const type = server?.configType || 'none';
           if (type === 'headers') return '需要 Headers';
-          if (type === 'oauth') return this.hasMcpOauthToken(server) ? '已连接' : '需要授权';
+          if (type === 'oauth') {
+            if (!this.hasMcpOauthToken(server)) return '需要授权';
+            return this.hasGithubInstallation(server) ? '已连接 · 已安装' : '已授权 · 待安装';
+          }
           return '';
         },
         isMcpOauthServer(server) {
@@ -1337,6 +1347,26 @@ select::-ms-expand {
           // Keep Vue reactivity tracked
           const _ = this.mcpOauthTokens;
           return this.githubService?.hasMcpOauthToken(server) ?? false;
+        },
+        hasGithubInstallation(server) {
+          const _ = this.mcpOauthTokens;
+          return this.githubService?.hasGithubInstallation(server) ?? false;
+        },
+        githubInstallationSummary(server) {
+          const _ = this.mcpOauthTokens;
+          return this.githubService?.getGithubInstallationSummary(server) ?? '';
+        },
+        githubInstallationError(server) {
+          const _ = this.mcpOauthTokens;
+          return this.githubService?.getGithubInstallError(server) ?? '';
+        },
+        hasGithubAppSlug() {
+          return this.githubService?.hasGithubAppSlug() ?? false;
+        },
+        githubInstallTitle(server) {
+          return this.githubService?.hasGithubAppSlug()
+            ? `安装 ${server.name} GitHub App`
+            : '需要先配置 GitHub App slug';
         },
         applyMcpOauth(servers) {
           // Keep Vue reactivity tracked
@@ -1350,15 +1380,62 @@ select::-ms-expand {
             toast.error(err.message || '连接失败');
           }
         },
+        refreshStoredGithubInstallations() {
+          for (const server of this.mcpServers || []) {
+            if (this.isMcpOauthServer(server) && this.hasMcpOauthToken(server)) {
+              this.githubService?.refreshGithubInstallations(server);
+            }
+          }
+        },
         disconnectMcpOauth(server) {
           this.githubService?.disconnectMcpOauth(server);
           toast.success(`已断开 ${server.name}`);
         },
-        handleOauthMessage(event) {
+        async refreshGithubInstallations(server) {
           try {
-            const serverName = this.githubService?.handleOauthMessage(event);
+            const installations = await this.githubService?.refreshGithubInstallations(server);
+            if (installations?.length) {
+              toast.success(`GitHub App 已安装到 ${this.githubInstallationSummary(server)}`);
+            } else {
+              toast.info('未检测到 GitHub App 安装');
+            }
+          } catch (err) {
+            toast.error('检查 GitHub 安装状态失败', { description: err.message || '未知错误' });
+          }
+        },
+        openGithubInstallation(server) {
+          try {
+            this.githubService?.openGithubInstallation(server);
+            toast.info('已打开 GitHub App 安装页', { description: '完成安装后这里会自动刷新状态' });
+            this.pollGithubInstallation(server);
+          } catch (err) {
+            toast.error(err.message || '打开安装页面失败');
+          }
+        },
+        pollGithubInstallation(server) {
+          let attempts = 0;
+          const intervalId = window.setInterval(async () => {
+            attempts += 1;
+            const installations = await this.githubService?.refreshGithubInstallations(server);
+            if (installations?.length) {
+              window.clearInterval(intervalId);
+              toast.success(`GitHub App 已安装到 ${this.githubInstallationSummary(server)}`);
+            } else if (attempts >= 24) {
+              window.clearInterval(intervalId);
+            }
+          }, 5000);
+        },
+        async handleOauthMessage(event) {
+          try {
+            const serverName = await this.githubService?.handleOauthMessage(event);
             if (serverName) {
-              toast.success(`已连接 ${serverName}`);
+              const server = { name: serverName };
+              if (this.hasGithubInstallation(server)) {
+                toast.success(`已连接 ${serverName}`, { description: `已安装到 ${this.githubInstallationSummary(server)}` });
+              } else {
+                toast.info(`已授权 ${serverName}`, { description: '正在打开 GitHub App 安装页' });
+                this.openGithubInstallation(server);
+              }
             }
           } catch (err) {
             toast.error(`GitHub 授权失败: ${err.message || '未知错误'}`);
