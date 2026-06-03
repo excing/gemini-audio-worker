@@ -1,6 +1,6 @@
 const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
 const OPENAI_DEFAULT_BASE_URL = 'https://api.openai.com/v1';
-const SEARCH_EFFORT_VALUES = new Set(['low', 'medium', 'high', 'xhigh']);
+const SEARCH_EFFORT_VALUES = new Set(['low', 'medium', 'high']);
 
 const SEARCH_PROMPT = `You are an expert web research assistant with access to real-time web search.
 
@@ -147,9 +147,9 @@ export default {
       },
       effort: {
         type: 'string',
-        enum: ['low', 'medium', 'high', 'xhigh'],
+        enum: ['low', 'medium', 'high'],
         default: 'medium',
-        description: '可选，控制搜索模型的思考程度。可选值：low、medium、high、xhigh；默认 medium。',
+        description: '可选，控制搜索模型的思考程度。可选值：low、medium、high；默认 medium。',
       },
     },
     required: ['query'],
