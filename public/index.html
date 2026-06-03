@@ -153,6 +153,8 @@
     .message-action:hover { background:var(--hover); color:var(--text); }
     .message-action svg { width:15px; height:15px; }
     .user .message-toolbar { justify-content:flex-end; }
+    .chat-photo { display:block; max-width:min(100%,360px); max-height:360px; object-fit:contain; border-radius:12px; background:rgba(127,127,127,.14); }
+    .photo-input { position:fixed; width:1px; height:1px; opacity:0; pointer-events:none; }
     .caption-line { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; align-items:start; padding:4px 0; } .caption-text { min-width:0; color:inherit; font-size:15px; line-height:1.5; } .caption-line.user .caption-text { color:var(--muted); opacity:.72; } .caption-line.ai .caption-text { color:var(--text); }
     .thought-card summary { min-height:28px; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:13px; font-weight:700; list-style:none; }
     .thought-card summary::-webkit-details-marker { display:none; }
@@ -474,6 +476,12 @@ select::-ms-expand {
                   v-if="item.message.type === 'text'"
                   :text="item.message.text"
                 ></markdown-text>
+                <img
+                  v-else-if="item.message.type === 'photo'"
+                  class="chat-photo"
+                  :src="item.message.url"
+                  :alt="item.message.name || '已选择照片'"
+                />
                 <template v-else>{{ item.message.text || item.message }}</template>
               </template>
             </div>
@@ -487,7 +495,8 @@ select::-ms-expand {
         </section>
 
         <form class="input-bar" @submit.prevent="sendText">
-          <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon ></phone-icon></button>
+          <input ref="photoInputEl" class="photo-input" type="file" accept="image/*" @change="handlePhotoSelected" />
+          <button class="icon-btn" type="button" title="选择照片" :disabled="isConnecting" @click="openPhotoPicker"><camera-icon ></camera-icon></button>
           <hold-record v-if="inputMode === 'voice'" v-model="holdActive" :mic-status="micStatus" :before-start="prepareHoldRecord" @release="handleHoldRelease"></hold-record>
           <textarea v-else class="message-field" :style="{ height: textStyleHeight }" v-model="text" rows="1" autocomplete="off" :placeholder="isConnecting ? '正在连接…' : '输入消息...'" :disabled="isConnecting" @input="resizeTextInput" @keydown="handleTextKeydown"></textarea>
           <button class="icon-btn" v-if="text.trim()" type="submit" :disabled="isConnecting" title="发送"><send-icon ></send-icon></button>
@@ -773,7 +782,7 @@ select::-ms-expand {
     import { musicPlayerStore, loadPlaylist as loadMusicPlaylist, MusicPlayer } from "./music-player.js";
     import { GitHubService } from "./github-service.js";
     import {
-      AudioLines, Captions, CaptionsOff, Check, ChevronDown, ChevronUp, Copy, Github, Keyboard, LogIn, LogOut, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, Music, PanelLeftClose, Pause, Phone, PhoneOff, Play, Plus, Repeat, RotateCcw, ScreenShare, ScreenShareOff, Send, Settings, Settings2, SkipBack, SkipForward, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
+      AudioLines, Camera, Captions, CaptionsOff, Check, ChevronDown, ChevronUp, Copy, Github, Keyboard, LogIn, LogOut, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, Music, PanelLeftClose, Pause, Phone, PhoneOff, Play, Plus, Repeat, RotateCcw, ScreenShare, ScreenShareOff, Send, Settings, Settings2, SkipBack, SkipForward, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
@@ -1612,6 +1621,79 @@ select::-ms-expand {
           event.preventDefault();
           this.sendText();
         },
+        openPhotoPicker() {
+          if (this.isConnecting) return;
+          this.$refs.photoInputEl?.click();
+        },
+        async handlePhotoSelected(event) {
+          const input = event.target;
+          const file = input.files?.[0];
+          input.value = '';
+          if (!file) return;
+          if (!file.type?.startsWith('image/')) {
+            toast.error('请选择图片文件');
+            return;
+          }
+          try {
+            const image = await this.preparePhotoFrame(file);
+            this.pendingClientPayloads.push({
+              realtimeInput: {
+                video: {
+                  data: image.data,
+                  mimeType: image.mimeType,
+                },
+              },
+            });
+            this.pendingClientPayloads.push({
+              clientContent: {
+                turns: [{ role: 'user', parts: [{ text: '请查看这张照片，并用中文简要说明你看到的内容。' }] }],
+                turnComplete: true,
+              },
+            });
+            this.sendRealtimeInputs();
+            this.closeAiTextSegment();
+            this.addMessage('user', {
+              type: 'photo',
+              url: image.url,
+              name: file.name,
+              mimeType: image.mimeType,
+            });
+          } catch (error) {
+            toast.error('照片处理失败', { description: error?.message || '请换一张图片后重试' });
+          }
+        },
+        preparePhotoFrame(file) {
+          return new Promise((resolve, reject) => {
+            const objectUrl = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+              try {
+                const maxSize = 1280;
+                const ratio = Math.min(1, maxSize / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+                const width = Math.max(1, Math.round((img.naturalWidth || 1) * ratio));
+                const height = Math.max(1, Math.round((img.naturalHeight || 1) * ratio));
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) throw new Error('Canvas unavailable');
+                ctx.drawImage(img, 0, 0, width, height);
+                const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+                const url = canvas.toDataURL(mimeType, mimeType === 'image/jpeg' ? 0.86 : undefined);
+                resolve({ data: url.split(',')[1] || '', mimeType, url });
+              } catch (error) {
+                reject(error);
+              } finally {
+                URL.revokeObjectURL(objectUrl);
+              }
+            };
+            img.onerror = () => {
+              URL.revokeObjectURL(objectUrl);
+              reject(new Error('无法读取图片'));
+            };
+            img.src = objectUrl;
+          });
+        },
         createDefaultRole() {
           return { ...this.defaultConfig, id: `role-${Date.now()}` };
         },
@@ -2335,6 +2417,7 @@ select::-ms-expand {
 
     const lucideComponents = {
       'audio-lines-icon': AudioLines,
+      'camera-icon': Camera,
       'captions-icon': Captions,
       'captions-off-icon': CaptionsOff,
       'check-icon': Check,
