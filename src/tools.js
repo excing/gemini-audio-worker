@@ -10,12 +10,12 @@ import duckduckgoSearchTool from './tools/duckduckgo-search.js';
 export const tools = [
   getWeatherTool,
   webSearchTool,
-  // urlContextTool,
-  // fetchTool,
-  // checkDomainAvailabilityTool,
-  // imageGenerationTool,
-  // musicPlaylistTool,
-  // duckduckgoSearchTool,
+  urlContextTool,
+  fetchTool,
+  checkDomainAvailabilityTool,
+  imageGenerationTool,
+  musicPlaylistTool,
+  duckduckgoSearchTool,
 ];
 
 export const toolDeclarations = tools.map(({ name, description, parameters }) => ({
