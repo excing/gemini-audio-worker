@@ -271,8 +271,8 @@ const tavilySearch = {
 
 export const tools = [
   codeExecution,
-  renderPage,
-  tavilySearch,
+  // renderPage,
+  // tavilySearch,
 ];
 
 export const toolDeclarations = tools.map(({ name, configType, description, parameters }) => ({
