@@ -1644,12 +1644,6 @@ select::-ms-expand {
                 },
               },
             });
-            this.pendingClientPayloads.push({
-              clientContent: {
-                turns: [{ role: 'user', parts: [{ text: '请查看这张照片，并用中文简要说明你看到的内容。' }] }],
-                turnComplete: true,
-              },
-            });
             this.sendRealtimeInputs();
             this.closeAiTextSegment();
             this.addMessage('user', {

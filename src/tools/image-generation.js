@@ -10,9 +10,39 @@ const normalizeImages = (images) => {
     .filter((item, index, items) => item && items.indexOf(item) === index);
 };
 
+const normalizeMimeType = (mimeType = 'image/png') => {
+  const value = String(mimeType || '').split(';')[0].trim().toLowerCase();
+  return /^image\/[-.+a-z0-9]+$/i.test(value) ? value : 'image/png';
+};
+
+const normalizeBase64 = (value) => String(value || '')
+  .trim()
+  .replace(/\s+/g, '')
+  .replace(/-/g, '+')
+  .replace(/_/g, '/')
+  .replace(/=+$/, '')
+  .padEnd(Math.ceil(String(value || '').trim().replace(/\s+/g, '').replace(/=+$/, '').length / 4) * 4, '=');
+
+const isLikelyBase64 = (value) => {
+  const normalized = normalizeBase64(value);
+  return normalized.length > 0
+    && normalized.length % 4 === 0
+    && /^[A-Za-z0-9+/]+={0,2}$/.test(normalized);
+};
+
 const toDataUrl = (base64, mimeType = 'image/png') => {
-  if (/^data:image\/[^;]+;base64,/i.test(base64)) return base64;
-  return `data:${mimeType};base64,${base64}`;
+  const dataUrlMatch = String(base64 || '').trim().match(/^data:(image\/[-.+a-z0-9]+);base64,([\s\S]+)$/i);
+  if (dataUrlMatch) {
+    const normalizedBase64 = normalizeBase64(dataUrlMatch[2]);
+    if (!isLikelyBase64(normalizedBase64)) throw new Error('图片 data URL 中的 base64 无效');
+    return `data:${normalizeMimeType(dataUrlMatch[1])};base64,${normalizedBase64}`;
+  }
+
+  const normalizedBase64 = normalizeBase64(base64);
+  if (!isLikelyBase64(normalizedBase64)) {
+    throw new Error('图片必须是 http(s) 链接、image data URL 或纯 base64');
+  }
+  return `data:${normalizeMimeType(mimeType)};base64,${normalizedBase64}`;
 };
 
 const arrayBufferToBase64 = (buffer) => {
@@ -119,6 +149,7 @@ const formatImageGenerationResponse = (result) => {
 };
 
 const handler = async (id, name, { prompt = '', images = [], mime_type = 'image/png' } = {}, { server, geminiWs, env }) => {
+  console.log(images);
   const textPrompt = String(prompt || '').trim();
   if (!textPrompt) {
     throw new Error('imageGeneration prompt 不能为空');
