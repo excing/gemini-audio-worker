@@ -96,7 +96,7 @@ const buildGeminiSetup = (localSetup = {}) => {
   const enabledDeclarations = toolDeclarations.filter((tool) => requestedNames.has(tool.name));
   const enabledToolNames = enabledDeclarations.map((tool) => tool.name);
 
-  const generationConfig = { responseModalities: 'AUDIO' };
+  const generationConfig = { responseModalities: ['AUDIO'] };
   if (localSetup.voiceName) {
     generationConfig.speechConfig = {
       voiceConfig: { prebuiltVoiceConfig: { voiceName: localSetup.voiceName } },
