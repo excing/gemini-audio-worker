@@ -1,5 +1,6 @@
 const DISPLAY_NAMES = {
   imageGeneration: '图片生成',
+  imageEditing: '图片编辑',
   get_weather: '天气查询',
   web_search: '网页搜索',
   duckduckgo_search: 'DuckDuckGo 搜索',
@@ -62,7 +63,7 @@ const deriveDisplay = (name, args, response) => {
   }
 
   // imageGeneration 专属：图片列表
-  if (name === 'imageGeneration') {
+  if (name === 'imageGeneration' || name === 'imageEditing') {
     const images = Array.isArray(response?.images) ? response.images : [];
     display.images = images.map(normalizeImage).filter(Boolean);
     if (response?.text) display.text = String(response.text).trim();

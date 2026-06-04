@@ -131,7 +131,7 @@ const collectImageResults = (content) => {
   return { images, text: texts.join('\n').trim() };
 };
 
-const formatImageGenerationResponse = (result) => {
+const formatImageEditingResponse = (result) => {
   const choices = Array.isArray(result?.choices) ? result.choices : [];
   const images = [];
   const texts = [];
@@ -148,10 +148,14 @@ const formatImageGenerationResponse = (result) => {
   };
 };
 
-const handler = async (id, name, { prompt = '' } = {}, { server, geminiWs, env }) => {
+const handler = async (id, name, { prompt = '', images = [], mime_type = 'image/png' } = {}, { server, geminiWs, env }) => {
   const textPrompt = String(prompt || '').trim();
   if (!textPrompt) {
-    throw new Error('imageGeneration prompt 不能为空');
+    throw new Error('imageEditing prompt 不能为空');
+  }
+
+  if (!images || images.length == 0) {
+    throw new Error('imageEditing images 不能为空');
   }
 
   if (!env.OPENAI_API_KEY) {
@@ -164,7 +168,12 @@ const handler = async (id, name, { prompt = '' } = {}, { server, geminiWs, env }
   }
 
   const baseUrl = trimTrailingSlash(env.OPENAI_BASE_URL || 'https://api.openai.com/v1');
+  const imageUrls = await imagesToDataUrls(images, mime_type);
   const content = [{ type: 'text', text: textPrompt }];
+
+  for (const imageUrl of imageUrls) {
+    content.push({ type: 'image_url', image_url: { url: imageUrl } });
+  }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -195,25 +204,34 @@ const handler = async (id, name, { prompt = '' } = {}, { server, geminiWs, env }
     throw new Error(`图片请求失败: ${response.status} ${response.statusText}: ${responseText}`);
   }
 
-  const formatResult = formatImageGenerationResponse(result);
+  const formatResult = formatImageEditingResponse(result);
   if (formatResult.images?.length === 0 && !formatResult.text) {
-    throw new Error(`图片生成失败: ${responseText}`);
+    throw new Error(`图片编辑失败: ${responseText}`);
   }
   return formatResult;
 };
 
 export default {
-  name: 'imageGeneration',
-  description: '图片生成工具，当用户需要从文本提示词生成新图片时调用此工具。',
+  name: 'imageEditing',
+  description: '图片编辑工具，当用户需要基于输入图片修改、重绘或变体编辑图片时调用此工具。',
   parameters: {
     type: 'object',
     properties: {
       prompt: {
         type: 'string',
-        description: '图片生成提示词。',
+        description: '图片编辑提示词。',
+      },
+      images: {
+        type: 'array',
+        description: '输入图片附件列表，每项可以是图片链接、base64 或 image data URL。',
+        items: { type: 'string' },
+      },
+      mime_type: {
+        type: 'string',
+        description: '当 images 传纯 base64 时使用的 MIME 类型，默认 image/png。',
       },
     },
-    required: ['prompt'],
+    required: ['prompt', 'images'],
   },
   handler,
 };
