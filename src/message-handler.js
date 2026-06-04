@@ -46,30 +46,18 @@ const normalizeMimeType = (mimeType = DEFAULT_MIME_TYPE) => {
   return /^image\/[-.+a-z0-9]+$/i.test(value) ? value : DEFAULT_MIME_TYPE;
 };
 
-const extractDataUrlMimeType = (value) => {
-  const match = String(value || '').trim().match(/^data:(image\/[-.+a-z0-9]+);base64,/i);
-  return match ? normalizeMimeType(match[1]) : '';
-};
-
-const stripDataUrlPrefix = (value) => String(value || '').trim().replace(/^data:image\/[-.+a-z0-9]+;base64,/i, '');
-
-const normalizeBase64 = (value) => {
-  const stripped = stripDataUrlPrefix(value).replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
-  return stripped.padEnd(Math.ceil(stripped.length / 4) * 4, '=');
-};
-
 const base64ToBytes = (base64) => {
-  const normalized = normalizeBase64(base64);
-  if (!normalized || !/^[A-Za-z0-9+/]+={0,2}$/.test(normalized)) {
+  const value = String(base64 || '');
+  if (!value || value.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {
     throw new Error('realtimeInput.image.data 不是有效 base64');
   }
 
-  const binary = atob(normalized);
+  const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) {
     bytes[index] = binary.charCodeAt(index);
   }
-  return { bytes, base64: normalized };
+  return bytes;
 };
 
 const extensionFromMimeType = (mimeType) => {
@@ -90,8 +78,8 @@ const uploadRealtimeImageToR2 = async (env, image) => {
   if (!bucket?.put) throw new Error('Worker 缺少 IMAGE_BUCKET R2 binding');
 
   const rawData = image.data || image.base64;
-  const mimeType = normalizeMimeType(image.mimeType || image.mime_type || extractDataUrlMimeType(rawData));
-  const { bytes, base64 } = base64ToBytes(rawData);
+  const mimeType = normalizeMimeType(image.mimeType || image.mime_type);
+  const bytes = base64ToBytes(rawData);
   const key = `chat-images/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${extensionFromMimeType(mimeType)}`;
 
   await bucket.put(key, bytes, {
@@ -99,7 +87,7 @@ const uploadRealtimeImageToR2 = async (env, image) => {
     customMetadata: { source: 'realtimeInput.image' },
   });
 
-  return { base64, mimeType, url: buildPublicImageUrl(env, key) };
+  return { base64: rawData, mimeType, url: buildPublicImageUrl(env, key) };
 };
 
 const buildGeminiSetup = (localSetup = {}) => {
@@ -183,8 +171,10 @@ export const createMessageHandler = ({ env, server, geminiSession, sendClientSta
   const handleRealtimeImage = async (message) => {
     const image = message.realtimeInput.image;
     const uploaded = await uploadRealtimeImageToR2(env, image);
-    const prompt = `media link: ${uploaded.url}`;
+    const prompt = `This media URL is "${uploaded.url}"`;
 
+    console.log(prompt);
+    
     sendToGemini({
       realtimeInput: {
         video: { data: uploaded.base64, mimeType: uploaded.mimeType },
@@ -194,7 +184,7 @@ export const createMessageHandler = ({ env, server, geminiSession, sendClientSta
     sendToGemini({
       clientContent: {
         turns: [{ role: 'user', parts: [{ text: prompt }] }],
-        turnComplete: true,
+        // turnComplete: true,
       },
     });
 
