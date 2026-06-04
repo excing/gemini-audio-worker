@@ -1638,7 +1638,7 @@ select::-ms-expand {
             const image = await this.preparePhotoFrame(file);
             this.pendingClientPayloads.push({
               realtimeInput: {
-                video: {
+                image: {
                   data: image.data,
                   mimeType: image.mimeType,
                 },

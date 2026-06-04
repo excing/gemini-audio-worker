@@ -24,6 +24,7 @@ export const createGeminiSessionManager = ({
   apiKey,
   server,
   sendClientStatus,
+  sendInitialMessage,
   onGeminiMessage,
 }) => {
   let currentWs = null;
@@ -124,7 +125,8 @@ export const createGeminiSessionManager = ({
         initialMessagesSent = true;
         for (const realtimeInput of initialMessages) {
           if (!isGeminiOpen() || generation !== currentGeneration) break;
-          currentWs.send(JSON.stringify(realtimeInput));
+          if (sendInitialMessage) await sendInitialMessage(realtimeInput);
+          else currentWs.send(JSON.stringify(realtimeInput));
         }
       }
 
