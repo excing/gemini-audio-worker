@@ -1,8 +1,7 @@
 import { toolDeclarations, toolHandlers } from './tools.js';
 import { parseGeminiJson } from './session-manager.js';
 import { sendToolRunning, sendToolDone, sendToolError } from './tool-events.js';
-
-const DEFAULT_MIME_TYPE = 'image/png';
+import { uploadRealtimeImageToR2, uploadToolResponseMediaToR2 } from './tool-utils.js';
 
 const seeyouGemini = {
   name: 'see_you_later',
@@ -39,55 +38,6 @@ const getEnabledToolNames = (autoLoadTools) => {
     .split(',')
     .map((name) => name.trim())
     .filter((name, index, names) => name && names.indexOf(name) === index);
-};
-
-const normalizeMimeType = (mimeType = DEFAULT_MIME_TYPE) => {
-  const value = String(mimeType || '').split(';')[0].trim().toLowerCase();
-  return /^image\/[-.+a-z0-9]+$/i.test(value) ? value : DEFAULT_MIME_TYPE;
-};
-
-const base64ToBytes = (base64) => {
-  const value = String(base64 || '');
-  if (!value || value.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {
-    throw new Error('realtimeInput.image.data 不是有效 base64');
-  }
-
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
-};
-
-const extensionFromMimeType = (mimeType) => {
-  if (mimeType === 'image/jpeg') return 'jpg';
-  if (mimeType === 'image/webp') return 'webp';
-  if (mimeType === 'image/gif') return 'gif';
-  return 'png';
-};
-
-const buildPublicImageUrl = (env, key) => {
-  const baseUrl = String(env.IMAGE_PUBLIC_BASE_URL || env.R2_PUBLIC_BASE_URL || '').trim().replace(/\/+$/, '');
-  if (!baseUrl) throw new Error('Worker 缺少 IMAGE_PUBLIC_BASE_URL 配置');
-  return `${baseUrl}/${key.split('/').map(encodeURIComponent).join('/')}`;
-};
-
-const uploadRealtimeImageToR2 = async (env, image) => {
-  const bucket = env.IMAGE_BUCKET || env.R2_BUCKET;
-  if (!bucket?.put) throw new Error('Worker 缺少 IMAGE_BUCKET R2 binding');
-
-  const rawData = image.data || image.base64;
-  const mimeType = normalizeMimeType(image.mimeType || image.mime_type);
-  const bytes = base64ToBytes(rawData);
-  const key = `chat-images/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${extensionFromMimeType(mimeType)}`;
-
-  await bucket.put(key, bytes, {
-    httpMetadata: { contentType: mimeType },
-    customMetadata: { source: 'realtimeInput.image' },
-  });
-
-  return { base64: rawData, mimeType, url: buildPublicImageUrl(env, key) };
 };
 
 const buildGeminiSetup = (localSetup = {}) => {
@@ -150,6 +100,7 @@ const executeToolCalls = async (ctx, functionCalls, enabledToolNames) => {
       try {
         response = await handler(id, name, args || {}, ctx);
         sendToolDone(ctx.server, { id, name, kind: 'worker', args, response, startedAt });
+        response = await uploadToolResponseMediaToR2(name, response, ctx.env);
       } catch (error) {
         response = { error: error.message || String(error) };
         sendToolError(ctx.server, { id, name, kind: 'worker', args, error: response.error, response, startedAt });
