@@ -12,11 +12,64 @@ const DISPLAY_NAMES = {
   checkDomainAvailability: '域名检查',
 };
 
+const IMAGE_DATA_URL_RE = /^data:(image\/[-.+a-z0-9]+);base64,([\s\S]+)$/i;
+const imageBlobUrlCache = new Map();
+
+const normalizeBase64Payload = (value) => {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  return normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+};
+
+const normalizeImageMimeType = (value = 'image/png') => {
+  const mimeType = String(value || '').split(';')[0].trim().toLowerCase();
+  return /^image\/[-.+a-z0-9]+$/i.test(mimeType) ? mimeType : 'image/png';
+};
+
+const imageDataUrlToObjectUrl = (dataUrl) => {
+  const sourceUrl = String(dataUrl || '').trim();
+  const match = sourceUrl.match(IMAGE_DATA_URL_RE);
+  if (!match) return sourceUrl;
+  if (imageBlobUrlCache.has(sourceUrl)) return imageBlobUrlCache.get(sourceUrl);
+
+  try {
+    const mimeType = normalizeImageMimeType(match[1]);
+    if (mimeType === 'image/svg+xml') return sourceUrl;
+    const binary = atob(normalizeBase64Payload(match[2]));
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    const objectUrl = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+    imageBlobUrlCache.set(sourceUrl, objectUrl);
+    return objectUrl;
+  } catch {
+    return sourceUrl;
+  }
+};
+
+const normalizeImageUrl = (url, mimeType = 'image/png') => {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  if (IMAGE_DATA_URL_RE.test(value)) return imageDataUrlToObjectUrl(value);
+  if (/^[A-Za-z0-9+/=_-\s]+$/.test(value) && value.length > 128) {
+    return imageDataUrlToObjectUrl(`data:${normalizeImageMimeType(mimeType)};base64,${value}`);
+  }
+  return value;
+};
+
+const normalizeImageBase64 = (base64, mimeType = 'image/png') => (
+  imageDataUrlToObjectUrl(`data:${normalizeImageMimeType(mimeType)};base64,${base64}`)
+);
+
 const normalizeImage = (image) => {
   if (!image) return null;
-  if (typeof image === 'string') return { url: image };
-  if (image.url) return { url: image.url };
-  if (image.b64_json) return { url: `data:image/png;base64,${image.b64_json}` };
+  if (typeof image === 'string') return { url: normalizeImageUrl(image) };
+  if (image.url) return { url: normalizeImageUrl(image.url, image.mime_type || image.mimeType) };
+  if (image.b64_json) return { url: normalizeImageBase64(image.b64_json, image.mime_type || image.mimeType) };
   return null;
 };
 
