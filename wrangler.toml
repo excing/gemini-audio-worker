@@ -6,6 +6,9 @@ compatibility_date = "2026-05-09"
 #   GEMINI_API_KEY        Gemini Live API key
 #   GITHUB_CLIENT_ID      GitHub App 的 Client ID (也可放在 [vars])
 #   GITHUB_CLIENT_SECRET  GitHub App 的 Client Secret
+#   TAVILY_API_KEY        Tavily extract API key (urlContext 回退使用)
+# 可选 [vars]:
+#   TAVILY_BASE_URL       Tavily API base URL，默认 https://api.tavily.com
 # GitHub App Callback URL 需要包含 https://<your-domain>/api/github/auth/callback
 # 图片上传需要配置 R2:
 [[r2_buckets]]
