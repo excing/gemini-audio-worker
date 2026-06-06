@@ -12,6 +12,53 @@ const DISPLAY_NAMES = {
   checkDomainAvailability: '域名检查',
 };
 
+const MCP_SEPARATOR = '__';
+const MCP_SERVER_LABELS = {
+  github: 'GitHub',
+};
+
+const parseMcpToolName = (name) => {
+  const idx = String(name || '').indexOf(MCP_SEPARATOR);
+  if (idx <= 0) return null;
+  return {
+    server: name.slice(0, idx),
+    tool: name.slice(idx + MCP_SEPARATOR.length),
+  };
+};
+
+const extractMcpResponseText = (response) => {
+  const contentList = Array.isArray(response?.content) ? response.content : [];
+  return contentList
+    .filter((item) => item?.type === 'text' && typeof item.text === 'string')
+    .map((item) => item.text.trim())
+    .filter(Boolean)
+    .join('\n\n');
+};
+
+const formatMcpText = (text) => {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      return '```json\n' + JSON.stringify(JSON.parse(trimmed), null, 2) + '\n```';
+    } catch {
+      // not JSON, fall through
+    }
+  }
+  return trimmed;
+};
+
+const formatMcpArgs = (args) => {
+  if (!args || typeof args !== 'object') return '';
+  const lines = [];
+  for (const [key, value] of Object.entries(args)) {
+    if (value == null || value === '') continue;
+    const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+    lines.push(valueStr.length > 200 ? `${key}: ${valueStr.slice(0, 200)}…` : `${key}: ${valueStr}`);
+  }
+  return lines.join('\n');
+};
+
 const IMAGE_DATA_URL_RE = /^data:(image\/[-.+a-z0-9]+);base64,([\s\S]+)$/i;
 const imageBlobUrlCache = new Map();
 
@@ -101,6 +148,16 @@ const normalizeResultItem = (item) => {
 // 从 args / response 派生 UI 展示字段，不保留旧 prompt/result 字段
 const deriveDisplay = (name, args, response) => {
   const display = {};
+
+  // MCP 工具（如 github__get_me）：参数转为 prompt，content 数组中的 text 转为响应文本
+  const mcp = parseMcpToolName(name);
+  if (mcp) {
+    const argsPrompt = formatMcpArgs(args);
+    if (argsPrompt) display.prompt = argsPrompt;
+    const text = formatMcpText(extractMcpResponseText(response));
+    if (text) display.text = text;
+    return display;
+  }
 
   // prompt 文本：各工具入参里的主要描述字段
   if (name === 'urlContext') {
@@ -217,7 +274,15 @@ export const upsertToolMessage = (messageGroups, payload) => {
   messageGroups.push({ role: 'system', message: next });
 };
 
-export const displayName = (name) => DISPLAY_NAMES[name] || name || '工具调用';
+export const displayName = (name) => {
+  if (DISPLAY_NAMES[name]) return DISPLAY_NAMES[name];
+  const mcp = parseMcpToolName(name);
+  if (mcp) {
+    const label = MCP_SERVER_LABELS[mcp.server] || mcp.server;
+    return `${label} · ${mcp.tool}`;
+  }
+  return name || '工具调用';
+};
 
 export const statusText = (status) => {
   if (status === 'done') return '完成';
