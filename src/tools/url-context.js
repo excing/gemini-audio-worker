@@ -1,4 +1,4 @@
-import { clampInteger, extractTitle, htmlToText, isAllowedFetchProtocol } from '../tool-utils.js';
+import { clampInteger, extractTitle, htmlToText, isAllowedFetchProtocol, REAL_BROWSER_USER_AGENT, withBrowserUserAgent } from '../tool-utils.js';
 
 const handler = async (id, name, { urls = [], max_chars = 12000 } = {}) => {
   const requestedUrls = (Array.isArray(urls) ? urls : [urls])
@@ -22,10 +22,9 @@ const handler = async (id, name, { urls = [], max_chars = 12000 } = {}) => {
     try {
       const response = await fetch(requestedUrl, {
         redirect: 'follow',
-        headers: {
-          'User-Agent': 'gemini-audio-worker/1.0',
+        headers: withBrowserUserAgent({
           Accept: 'text/html,application/xhtml+xml,text/plain,application/json,*/*;q=0.8',
-        },
+        }, REAL_BROWSER_USER_AGENT),
       });
       const contentType = response.headers.get('content-type') || '';
       const rawText = await response.text();

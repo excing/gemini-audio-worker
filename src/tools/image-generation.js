@@ -1,4 +1,4 @@
-import { isAllowedFetchProtocol } from '../tool-utils.js';
+import { isAllowedFetchProtocol, withBrowserUserAgent } from '../tool-utils.js';
 
 const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
 
@@ -58,10 +58,9 @@ const imageToDataUrl = async (image, fallbackMimeType = 'image/png') => {
   if (isAllowedFetchProtocol(image)) {
     const response = await fetch(image, {
       redirect: 'follow',
-      headers: {
-        'User-Agent': 'gemini-audio-worker/1.0',
+      headers: withBrowserUserAgent({
         Accept: 'image/*,*/*;q=0.8',
-      },
+      }),
     });
 
     if (!response.ok) {
@@ -168,10 +167,10 @@ const handler = async (id, name, { prompt = '' } = {}, { server, geminiWs, env }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: {
+    headers: withBrowserUserAgent({
       Authorization: `Bearer ${env.OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
-    },
+    }),
     body: JSON.stringify({
       model,
       messages: [

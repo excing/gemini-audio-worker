@@ -1,4 +1,4 @@
-import { clampInteger } from '../tool-utils.js';
+import { clampInteger, withBrowserUserAgent } from '../tool-utils.js';
 
 const API_BASE_URL = 'https://api.chksz.top/api';
 const DEFAULT_LIMIT = 10;
@@ -18,10 +18,9 @@ const buildUrl = (path, params) => {
 
 const fetchJson = async (url) => {
   const response = await fetch(url, {
-    headers: {
+    headers: withBrowserUserAgent({
       Accept: 'application/json,text/plain;q=0.9,*/*;q=0.8',
-      'User-Agent': 'gemini-audio-worker/1.0',
-    },
+    }),
   });
 
   if (!response.ok) {

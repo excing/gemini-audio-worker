@@ -1,3 +1,5 @@
+import { withBrowserUserAgent } from '../tool-utils.js';
+
 const handler = async (id, name, { location = '', lang = 'zh-cn' } = {}) => {
   const queryLocation = String(location || '').trim();
   const queryLang = String(lang || '').trim();
@@ -11,10 +13,9 @@ const handler = async (id, name, { location = '', lang = 'zh-cn' } = {}) => {
   }
 
   const response = await fetch(`https://wttr.in${encodedLocation}?${searchParams.toString()}`, {
-    headers: {
-      'User-Agent': 'gemini-audio-worker/1.0',
+    headers: withBrowserUserAgent({
       Accept: 'application/json',
-    },
+    }),
   });
 
   if (!response.ok) {

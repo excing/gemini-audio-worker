@@ -3,6 +3,8 @@
 //   GITHUB_CLIENT_ID      GitHub App 的 Client ID  (vars 或 secret)
 //   GITHUB_CLIENT_SECRET  GitHub App 的 Client Secret (建议用 wrangler secret put)
 
+import { withBrowserUserAgent } from '../tool-utils.js';
+
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 
 const ensureConfigured = (env) => Boolean(env?.GITHUB_CLIENT_ID && env?.GITHUB_CLIENT_SECRET);
@@ -53,7 +55,7 @@ export async function handleGithubOauthCallback(request, env, url) {
     
     tokenResponse = await fetch(GITHUB_TOKEN_URL, {
       method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: withBrowserUserAgent({ Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }),
       body: params,
     });
   } catch (error) {
@@ -146,7 +148,7 @@ export async function handleGithubOauthRefresh(request, env, url) {
   try {
     tokenResponse = await fetch(GITHUB_TOKEN_URL, {
       method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: withBrowserUserAgent({ Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }),
       body: new URLSearchParams({
         client_id: env.GITHUB_CLIENT_ID,
         client_secret: env.GITHUB_CLIENT_SECRET,

@@ -33,6 +33,29 @@ export const isAllowedFetchProtocol = (value) => {
   }
 };
 
+export const DEFAULT_FETCH_USER_AGENT = 'gemini-audio-worker/1.0';
+export const REAL_BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
+
+export const buildBrowserUserAgent = (currentUserAgent = DEFAULT_FETCH_USER_AGENT) => {
+  const normalizedUserAgent = String(currentUserAgent || '').trim();
+  if (!normalizedUserAgent) return REAL_BROWSER_USER_AGENT;
+  if (normalizedUserAgent.includes(REAL_BROWSER_USER_AGENT)) return normalizedUserAgent;
+  return `${REAL_BROWSER_USER_AGENT} ${normalizedUserAgent}`;
+};
+
+export const withBrowserUserAgent = (headers = {}, fallbackUserAgent = DEFAULT_FETCH_USER_AGENT) => {
+  const result = headers && typeof headers === 'object' && !Array.isArray(headers) ? { ...headers } : {};
+  const userAgentKey = Object.keys(result).find((key) => key.toLowerCase() === 'user-agent');
+  const currentUserAgent = userAgentKey ? result[userAgentKey] : fallbackUserAgent;
+
+  if (userAgentKey && userAgentKey !== 'User-Agent') {
+    delete result[userAgentKey];
+  }
+
+  result['User-Agent'] = buildBrowserUserAgent(currentUserAgent);
+  return result;
+};
+
 export const extractTitle = (html) => {
   const match = String(html).match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   return match ? stripHtml(match[1]) : '';

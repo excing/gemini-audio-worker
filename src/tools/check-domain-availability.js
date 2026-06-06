@@ -1,3 +1,5 @@
+import { withBrowserUserAgent } from '../tool-utils.js';
+
 const API_URL = 'https://api.instantdomainsearch.com/mcp';
 const MCP_METHOD = 'tools/call';
 const TOOL_NAME = 'check_domain_availability';
@@ -29,11 +31,10 @@ const handler = async (id, name, { domains = [] } = {}) => {
 
   const response = await fetch(API_URL, {
     method: 'POST',
-    headers: {
+    headers: withBrowserUserAgent({
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'User-Agent': 'gemini-audio-worker/1.0',
-    },
+    }),
     body: JSON.stringify(buildRequestBody(normalizedDomains)),
   });
 
