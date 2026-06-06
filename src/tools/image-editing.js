@@ -1,4 +1,4 @@
-import { isAllowedFetchProtocol, withBrowserUserAgent } from '../tool-utils.js';
+import { withBrowserUserAgent } from '../tool-utils.js';
 
 const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
 
@@ -10,135 +10,23 @@ const normalizeImages = (images) => {
     .filter((item, index, items) => item && items.indexOf(item) === index);
 };
 
-const normalizeMimeType = (mimeType = 'image/png') => {
-  const value = String(mimeType || '').split(';')[0].trim().toLowerCase();
-  return /^image\/[-.+a-z0-9]+$/i.test(value) ? value : 'image/png';
-};
-
-const normalizeBase64 = (value) => String(value || '')
-  .trim()
-  .replace(/\s+/g, '')
-  .replace(/-/g, '+')
-  .replace(/_/g, '/')
-  .replace(/=+$/, '')
-  .padEnd(Math.ceil(String(value || '').trim().replace(/\s+/g, '').replace(/=+$/, '').length / 4) * 4, '=');
-
-const isLikelyBase64 = (value) => {
-  const normalized = normalizeBase64(value);
-  return normalized.length > 0
-    && normalized.length % 4 === 0
-    && /^[A-Za-z0-9+/]+={0,2}$/.test(normalized);
-};
-
-const toDataUrl = (base64, mimeType = 'image/png') => {
-  const dataUrlMatch = String(base64 || '').trim().match(/^data:(image\/[-.+a-z0-9]+);base64,([\s\S]+)$/i);
-  if (dataUrlMatch) {
-    const normalizedBase64 = normalizeBase64(dataUrlMatch[2]);
-    if (!isLikelyBase64(normalizedBase64)) throw new Error('图片 data URL 中的 base64 无效');
-    return `data:${normalizeMimeType(dataUrlMatch[1])};base64,${normalizedBase64}`;
-  }
-
-  const normalizedBase64 = normalizeBase64(base64);
-  if (!isLikelyBase64(normalizedBase64)) {
-    throw new Error('图片必须是 http(s) 链接、image data URL 或纯 base64');
-  }
-  return `data:${normalizeMimeType(mimeType)};base64,${normalizedBase64}`;
-};
-
-const arrayBufferToBase64 = (buffer) => {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index]);
-  }
-  return btoa(binary);
-};
-
-const imageToDataUrl = async (image, fallbackMimeType = 'image/png') => {
-  if (isAllowedFetchProtocol(image)) {
-    const response = await fetch(image, {
-      redirect: 'follow',
-      headers: withBrowserUserAgent({
-        Accept: 'image/*,*/*;q=0.8',
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`图片下载失败: ${response.status} ${response.statusText}`);
-    }
-
-    const contentType = response.headers.get('content-type') || fallbackMimeType;
-    if (!/^image\//i.test(contentType)) {
-      throw new Error(`图片下载结果不是图片类型: ${contentType}`);
-    }
-
-    return toDataUrl(arrayBufferToBase64(await response.arrayBuffer()), contentType);
-  }
-
-  return toDataUrl(image, fallbackMimeType);
-};
-
-const imagesToDataUrls = async (images, fallbackMimeType = 'image/png') => Promise.all(
-  normalizeImages(images).map((item) => imageToDataUrl(item, fallbackMimeType)),
-);
-
-const collectImageResults = (content) => {
+const formatImageEditingResponse = (result) => {
+  const data = Array.isArray(result?.data) ? result.data : [];
   const images = [];
   const texts = [];
 
-  const collect = (item) => {
-    if (!item) return;
-
-    if (typeof item === 'string') {
-      const dataUrls = item.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=_-]+/g)
-                    || item.match(/https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi)
-                    || [];
-      if (dataUrls.length) {
-        images.push(...dataUrls.map((url) => ({ url })));
-      } else {
-        texts.push(item);
-      }
-      return;
-    }
-
-    if (Array.isArray(item)) {
-      item.forEach(collect);
-      return;
-    }
-
-    if (typeof item !== 'object') return;
+  for (const item of data) {
+    if (!item) continue;
 
     if (item.b64_json) {
       images.push({ b64_json: item.b64_json });
-      return;
-    }
-
-    if (item.image_url?.url) {
-      images.push({ url: item.image_url.url });
-      return;
-    }
-
-    if (item.url && /^data:image\/[^;]+;base64,/i.test(item.url)) {
+    } else if (item.url) {
       images.push({ url: item.url });
-      return;
     }
 
-    if (item.text) texts.push(String(item.text));
-  };
-
-  collect(content);
-  return { images, text: texts.join('\n').trim() };
-};
-
-const formatImageEditingResponse = (result) => {
-  const choices = Array.isArray(result?.choices) ? result.choices : [];
-  const images = [];
-  const texts = [];
-
-  for (const choice of choices) {
-    const extracted = collectImageResults(choice?.message?.content);
-    images.push(...extracted.images);
-    if (extracted.text) texts.push(extracted.text);
+    if (item.revised_prompt) {
+      texts.push(String(item.revised_prompt));
+    }
   }
 
   return {
@@ -147,13 +35,27 @@ const formatImageEditingResponse = (result) => {
   };
 };
 
-const handler = async (id, name, { prompt = '', images = [], mime_type = 'image/png' } = {}, { server, geminiWs, env }) => {
+const handler = async (
+  id,
+  name,
+  {
+    prompt = '',
+    images = [],
+    mask,
+    n,
+    size,
+    quality,
+    background,
+  } = {},
+  { server, geminiWs, env },
+) => {
   const textPrompt = String(prompt || '').trim();
   if (!textPrompt) {
     throw new Error('imageEditing prompt 不能为空');
   }
 
-  if (!images || images.length == 0) {
+  const inputImages = normalizeImages(images);
+  if (inputImages.length === 0) {
     throw new Error('imageEditing images 不能为空');
   }
 
@@ -167,36 +69,31 @@ const handler = async (id, name, { prompt = '', images = [], mime_type = 'image/
   }
 
   const baseUrl = trimTrailingSlash(env.OPENAI_BASE_URL || 'https://api.openai.com/v1');
-  const imageUrls = await imagesToDataUrls(images, mime_type);
-  const content = [{ type: 'text', text: textPrompt }];
 
-  for (const imageUrl of imageUrls) {
-    content.push({ type: 'image_url', image_url: { url: imageUrl } });
-  }
+  const body = {
+    model,
+    prompt: textPrompt,
+    image: inputImages.length === 1 ? inputImages[0] : inputImages,
+  };
+  if (mask) body.mask = String(mask).trim();
+  if (Number.isFinite(n)) body.n = n;
+  if (size) body.size = String(size).trim();
+  if (quality) body.quality = String(quality).trim();
+  if (background) body.background = String(background).trim();
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  const response = await fetch(`${baseUrl}/images/edits`, {
     method: 'POST',
     headers: withBrowserUserAgent({
       Authorization: `Bearer ${env.OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     }),
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: 'user',
-          content,
-        },
-      ],
-    }),
+    body: JSON.stringify(body),
   });
 
   const responseText = await response.text();
-  let result;
-  try {
-    result = responseText ? JSON.parse(responseText) : null;
-  } catch {
-    result = { raw: responseText };
+  let result = null;
+  if (responseText) {
+    try { result = JSON.parse(responseText); } catch { /* keep null */ }
   }
 
   if (!response.ok) {
@@ -212,22 +109,41 @@ const handler = async (id, name, { prompt = '', images = [], mime_type = 'image/
 
 export default {
   name: 'imageEditing',
-  description: '图片编辑工具，当用户需要基于输入图片修改、重绘或变体编辑图片时调用此工具。',
+  description: '调用 OpenAI 兼容的 /v1/images/edits 接口，基于已有图片进行修改、重绘、扩图或多图合成。当用户需要在输入图片基础上做局部改动、风格转换、元素替换或将多张图融合为一张时调用此工具。可通过 size/quality/background 等参数控制输出；部分参数仅对特定模型生效（background 仅 gpt-image-1），未设置时由后端使用默认值。',
   parameters: {
     type: 'object',
     properties: {
       prompt: {
         type: 'string',
-        description: '图片编辑提示词。',
+        description: '图片编辑提示词：详细描述希望对输入图片做出的修改或目标画面效果。越具体效果越好。',
       },
       images: {
         type: 'array',
-        description: '输入图片附件列表，每项可以是图片链接、base64 或 image data URL。',
+        description: '输入图片列表，每项可以是图片链接(http(s))、纯 base64 或 image data URL，原样透传给上游。dall-e-2 仅支持 1 张，gpt-image-1 可传多张做合成。',
         items: { type: 'string' },
       },
-      mime_type: {
+      mask: {
         type: 'string',
-        description: '当 images 传纯 base64 时使用的 MIME 类型，默认 image/png。',
+        description: '蒙版图片（可选），透明区域 = 要被重绘的区域，其他区域保持原样。可以是图片链接、纯 base64 或 image data URL。仅作用于 images 中的第一张。',
+      },
+      n: {
+        type: 'integer',
+        description: '一次生成的图片数量, 默认为空, 由模型决定.',
+        minimum: 1,
+        maximum: 10,
+      },
+      size: {
+        type: 'string',
+        description: '图片尺寸, 默认为空, 由模型决定.',
+      },
+      quality: {
+        type: 'string',
+        description: '图片质量。值有: standard / low / medium / high / auto, 默认为空, 由模型决定.',
+      },
+      background: {
+        type: 'string',
+        description: '背景类型, 默认为空, 由模型决定。',
+        enum: ['transparent', 'opaque', 'auto'],
       },
     },
     required: ['prompt', 'images'],
