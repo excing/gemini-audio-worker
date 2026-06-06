@@ -1,144 +1,24 @@
-import { isAllowedFetchProtocol, withBrowserUserAgent } from '../tool-utils.js';
+import { withBrowserUserAgent } from '../tool-utils.js';
 
 const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
 
-const normalizeImages = (images) => {
-  const values = Array.isArray(images) ? images : [];
-
-  return values
-    .map((item) => String(item || '').trim())
-    .filter((item, index, items) => item && items.indexOf(item) === index);
-};
-
-const normalizeMimeType = (mimeType = 'image/png') => {
-  const value = String(mimeType || '').split(';')[0].trim().toLowerCase();
-  return /^image\/[-.+a-z0-9]+$/i.test(value) ? value : 'image/png';
-};
-
-const normalizeBase64 = (value) => String(value || '')
-  .trim()
-  .replace(/\s+/g, '')
-  .replace(/-/g, '+')
-  .replace(/_/g, '/')
-  .replace(/=+$/, '')
-  .padEnd(Math.ceil(String(value || '').trim().replace(/\s+/g, '').replace(/=+$/, '').length / 4) * 4, '=');
-
-const isLikelyBase64 = (value) => {
-  const normalized = normalizeBase64(value);
-  return normalized.length > 0
-    && normalized.length % 4 === 0
-    && /^[A-Za-z0-9+/]+={0,2}$/.test(normalized);
-};
-
-const toDataUrl = (base64, mimeType = 'image/png') => {
-  const dataUrlMatch = String(base64 || '').trim().match(/^data:(image\/[-.+a-z0-9]+);base64,([\s\S]+)$/i);
-  if (dataUrlMatch) {
-    const normalizedBase64 = normalizeBase64(dataUrlMatch[2]);
-    if (!isLikelyBase64(normalizedBase64)) throw new Error('图片 data URL 中的 base64 无效');
-    return `data:${normalizeMimeType(dataUrlMatch[1])};base64,${normalizedBase64}`;
-  }
-
-  const normalizedBase64 = normalizeBase64(base64);
-  if (!isLikelyBase64(normalizedBase64)) {
-    throw new Error('图片必须是 http(s) 链接、image data URL 或纯 base64');
-  }
-  return `data:${normalizeMimeType(mimeType)};base64,${normalizedBase64}`;
-};
-
-const arrayBufferToBase64 = (buffer) => {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index]);
-  }
-  return btoa(binary);
-};
-
-const imageToDataUrl = async (image, fallbackMimeType = 'image/png') => {
-  if (isAllowedFetchProtocol(image)) {
-    const response = await fetch(image, {
-      redirect: 'follow',
-      headers: withBrowserUserAgent({
-        Accept: 'image/*,*/*;q=0.8',
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`图片下载失败: ${response.status} ${response.statusText}`);
-    }
-
-    const contentType = response.headers.get('content-type') || fallbackMimeType;
-    if (!/^image\//i.test(contentType)) {
-      throw new Error(`图片下载结果不是图片类型: ${contentType}`);
-    }
-
-    return toDataUrl(arrayBufferToBase64(await response.arrayBuffer()), contentType);
-  }
-
-  return toDataUrl(image, fallbackMimeType);
-};
-
-const imagesToDataUrls = async (images, fallbackMimeType = 'image/png') => Promise.all(
-  normalizeImages(images).map((item) => imageToDataUrl(item, fallbackMimeType)),
-);
-
-const collectImageResults = (content) => {
+const formatImageGenerationResponse = (result) => {
+  const data = Array.isArray(result?.data) ? result.data : [];
   const images = [];
   const texts = [];
 
-  const collect = (item) => {
-    if (!item) return;
-
-    if (typeof item === 'string') {
-      const dataUrls = item.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=_-]+/g)
-                    || item.match(/https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi)
-                    || [];
-      if (dataUrls.length) {
-        images.push(...dataUrls.map((url) => ({ url })));
-      } else {
-        texts.push(item);
-      }
-      return;
-    }
-
-    if (Array.isArray(item)) {
-      item.forEach(collect);
-      return;
-    }
-
-    if (typeof item !== 'object') return;
+  for (const item of data) {
+    if (!item) continue;
 
     if (item.b64_json) {
       images.push({ b64_json: item.b64_json });
-      return;
-    }
-
-    if (item.image_url?.url) {
-      images.push({ url: item.image_url.url });
-      return;
-    }
-
-    if (item.url && /^data:image\/[^;]+;base64,/i.test(item.url)) {
+    } else if (item.url) {
       images.push({ url: item.url });
-      return;
     }
 
-    if (item.text) texts.push(String(item.text));
-  };
-
-  collect(content);
-  return { images, text: texts.join('\n').trim() };
-};
-
-const formatImageGenerationResponse = (result) => {
-  const choices = Array.isArray(result?.choices) ? result.choices : [];
-  const images = [];
-  const texts = [];
-
-  for (const choice of choices) {
-    const extracted = collectImageResults(choice?.message?.content);
-    images.push(...extracted.images);
-    if (extracted.text) texts.push(extracted.text);
+    if (item.revised_prompt) {
+      texts.push(String(item.revised_prompt));
+    }
   }
 
   return {
@@ -147,7 +27,19 @@ const formatImageGenerationResponse = (result) => {
   };
 };
 
-const handler = async (id, name, { prompt = '' } = {}, { server, geminiWs, env }) => {
+const handler = async (
+  id,
+  name,
+  {
+    prompt = '',
+    n,
+    size,
+    quality,
+    style,
+    background,
+  } = {},
+  { server, geminiWs, env },
+) => {
   const textPrompt = String(prompt || '').trim();
   if (!textPrompt) {
     throw new Error('imageGeneration prompt 不能为空');
@@ -163,31 +55,27 @@ const handler = async (id, name, { prompt = '' } = {}, { server, geminiWs, env }
   }
 
   const baseUrl = trimTrailingSlash(env.OPENAI_BASE_URL || 'https://api.openai.com/v1');
-  const content = [{ type: 'text', text: textPrompt }];
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  const body = { model, prompt: textPrompt };
+  if (Number.isFinite(n)) body.n = n;
+  if (size) body.size = String(size).trim();
+  if (quality) body.quality = String(quality).trim();
+  if (style) body.style = String(style).trim();
+  if (background) body.background = String(background).trim();
+
+  const response = await fetch(`${baseUrl}/images/generations`, {
     method: 'POST',
     headers: withBrowserUserAgent({
       Authorization: `Bearer ${env.OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     }),
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: 'user',
-          content,
-        },
-      ],
-    }),
+    body: JSON.stringify(body),
   });
 
   const responseText = await response.text();
-  let result;
-  try {
-    result = responseText ? JSON.parse(responseText) : null;
-  } catch {
-    result = { raw: responseText };
+  let result = null;
+  if (responseText) {
+    try { result = JSON.parse(responseText); } catch { /* keep null */ }
   }
 
   if (!response.ok) {
@@ -203,13 +91,37 @@ const handler = async (id, name, { prompt = '' } = {}, { server, geminiWs, env }
 
 export default {
   name: 'imageGeneration',
-  description: '图片生成工具，当用户需要从文本提示词生成新图片时调用此工具。',
+  description: '调用 OpenAI 兼容的 /v1/images/generations 接口，根据文本提示词生成图片。当用户需要凭空创作新图片（绘制、设计、插画、海报、概念图等）时调用此工具。可通过 size/quality/style/background 等参数控制输出；部分参数仅对特定模型生效（style 仅 dall-e-3，background 仅 gpt-image-1），未设置时由后端使用默认值。',
   parameters: {
     type: 'object',
     properties: {
       prompt: {
         type: 'string',
-        description: '图片生成提示词。',
+        description: '图片生成提示词：详细描述想要生成的画面内容、主体、风格、构图、光照、氛围等。越具体效果越好。',
+      },
+      n: {
+        type: 'integer',
+        description: '一次生成的图片数量, 默认为空, 由模型决定.',
+        minimum: 1,
+        maximum: 10,
+      },
+      size: {
+        type: 'string',
+        description: '图片尺寸, 默认为空, 由模型决定.',
+      },
+      quality: {
+        type: 'string',
+        description: '图片质量。值有: standard / hd / low / medium / high, 默认为空, 由模型决定.',
+      },
+      style: {
+        type: 'string',
+        description: '图片风格, 默认为空, 由模型决定.',
+        enum: ['vivid', 'natural'],
+      },
+      background: {
+        type: 'string',
+        description: '背景类型, 默认为空, 由模型决定。',
+        enum: ['transparent', 'opaque', 'auto'],
       },
     },
     required: ['prompt'],
