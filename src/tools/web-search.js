@@ -149,9 +149,9 @@ export default {
       },
       effort: {
         type: 'string',
-        enum: ['low', 'medium', 'high'],
+        enum: ['low', 'medium', 'high', 'xhigh'],
         default: 'medium',
-        description: '可选，控制搜索模型的思考程度。可选值：low、medium、high；默认 medium。',
+        description: '可选，控制搜索模型的思考程度。当用户要求简单搜索时，使用 low，用户要求深度搜索时使用 high 或 xhigh。默认 medium。',
       },
     },
     required: ['query'],

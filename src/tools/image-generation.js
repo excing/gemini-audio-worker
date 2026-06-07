@@ -32,6 +32,7 @@ const handler = async (
   name,
   {
     prompt = '',
+    level = 'default',
     n,
     size,
     quality,
@@ -49,10 +50,13 @@ const handler = async (
     throw new Error('Worker 缺少 OPENAI_API_KEY secret');
   }
 
-  const model = String(env.OPENAI_IMAGE_MODEL || '').trim();
-  if (!model) {
+  const baseModel = String(env.OPENAI_IMAGE_GEN_MODEL || '').trim();
+  if (!baseModel) {
     throw new Error('Worker 缺少 OPENAI_IMAGE_MODEL 配置');
   }
+
+  const modelLevel = String(level || 'default').trim() || 'default';
+  const model = `${baseModel}-${modelLevel}`;
 
   const baseUrl = trimTrailingSlash(env.OPENAI_BASE_URL || 'https://api.openai.com/v1');
 
@@ -98,6 +102,12 @@ export default {
       prompt: {
         type: 'string',
         description: '图片生成提示词：详细描述想要生成的画面内容、主体、风格、构图、光照、氛围等。越具体效果越好。',
+      },
+      level: {
+        type: 'string',
+        default: 'standard',
+        description: '模型等级，控制最终请求模型。当用户明确要求使用某等级模型时，使用该参数。默认为 standard.',
+        enum: ['lite', 'flash', 'standard', 'pro', 'spicy'],
       },
       n: {
         type: 'integer',

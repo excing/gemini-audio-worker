@@ -42,6 +42,7 @@ const handler = async (
     prompt = '',
     images = [],
     mask,
+    level = 'default',
     n,
     size,
     quality,
@@ -63,10 +64,13 @@ const handler = async (
     throw new Error('Worker 缺少 OPENAI_API_KEY secret');
   }
 
-  const model = String(env.OPENAI_IMAGE_MODEL || '').trim();
-  if (!model) {
+  const baseModel = String(env.OPENAI_IMAGE_EDIT_MODEL || '').trim();
+  if (!baseModel) {
     throw new Error('Worker 缺少 OPENAI_IMAGE_MODEL 配置');
   }
+
+  const modelLevel = String(level || 'default').trim() || 'default';
+  const model = `${baseModel}-${modelLevel}`;
 
   const baseUrl = trimTrailingSlash(env.OPENAI_BASE_URL || 'https://api.openai.com/v1');
 
@@ -126,6 +130,12 @@ export default {
         type: 'string',
         description: '蒙版图片（可选），透明区域 = 要被重绘的区域，其他区域保持原样。可以是图片链接、纯 base64 或 image data URL。仅作用于 images 中的第一张。',
       },
+      level: {
+        type: 'string',
+        default: 'standard',
+        description: '模型等级，控制最终请求模型。当用户明确要求使用某等级模型时，使用该参数。默认为 standard.',
+        enum: ['lite', 'flash', 'standard', 'pro', 'spicy'],
+      },
       n: {
         type: 'integer',
         description: '一次生成的图片数量, 默认为空, 由模型决定.',
@@ -138,7 +148,7 @@ export default {
       },
       quality: {
         type: 'string',
-        description: '图片质量。值有: standard / low / medium / high / auto, 默认为空, 由模型决定.',
+        description: '图片质量。值有: standard / low / medium / high, 默认为空, 由模型决定.',
       },
       background: {
         type: 'string',
