@@ -32,7 +32,7 @@ const handler = async (
   name,
   {
     prompt = '',
-    level = 'default',
+    level = 'standard',
     n,
     size,
     quality,

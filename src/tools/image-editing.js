@@ -42,7 +42,7 @@ const handler = async (
     prompt = '',
     images = [],
     mask,
-    level = 'default',
+    level = 'standard',
     n,
     size,
     quality,
