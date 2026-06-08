@@ -128,7 +128,8 @@
     .main > .music-player-banner { grid-row:2; }
     .main > .chat-plane { grid-row:3; }
     .main > .input-bar { grid-row:4; }
-    .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items:center; gap:8px; line-height:1.2; } .title-stack { min-width:0; display:grid; justify-items:center; gap:1px; } .chat-title { max-width:min(39vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; line-height:1.2; background:transparent; } .chat-title:hover { background:var(--hover); } .session-usage { max-width:min(44vw,540px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:11px; line-height:1.15; font-variant-numeric:tabular-nums; }
+    .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items:center; gap:8px; line-height:1.2; } .title-stack { min-width:0; display:grid; justify-items:center; gap:1px; } .chat-title { max-width:min(39vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; line-height:1.2; background:transparent; } .chat-title:hover { background:var(--hover); } .session-usage { max-width:min(44vw,540px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:9999px; padding:1px 6px; color:var(--muted); background:transparent; font-size:11px; line-height:1.15; font-variant-numeric:tabular-nums; }
+    .session-usage:hover, .message-usage:hover { background:var(--hover); color:var(--text); }
     .dot { width:8px; height:8px; border-radius:9999px; background:transparent; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.bad { background:var(--bad); }
     .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; overflow-x:hidden; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
     .group { min-width:0; max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
@@ -149,7 +150,7 @@
     .markdown-body img { max-width:100%; height:auto; border-radius:8px; }
     .message-toolbar { min-height:30px; display:flex; align-items:center; gap:4px; opacity:.72; transition:opacity .16s ease-in-out; }
     .group:hover .message-toolbar, .message-toolbar:focus-within { opacity:1; }
-    .message-usage { min-height:30px; padding:0 8px; border-radius:9999px; display:inline-flex; align-items:center; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+    .message-usage { min-height:30px; padding:0 8px; border-radius:9999px; display:inline-flex; align-items:center; color:var(--muted); background:transparent; font-size:12px; font-variant-numeric:tabular-nums; }
     .message-action { width:30px; height:30px; min-width:30px; border-radius:9999px; display:inline-grid; place-items:center; background:transparent; color:var(--muted); }
     .message-action:hover { background:var(--hover); color:var(--text); }
     .message-action svg { width:15px; height:15px; }
@@ -174,6 +175,7 @@
     .call-status { display:grid; justify-items:center; gap:8px; padding:8px 0 14px; color:var(--muted); } .call-status .icon-btn { background:var(--hover); } .call-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:0; min-height:72px; align-items:center; } .call-action { width:100%; min-width:0; min-height:72px; padding:4px 0; border-radius:12px; display:grid; justify-items:center; align-content:center; gap:4px; background:transparent; color:var(--muted); font-size:12px; } .call-action:hover { background:var(--hover); } .call-action .icon-btn { pointer-events:none; background:transparent; }
     dialog { width:min(680px,calc(100% - 24px)); border:0; border-radius:16px; padding:0; color:var(--text); background:var(--glass); box-shadow:var(--shadow); backdrop-filter:blur(12px) saturate(180%); transform:scale(.95); opacity:0; transition:all .2s ease-in-out; } dialog[open] { transform:scale(1); opacity:1; } dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(6px); } :root[data-theme="dark"] dialog::backdrop { background:rgba(0,0,0,.6); }
     .modal { padding:24px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:20px; font-weight:600; } .modal-head { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:12px; } .modal-close { width:44px; height:44px; min-width:44px; border-radius:9999px; background:var(--hover); } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:12px; } label.full, .tool-picker.full { grid-column:1/-1; }
+    .usage-dialog { width:min(460px,calc(100% - 24px)); } .usage-modal { gap:14px; } .usage-head-text { min-width:0; display:grid; gap:3px; } .usage-subtitle { margin:0; color:var(--muted); font-size:12px; } .usage-grid, .usage-detail-groups { display:grid; gap:2px; } .usage-row, .usage-detail-row { min-height:32px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); color:var(--muted); font-size:13px; } .usage-row strong, .usage-detail-row strong { color:var(--text); font-weight:650; font-variant-numeric:tabular-nums; } .usage-section-title { margin:4px 0 0; color:var(--text); font-size:13px; font-weight:650; } .usage-detail-group { display:grid; gap:2px; } .usage-detail-head { padding-top:6px; color:var(--muted); font-size:12px; font-weight:650; }
     input, textarea, select { width:100%; min-height:44px; border:0; border-radius:8px; padding:0 12px; outline:none; background:var(--hover); font-size:16px; line-height:1.5; } textarea { min-height:120px; padding:12px; resize:vertical; } .modal-actions { justify-content:flex-end; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; } .tool-chip, .tool-actions button { min-height:34px; border-radius:9999px; padding:0 12px; background:var(--hover); } .tool-chip.active { background:var(--text); color:var(--bg); } .tool-chip.blocked { opacity:.48; } .warning { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--bad); color:#fff; } .secondary-btn { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--hover); }
     .danger-note { margin:0; padding:12px; border-radius:12px; background:rgba(239,68,68,.12); color:var(--bad); font-weight:600; }
     .system-dialog { width:min(680px,calc(100% - 24px)); height:min(840px,calc(100dvh - 12px)); border-radius:28px; }
@@ -378,7 +380,7 @@ select::-ms-expand {
             <span class="dot" :class="statusKind"></span>
             <div class="title-stack">
               <button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
-              <span v-if="sessionUsageText" class="session-usage" :title="sessionUsageTitle">{{ sessionUsageText }}</span>
+              <button v-if="sessionUsageText" class="session-usage" type="button" :title="sessionUsageTitle" @click="openUsageDetails('session')">{{ sessionUsageText }}</button>
             </div>
           </div>
           <div class="topbar-actions">
@@ -493,7 +495,7 @@ select::-ms-expand {
               </template>
             </div>
             <div v-if="canShowMessageToolbar(item)" class="message-toolbar">
-              <span v-if="messageUsageText(item.message)" class="message-usage" :title="messageUsageTitle(item.message)">{{ messageUsageText(item.message) }}</span>
+              <button v-if="messageUsageText(item.message)" class="message-usage" type="button" :title="messageUsageTitle(item.message)" @click="openUsageDetails('message', item.message.usage)">{{ messageUsageText(item.message) }}</button>
               <button v-if="getMessageCopyText(item.message)" class="message-action" type="button" :title="item.message.toolbarCopyState === 'ok' ? '已复制' : '复制'" @click="copyMessage(item.message)">
                 <component :is="item.message.toolbarCopyState === 'ok' ? 'check-icon' : 'copy-icon'" ></component>
               </button>
@@ -521,7 +523,7 @@ select::-ms-expand {
             <span class="dot" :class="statusKind"></span>
             <div class="title-stack">
               <button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
-              <span v-if="sessionUsageText" class="session-usage" :title="sessionUsageTitle">{{ sessionUsageText }}</span>
+              <button v-if="sessionUsageText" class="session-usage" type="button" :title="sessionUsageTitle" @click="openUsageDetails('session')">{{ sessionUsageText }}</button>
             </div>
           </div>
         <div class="topbar-actions">
@@ -571,6 +573,36 @@ select::-ms-expand {
         <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon ></phone-off-icon></span></button>
       </footer>
     </div>
+
+    <dialog class="usage-dialog" ref="usageDialog" @click="closeUsageDetailsOnBackdrop" @close="activeUsageDetails = null">
+      <div class="modal usage-modal" v-if="activeUsageDetails">
+        <div class="modal-head">
+          <div class="usage-head-text">
+            <h2>{{ activeUsageDetails.title }}</h2>
+            <p v-if="activeUsageDetails.subtitle" class="usage-subtitle">{{ activeUsageDetails.subtitle }}</p>
+          </div>
+          <button class="icon-btn modal-close" type="button" title="关闭" @click="closeUsageDetails"><x-icon ></x-icon></button>
+        </div>
+        <div class="usage-grid">
+          <div v-for="row in usageSummaryRows(activeUsageDetails.usage)" :key="row.key" class="usage-row">
+            <span>{{ row.label }}</span>
+            <strong>{{ formatTokenCount(row.value) }}</strong>
+          </div>
+        </div>
+        <template v-if="usageDetailGroups(activeUsageDetails.usage).length">
+          <h3 class="usage-section-title">模态明细</h3>
+          <div class="usage-detail-groups">
+            <div v-for="group in usageDetailGroups(activeUsageDetails.usage)" :key="group.key" class="usage-detail-group">
+              <div class="usage-detail-head">{{ group.label }}</div>
+              <div v-for="item in group.items" :key="`${group.key}-${item.modality}`" class="usage-detail-row">
+                <span>{{ modalityLabel(item.modality) }}</span>
+                <strong>{{ formatTokenCount(item.tokenCount) }}</strong>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </dialog>
 
     <dialog ref="roleDialog" @click="closeRoleConfigOnBackdrop">
       <div class="modal">
@@ -859,9 +891,21 @@ select::-ms-expand {
       'uncachedPromptTokenCount',
     ];
 
+    const USAGE_DETAIL_FIELDS = [
+      'promptTokensDetails',
+      'cacheTokensDetails',
+      'responseTokensDetails',
+      'toolUsePromptTokensDetails',
+    ];
+
     const createUsageTotals = () => USAGE_TOTAL_FIELDS.reduce((totals, field) => {
       totals[field] = 0;
       return totals;
+    }, {});
+
+    const createUsageDetails = () => USAGE_DETAIL_FIELDS.reduce((details, field) => {
+      details[field] = [];
+      return details;
     }, {});
 
     const toTokenCount = (value) => {
@@ -1010,7 +1054,9 @@ select::-ms-expand {
             latest: null,
             turns: [],
             sessionTotal: createUsageTotals(),
+            sessionDetails: createUsageDetails(),
           },
+          activeUsageDetails: null,
           activeRenderPage: null,
           workerToolDeclarations: this.loadCachedToolDeclarations(),
           toolsLoading: false,
@@ -1901,6 +1947,7 @@ select::-ms-expand {
             latest: null,
             turns: [],
             sessionTotal: createUsageTotals(),
+            sessionDetails: createUsageDetails(),
           };
         },
         normalizeUsageMetadata(usageMetadata) {
@@ -1933,6 +1980,23 @@ select::-ms-expand {
             if (this.usageState.sessionTotal[field] < 0) this.usageState.sessionTotal[field] = 0;
           }
         },
+        addUsageDetailsToSession(usage, multiplier = 1) {
+          for (const field of USAGE_DETAIL_FIELDS) {
+            const target = this.usageState.sessionDetails[field];
+            for (const item of cloneUsageDetails(usage?.[field])) {
+              const modality = item.modality || 'UNKNOWN';
+              let existing = target.find((entry) => entry.modality === modality);
+              if (!existing) {
+                existing = { modality, tokenCount: 0 };
+                target.push(existing);
+              }
+              existing.tokenCount += item.tokenCount * multiplier;
+            }
+            this.usageState.sessionDetails[field] = target
+              .filter((item) => item.tokenCount > 0)
+              .sort((a, b) => b.tokenCount - a.tokenCount);
+          }
+        },
         findUsageTurnByMessageId(messageId) {
           if (!messageId) return null;
           for (let index = this.usageState.turns.length - 1; index >= 0; index -= 1) {
@@ -1953,8 +2017,10 @@ select::-ms-expand {
           const existing = this.findUsageTurnByMessageId(messageId);
           if (existing) {
             this.addUsageToSessionTotal(existing, -1);
+            this.addUsageDetailsToSession(existing, -1);
             Object.assign(existing, normalized, { at: Date.now() });
             this.addUsageToSessionTotal(existing, 1);
+            this.addUsageDetailsToSession(existing, 1);
             this.usageState.latest = existing;
             this.attachUsageToMessage(existing);
             return;
@@ -1969,6 +2035,7 @@ select::-ms-expand {
           this.usageState.turns.push(usage);
           this.usageState.latest = usage;
           this.addUsageToSessionTotal(usage, 1);
+          this.addUsageDetailsToSession(usage, 1);
           this.attachUsageToMessage(usage);
         },
         formatTokenCount(count) {
@@ -1992,6 +2059,89 @@ select::-ms-expand {
         },
         messageUsageTitle(message) {
           return this.usageBreakdownTitle(message?.usage);
+        },
+        sessionUsageSnapshot() {
+          const details = createUsageDetails();
+          for (const field of USAGE_DETAIL_FIELDS) {
+            details[field] = cloneUsageDetails(this.usageState.sessionDetails[field]);
+          }
+          return {
+            ...this.usageState.sessionTotal,
+            ...details,
+          };
+        },
+        formatUsageTime(at) {
+          const timestamp = Number(at);
+          if (!Number.isFinite(timestamp) || timestamp <= 0) return '';
+          return new Intl.DateTimeFormat('zh-CN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          }).format(new Date(timestamp));
+        },
+        openUsageDetails(scope, usage = null) {
+          const detailUsage = scope === 'session' ? this.sessionUsageSnapshot() : usage;
+          if (!detailUsage?.totalTokenCount) return;
+          const turnIndex = scope === 'message'
+            ? this.usageState.turns.findIndex((item) => item.id === detailUsage.id)
+            : -1;
+          const subtitle = scope === 'session'
+            ? `共 ${this.usageState.turns.length} 轮`
+            : [turnIndex >= 0 ? `第 ${turnIndex + 1} 轮` : '', this.formatUsageTime(detailUsage.at)].filter(Boolean).join(' · ');
+
+          this.activeUsageDetails = {
+            title: scope === 'session' ? '会话 token 用量' : '本轮 token 用量',
+            subtitle,
+            usage: detailUsage,
+          };
+          nextTick(() => {
+            const dialog = this.$refs.usageDialog;
+            if (dialog && !dialog.open) dialog.showModal();
+          });
+        },
+        closeUsageDetails() {
+          this.$refs.usageDialog?.close();
+          this.activeUsageDetails = null;
+        },
+        closeUsageDetailsOnBackdrop(event) {
+          if (event.target === this.$refs.usageDialog) this.closeUsageDetails();
+        },
+        usageSummaryRows(usage) {
+          if (!usage) return [];
+          const rows = [
+            { key: 'total', label: '总计', value: usage.totalTokenCount },
+            { key: 'prompt', label: '输入', value: usage.promptTokenCount },
+          ];
+          if (usage.cachedContentTokenCount) {
+            rows.push(
+              { key: 'uncachedPrompt', label: '非缓存输入', value: usage.uncachedPromptTokenCount },
+              { key: 'cached', label: '缓存输入', value: usage.cachedContentTokenCount },
+            );
+          }
+          rows.push({ key: 'response', label: '输出', value: usage.responseTokenCount });
+          if (usage.thoughtsTokenCount) rows.push({ key: 'thoughts', label: '思考', value: usage.thoughtsTokenCount });
+          if (usage.toolUsePromptTokenCount) rows.push({ key: 'toolUsePrompt', label: '工具提示', value: usage.toolUsePromptTokenCount });
+          return rows.filter((row) => toTokenCount(row.value) > 0 || row.key === 'response');
+        },
+        usageDetailGroups(usage) {
+          if (!usage) return [];
+          const groups = [
+            { key: 'promptTokensDetails', label: '输入', items: cloneUsageDetails(usage.promptTokensDetails) },
+            { key: 'cacheTokensDetails', label: '缓存输入', items: cloneUsageDetails(usage.cacheTokensDetails) },
+            { key: 'responseTokensDetails', label: '输出', items: cloneUsageDetails(usage.responseTokensDetails) },
+            { key: 'toolUsePromptTokensDetails', label: '工具提示', items: cloneUsageDetails(usage.toolUsePromptTokensDetails) },
+          ];
+          return groups.filter((group) => group.items.length);
+        },
+        modalityLabel(modality) {
+          const labels = {
+            TEXT: '文本',
+            AUDIO: '音频',
+            IMAGE: '图片',
+            VIDEO: '视频',
+            DOCUMENT: '文档',
+          };
+          return labels[modality] || modality || '未知';
         },
         isWebSocketOpen() {
           return this.ws?.readyState === WebSocket.OPEN;
