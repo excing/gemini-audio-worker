@@ -128,7 +128,7 @@
     .main > .music-player-banner { grid-row:2; }
     .main > .chat-plane { grid-row:3; }
     .main > .input-bar { grid-row:4; }
-    .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items: center; justify-items:center; line-height:1.2; } .chat-title { max-width:min(39vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; background:transparent; } .chat-title:hover { background:var(--hover); }
+    .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items:center; gap:8px; line-height:1.2; } .title-stack { min-width:0; display:grid; justify-items:center; gap:1px; } .chat-title { max-width:min(39vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; line-height:1.2; background:transparent; } .chat-title:hover { background:var(--hover); } .session-usage { max-width:min(44vw,540px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:11px; line-height:1.15; font-variant-numeric:tabular-nums; }
     .dot { width:8px; height:8px; border-radius:9999px; background:transparent; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.bad { background:var(--bad); }
     .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; overflow-x:hidden; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
     .group { min-width:0; max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
@@ -149,6 +149,7 @@
     .markdown-body img { max-width:100%; height:auto; border-radius:8px; }
     .message-toolbar { min-height:30px; display:flex; align-items:center; gap:4px; opacity:.72; transition:opacity .16s ease-in-out; }
     .group:hover .message-toolbar, .message-toolbar:focus-within { opacity:1; }
+    .message-usage { min-height:30px; padding:0 8px; border-radius:9999px; display:inline-flex; align-items:center; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
     .message-action { width:30px; height:30px; min-width:30px; border-radius:9999px; display:inline-grid; place-items:center; background:transparent; color:var(--muted); }
     .message-action:hover { background:var(--hover); color:var(--text); }
     .message-action svg { width:15px; height:15px; }
@@ -374,7 +375,11 @@ select::-ms-expand {
         <header class="topbar">
           <button class="icon-btn" type="button" title="菜单" @click="toggleSidebar"><menu-icon ></menu-icon></button>
           <div class="topbar-center">
-            <span class="dot" :class="statusKind"></span><button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
+            <span class="dot" :class="statusKind"></span>
+            <div class="title-stack">
+              <button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
+              <span v-if="sessionUsageText" class="session-usage" :title="sessionUsageTitle">{{ sessionUsageText }}</span>
+            </div>
           </div>
           <div class="topbar-actions">
             <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon ></phone-icon></button>
@@ -488,7 +493,8 @@ select::-ms-expand {
               </template>
             </div>
             <div v-if="canShowMessageToolbar(item)" class="message-toolbar">
-              <button class="message-action" type="button" :title="item.message.toolbarCopyState === 'ok' ? '已复制' : '复制'" @click="copyMessage(item.message)">
+              <span v-if="messageUsageText(item.message)" class="message-usage" :title="messageUsageTitle(item.message)">{{ messageUsageText(item.message) }}</span>
+              <button v-if="getMessageCopyText(item.message)" class="message-action" type="button" :title="item.message.toolbarCopyState === 'ok' ? '已复制' : '复制'" @click="copyMessage(item.message)">
                 <component :is="item.message.toolbarCopyState === 'ok' ? 'check-icon' : 'copy-icon'" ></component>
               </button>
             </div>
@@ -512,7 +518,11 @@ select::-ms-expand {
       <header class="topbar">
         <button class="icon-btn" type="button" title="取消通话" @click="exitCallMode"><x-icon ></x-icon></button>
           <div class="topbar-center">
-            <span class="dot" :class="statusKind"></span><button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
+            <span class="dot" :class="statusKind"></span>
+            <div class="title-stack">
+              <button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
+              <span v-if="sessionUsageText" class="session-usage" :title="sessionUsageTitle">{{ sessionUsageText }}</span>
+            </div>
           </div>
         <div class="topbar-actions">
           <button v-if="callMediaMode === 'video'" class="icon-btn" type="button" title="切换摄像头" :disabled="mediaStarting" @click="switchCallCamera"><switch-camera-icon ></switch-camera-icon></button>
@@ -839,6 +849,33 @@ select::-ms-expand {
       }
     }
 
+    const USAGE_TOTAL_FIELDS = [
+      'promptTokenCount',
+      'cachedContentTokenCount',
+      'responseTokenCount',
+      'toolUsePromptTokenCount',
+      'thoughtsTokenCount',
+      'totalTokenCount',
+      'uncachedPromptTokenCount',
+    ];
+
+    const createUsageTotals = () => USAGE_TOTAL_FIELDS.reduce((totals, field) => {
+      totals[field] = 0;
+      return totals;
+    }, {});
+
+    const toTokenCount = (value) => {
+      const count = Number(value);
+      return Number.isFinite(count) && count > 0 ? count : 0;
+    };
+
+    const cloneUsageDetails = (details) => Array.isArray(details)
+      ? details.map((item) => ({
+        modality: String(item?.modality || ''),
+        tokenCount: toTokenCount(item?.tokenCount),
+      })).filter((item) => item.modality || item.tokenCount)
+      : [];
+
     const MarkdownText = {
       props: {
         text: { type: String, default: '' },
@@ -969,6 +1006,11 @@ select::-ms-expand {
           pendingAiCaption: '',
           pendingAiMessageId: '',
           messageGroups: [],
+          usageState: {
+            latest: null,
+            turns: [],
+            sessionTotal: createUsageTotals(),
+          },
           activeRenderPage: null,
           workerToolDeclarations: this.loadCachedToolDeclarations(),
           toolsLoading: false,
@@ -1094,6 +1136,14 @@ select::-ms-expand {
         },
         currentTitle() {
           return this.currentRoleName;
+        },
+        sessionUsageText() {
+          const total = this.usageState.sessionTotal;
+          if (!total.totalTokenCount) return '';
+          return `会话 ${this.formatTokenCount(total.totalTokenCount)} tokens · 输入 ${this.formatTokenCount(total.promptTokenCount)} · 输出 ${this.formatTokenCount(total.responseTokenCount)}`;
+        },
+        sessionUsageTitle() {
+          return this.usageBreakdownTitle(this.usageState.sessionTotal);
         },
         themeIcon() {
           if (this.themeMode === 'dark') return 'moon-icon';
@@ -1568,6 +1618,7 @@ select::-ms-expand {
           this.stopMic({ sendEnd: false, force: true });
           this.ws?.close(1000, 'New chat');
           this.messageGroups = [];
+          this.usageState = this.createUsageState();
           this.setSessionStatus('idle');
           this.drawerOpen = false;
         },
@@ -1845,6 +1896,103 @@ select::-ms-expand {
         setSessionStatus(next) {
           this.sessionStatus = next;
         },
+        createUsageState() {
+          return {
+            latest: null,
+            turns: [],
+            sessionTotal: createUsageTotals(),
+          };
+        },
+        normalizeUsageMetadata(usageMetadata) {
+          if (!usageMetadata || typeof usageMetadata !== 'object') return null;
+          const promptTokenCount = toTokenCount(usageMetadata.promptTokenCount);
+          const cachedContentTokenCount = toTokenCount(usageMetadata.cachedContentTokenCount);
+          const responseTokenCount = toTokenCount(usageMetadata.responseTokenCount);
+          const toolUsePromptTokenCount = toTokenCount(usageMetadata.toolUsePromptTokenCount);
+          const thoughtsTokenCount = toTokenCount(usageMetadata.thoughtsTokenCount);
+          const fallbackTotal = promptTokenCount + responseTokenCount + thoughtsTokenCount;
+          const totalTokenCount = toTokenCount(usageMetadata.totalTokenCount) || fallbackTotal;
+
+          return {
+            promptTokenCount,
+            cachedContentTokenCount,
+            responseTokenCount,
+            toolUsePromptTokenCount,
+            thoughtsTokenCount,
+            totalTokenCount,
+            uncachedPromptTokenCount: Math.max(0, promptTokenCount - cachedContentTokenCount),
+            promptTokensDetails: cloneUsageDetails(usageMetadata.promptTokensDetails),
+            cacheTokensDetails: cloneUsageDetails(usageMetadata.cacheTokensDetails),
+            responseTokensDetails: cloneUsageDetails(usageMetadata.responseTokensDetails),
+            toolUsePromptTokensDetails: cloneUsageDetails(usageMetadata.toolUsePromptTokensDetails),
+          };
+        },
+        addUsageToSessionTotal(usage, multiplier = 1) {
+          for (const field of USAGE_TOTAL_FIELDS) {
+            this.usageState.sessionTotal[field] += toTokenCount(usage?.[field]) * multiplier;
+            if (this.usageState.sessionTotal[field] < 0) this.usageState.sessionTotal[field] = 0;
+          }
+        },
+        findUsageTurnByMessageId(messageId) {
+          if (!messageId) return null;
+          for (let index = this.usageState.turns.length - 1; index >= 0; index -= 1) {
+            const usage = this.usageState.turns[index];
+            if (usage?.messageId === messageId) return usage;
+          }
+          return null;
+        },
+        attachUsageToMessage(usage) {
+          const target = this.findMessageById(usage?.messageId);
+          if (target?.role === 'ai' && target.message) target.message.usage = usage;
+        },
+        recordUsageMetadata(usageMetadata) {
+          const normalized = this.normalizeUsageMetadata(usageMetadata);
+          if (!normalized) return;
+
+          const messageId = this.pendingAiMessageId || '';
+          const existing = this.findUsageTurnByMessageId(messageId);
+          if (existing) {
+            this.addUsageToSessionTotal(existing, -1);
+            Object.assign(existing, normalized, { at: Date.now() });
+            this.addUsageToSessionTotal(existing, 1);
+            this.usageState.latest = existing;
+            this.attachUsageToMessage(existing);
+            return;
+          }
+
+          const usage = {
+            id: `usage-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            at: Date.now(),
+            messageId,
+            ...normalized,
+          };
+          this.usageState.turns.push(usage);
+          this.usageState.latest = usage;
+          this.addUsageToSessionTotal(usage, 1);
+          this.attachUsageToMessage(usage);
+        },
+        formatTokenCount(count) {
+          return new Intl.NumberFormat('zh-CN').format(Math.round(toTokenCount(count)));
+        },
+        usageBreakdownTitle(usage) {
+          if (!usage?.totalTokenCount) return '';
+          const parts = [
+            `总计 ${this.formatTokenCount(usage.totalTokenCount)} tokens`,
+            `输入 ${this.formatTokenCount(usage.promptTokenCount)}`,
+            `输出 ${this.formatTokenCount(usage.responseTokenCount)}`,
+          ];
+          if (usage.cachedContentTokenCount) parts.push(`缓存 ${this.formatTokenCount(usage.cachedContentTokenCount)}`);
+          if (usage.thoughtsTokenCount) parts.push(`思考 ${this.formatTokenCount(usage.thoughtsTokenCount)}`);
+          if (usage.toolUsePromptTokenCount) parts.push(`工具 ${this.formatTokenCount(usage.toolUsePromptTokenCount)}`);
+          return parts.join(' · ');
+        },
+        messageUsageText(message) {
+          const total = toTokenCount(message?.usage?.totalTokenCount);
+          return total ? `${this.formatTokenCount(total)} tokens` : '';
+        },
+        messageUsageTitle(message) {
+          return this.usageBreakdownTitle(message?.usage);
+        },
         isWebSocketOpen() {
           return this.ws?.readyState === WebSocket.OPEN;
         },
@@ -2093,7 +2241,8 @@ select::-ms-expand {
           }
         },
         canShowMessageToolbar(item) {
-          return ['user', 'ai'].includes(item?.role) && Boolean(this.getMessageCopyText(item?.message));
+          return ['user', 'ai'].includes(item?.role)
+            && (Boolean(this.getMessageCopyText(item?.message)) || Boolean(this.messageUsageText(item?.message)));
         },
         getMessageCopyText(message) {
           if (!message) return '';
@@ -2153,6 +2302,8 @@ select::-ms-expand {
           };
         },
         handleMessage(msg) {
+          if (msg.usageMetadata) this.recordUsageMetadata(msg.usageMetadata);
+
           if (msg.systemContent) {
             this.handleSystemContent(msg.systemContent);
             return;

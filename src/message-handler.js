@@ -182,6 +182,10 @@ export const createMessageHandler = ({ env, server, geminiSession, sendClientSta
     try {
       const functionCalls = message?.toolCall?.functionCalls;
       if (Array.isArray(functionCalls) && functionCalls.length) {
+        if (message?.usageMetadata) {
+          server.send(JSON.stringify({ usageMetadata: message.usageMetadata }));
+        }
+
         const seeyoulaterAt = functionCalls.findIndex(call => call.name === seeyouGemini.name);
         if (seeyoulaterAt !== -1 && getGeminiSession().readyState === WebSocket.OPEN) {
           getGeminiSession().send(JSON.stringify({
