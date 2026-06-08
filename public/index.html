@@ -234,7 +234,7 @@
     .render-modal-close { min-width:42px; min-height:42px; padding:0; border-radius:14px; font-size:22px; line-height:1; }
     .tool-call-card { min-width:0; width:100%; max-width:100%; display:grid; gap:10px; text-align:left; }
     .tool-call-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    .tool-call-name { font-size:13px; font-weight:800; color:var(--muted); }
+    .tool-call-name { flex:1 1 auto; min-width:0; font-size:13px; font-weight:800; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .tool-call-badge { flex:0 0 auto; min-height:24px; padding:2px 9px; border:1px solid var(--line); border-radius:999px; font-size:12px; font-weight:750; color:var(--muted); background:rgba(255,255,255,.08); display:inline-flex; align-items:center; gap:6px; }
     .tool-call-badge.running { color:var(--warn); }
     .tool-call-badge.done { color:var(--ok); }
@@ -393,12 +393,12 @@ select::-ms-expand {
                 <div class="tool-call-card">
                   <div class="tool-call-head">
                     <span class="tool-call-name">{{ toolDisplayName(item.message.name) }}</span>
+                    <span class="tool-call-time" v-if="toolElapsedText(item.message)">{{ toolElapsedText(item.message) }}</span>
                     <span class="tool-call-badge" :class="item.message.status">
                       <span v-if="item.message.status === 'running'" class="tool-call-spinner" aria-hidden="true"></span>
                       {{ toolStatusText(item.message.status) }}
                     </span>
                   </div>
-                  <span class="tool-call-time" v-if="toolElapsedText(item.message)">{{ toolElapsedText(item.message) }}</span>
                   <div v-if="item.message.prompt">
                     <p class="tool-call-prompt">{{ item.message.prompt }}</p>
                   </div>
