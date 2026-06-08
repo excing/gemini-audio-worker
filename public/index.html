@@ -164,8 +164,8 @@
     .thought-card[open] summary::before { transform:rotate(45deg); }
     .thought-text { margin:8px 0 0; padding:10px 12px; border-radius:8px; background:rgba(127,127,127,.08); white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.55; }
     .empty-state { height:100%; display:grid; place-items:center; color:var(--muted); text-align:center; } .empty-state strong { display:block; color:var(--text); font-size:20px; font-weight:600; }
-    .input-disabled .input-bar .icon-btn, .input-disabled .input-bar .message-field, .input-disabled .input-bar .hold-record, .input-disabled .topbar .topbar-actions .icon-btn { cursor:not-allowed; opacity:.45; pointer-events:none; }
-    .input-bar { min-width:0; min-height:64px; justify-content:space-between; align-items:end; padding-block:8px; overflow:hidden; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; overflow:auto; border:0; outline:none; border-radius:12px; padding:12px 14px; background:var(--hover); font-size:16px; line-height:1.5; transition:background-color .2s ease-in-out, color .2s ease-in-out, box-shadow .2s ease-in-out; }
+    .input-disabled .input-bar .icon-btn, .input-disabled .input-bar .message-field, .input-disabled .input-bar .message-expand-btn, .input-disabled .input-bar .hold-record, .input-disabled .topbar .topbar-actions .icon-btn { cursor:not-allowed; opacity:.45; pointer-events:none; }
+    .input-bar { min-width:0; min-height:64px; justify-content:space-between; align-items:end; padding-block:8px; overflow:hidden; } .message-input-wrap { position:relative; flex:1; min-width:0; min-height:48px; display:flex; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; overflow:auto; border:0; outline:none; border-radius:12px; padding:12px 14px; background:var(--hover); font-size:16px; line-height:1.5; transition:background-color .2s ease-in-out, color .2s ease-in-out, box-shadow .2s ease-in-out; } .message-input-wrap.has-expand .message-field { padding-right:52px; } .message-expand-btn { position:absolute; top:7px; right:7px; width:34px; height:34px; min-width:34px; border-radius:9999px; display:grid; place-items:center; background:rgba(127,127,127,.12); color:var(--muted); } .message-expand-btn:hover, .message-expand-btn:focus-visible { background:var(--surface); color:var(--text); box-shadow:0 0 0 1px var(--line); } .message-expand-btn svg { width:16px; height:16px; }
     .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; } .hold-record.recording { background:linear-gradient(90deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) var(--hold-progress, 0%), transparent var(--hold-progress, 0%) 100%), linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
     .call-screen { height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) auto 82px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); background:var(--surface); }
     .call-stage { position:relative; min-height:0; display:grid; place-items:center; overflow:hidden; } .wave { width:min(44vw,260px); height:120px; display:flex; align-items:center; justify-content:center; gap:8px; } .wave span { width:7px; height:calc(18px + var(--wave-level, 0) * 90px); border-radius:9999px; background:linear-gradient(180deg,#10b981,#60a5fa); opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; } .user-wave { display:inline-flex; align-items:center; justify-content:center; gap:3px; height:22px; } .user-wave span { width:3px; height:calc(4px + var(--wave-level, 0) * 18px); border-radius:9999px; background:currentColor; opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; }
@@ -176,6 +176,13 @@
     dialog { width:min(680px,calc(100% - 24px)); border:0; border-radius:16px; padding:0; color:var(--text); background:var(--glass); box-shadow:var(--shadow); backdrop-filter:blur(12px) saturate(180%); transform:scale(.95); opacity:0; transition:all .2s ease-in-out; } dialog[open] { transform:scale(1); opacity:1; } dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(6px); } :root[data-theme="dark"] dialog::backdrop { background:rgba(0,0,0,.6); }
     .modal { padding:24px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:20px; font-weight:600; } .modal-head { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:12px; } .modal-close { width:44px; height:44px; min-width:44px; border-radius:9999px; background:var(--hover); } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:12px; } label.full, .tool-picker.full { grid-column:1/-1; }
     .usage-dialog { width:min(460px,calc(100% - 24px)); } .usage-modal { gap:14px; } .usage-head-text { min-width:0; display:grid; gap:3px; } .usage-subtitle { margin:0; color:var(--muted); font-size:12px; } .usage-grid, .usage-detail-groups { display:grid; gap:2px; } .usage-row, .usage-detail-row { min-height:32px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); color:var(--muted); font-size:13px; } .usage-row strong, .usage-detail-row strong { color:var(--text); font-weight:650; font-variant-numeric:tabular-nums; } .usage-section-title { margin:4px 0 0; color:var(--text); font-size:13px; font-weight:650; } .usage-detail-group { display:grid; gap:2px; } .usage-detail-head { padding-top:6px; color:var(--muted); font-size:12px; font-weight:650; }
+    .text-editor-dialog { width:min(960px,calc(100% - 32px)); height:min(760px,calc(100dvh - 32px)); max-width:960px; max-height:760px; border-radius:18px; overflow:hidden; background:var(--surface); }
+    .text-editor-modal { height:100%; min-height:0; padding:0; display:grid; grid-template-rows:auto minmax(0,1fr); gap:0; background:var(--surface); }
+    .text-editor-head { min-height:56px; padding:8px 10px 8px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .text-editor-title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:650; }
+    .text-editor-actions { display:flex; align-items:center; gap:4px; }
+    .text-editor-field { width:100%; height:100%; min-height:0; border-radius:0; padding:18px 20px; resize:none; overflow:auto; background:var(--surface); color:var(--text); font-size:16px; line-height:1.55; }
+    .text-editor-field:focus { box-shadow:inset 0 0 0 1px transparent; }
     input, textarea, select { width:100%; min-height:44px; border:0; border-radius:8px; padding:0 12px; outline:none; background:var(--hover); font-size:16px; line-height:1.5; } textarea { min-height:120px; padding:12px; resize:vertical; } .modal-actions { justify-content:flex-end; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; } .tool-chip, .tool-actions button { min-height:34px; border-radius:9999px; padding:0 12px; background:var(--hover); } .tool-chip.active { background:var(--text); color:var(--bg); } .tool-chip.blocked { opacity:.48; } .warning { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--bad); color:#fff; } .secondary-btn { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--hover); }
     .danger-note { margin:0; padding:12px; border-radius:12px; background:rgba(239,68,68,.12); color:var(--bad); font-weight:600; }
     .system-dialog { width:min(680px,calc(100% - 24px)); height:min(840px,calc(100dvh - 12px)); border-radius:28px; }
@@ -311,7 +318,7 @@
     [data-sonner-toaster] [data-sonner-toast] [data-close-button] { left:auto !important; right:0 !important; transform:translate(40%, -40%); width: 28px; height: 28px; }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } }
     @media (max-width:960px) { .app-shell { grid-template-columns:minmax(0,1fr); } .sidebar { position:fixed; width:280px; transform:translateX(-105%); } .drawer-open .sidebar { transform:translateX(0); } .app-shell.sidebar-collapsed { grid-template-columns:minmax(0,1fr); } .app-shell.sidebar-collapsed .sidebar { width:280px; padding:16px; } .drawer-scrim { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.28); } }
-    @media (max-width:700px) { .main { grid-template-rows:56px auto minmax(0,1fr) auto; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .system-dialog { width:min(680px,calc(100% - 24px)); max-width:calc(100% - 24px); height:calc(100dvh - 24px); max-height:calc(100dvh - 24px); border-radius:16px; } .system-modal { min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); } .system-sidebar { padding:10px 12px 12px; border-right:0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr auto; grid-template-areas:"title close" "nav nav"; gap:8px; overflow:hidden; } .system-sidebar .system-close { grid-area:close; width:48px; height:48px; min-width:48px; background:transparent; } .system-mobile-title { grid-area:title; display:block; margin:0; align-self:center; font-size:20px; font-weight:650; } .system-nav { grid-area:nav; display:flex; gap:8px; overflow-x:auto; padding:0; } .system-nav-item { flex:0 0 auto; min-height:56px; padding:0 16px; font-size:16px; } .system-nav-item svg { width:22px; height:22px; } .system-main { min-height:0; padding:20px 24px; gap:18px; overflow:auto; overscroll-behavior:contain; } .system-page-head { display:none; } .settings-section-title, .mcp-section-title strong { font-size:16px; } .setting-row-title strong { font-size:14px; } .setting-row { min-height:92px; align-items:center; gap:14px; } .system-select { min-width:132px; } .mcp-section-head { min-height:60px; align-items:flex-start; } .mcp-server-form { grid-template-columns:1fr; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
+    @media (max-width:700px) { .main { grid-template-rows:56px auto minmax(0,1fr) auto; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .message-expand-btn { width:36px; height:36px; min-width:36px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .text-editor-dialog { width:100%; max-width:100%; height:100dvh; max-height:100dvh; border-radius:0; } .text-editor-head { min-height:56px; padding:6px 8px 6px 16px; } .text-editor-field { padding:16px; } .system-dialog { width:min(680px,calc(100% - 24px)); max-width:calc(100% - 24px); height:calc(100dvh - 24px); max-height:calc(100dvh - 24px); border-radius:16px; } .system-modal { min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); } .system-sidebar { padding:10px 12px 12px; border-right:0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr auto; grid-template-areas:"title close" "nav nav"; gap:8px; overflow:hidden; } .system-sidebar .system-close { grid-area:close; width:48px; height:48px; min-width:48px; background:transparent; } .system-mobile-title { grid-area:title; display:block; margin:0; align-self:center; font-size:20px; font-weight:650; } .system-nav { grid-area:nav; display:flex; gap:8px; overflow-x:auto; padding:0; } .system-nav-item { flex:0 0 auto; min-height:56px; padding:0 16px; font-size:16px; } .system-nav-item svg { width:22px; height:22px; } .system-main { min-height:0; padding:20px 24px; gap:18px; overflow:auto; overscroll-behavior:contain; } .system-page-head { display:none; } .settings-section-title, .mcp-section-title strong { font-size:16px; } .setting-row-title strong { font-size:14px; } .setting-row { min-height:92px; align-items:center; gap:14px; } .system-select { min-width:132px; } .mcp-section-head { min-height:60px; align-items:flex-start; } .mcp-server-form { grid-template-columns:1fr; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
   </style>
   <style>
     select {
@@ -508,7 +515,10 @@ select::-ms-expand {
           <input ref="photoInputEl" class="photo-input" type="file" accept="image/*" @change="handlePhotoSelected" />
           <button class="icon-btn" type="button" title="选择照片" :disabled="isConnecting" @click="openPhotoPicker"><camera-icon ></camera-icon></button>
           <hold-record v-if="inputMode === 'voice'" v-model="holdActive" :mic-status="micStatus" :before-start="prepareHoldRecord" @release="handleHoldRelease"></hold-record>
-          <textarea v-else class="message-field" :style="{ height: textStyleHeight }" v-model="text" rows="1" autocomplete="off" :placeholder="isConnecting ? '正在连接…' : '输入消息...'" :disabled="isConnecting" @input="resizeTextInput" @keydown="handleTextKeydown"></textarea>
+          <div v-else class="message-input-wrap" :class="{ 'has-expand': showTextFullscreenButton }">
+            <textarea ref="textInputEl" class="message-field" :style="{ height: textStyleHeight }" v-model="text" rows="1" autocomplete="off" :placeholder="isConnecting ? '正在连接…' : '输入消息...'" :disabled="isConnecting" @input="resizeTextInput" @keydown="handleTextKeydown"></textarea>
+            <button v-if="showTextFullscreenButton" class="message-expand-btn" type="button" title="全屏编辑" :disabled="isConnecting" @click="openTextFullscreen"><maximize-2-icon ></maximize-2-icon></button>
+          </div>
           <button class="icon-btn" v-if="text.trim()" type="submit" :disabled="isConnecting" title="发送"><send-icon ></send-icon></button>
           <button class="icon-btn" v-else-if="inputMode === 'voice'" type="button" title="文本输入" @click="toggleInputMode"><keyboard-icon ></keyboard-icon></button>
           <button class="icon-btn" v-else type="button" title="语音输入" @click="toggleInputMode"><mic-icon ></mic-icon></button>
@@ -573,6 +583,19 @@ select::-ms-expand {
         <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon ></phone-off-icon></span></button>
       </footer>
     </div>
+
+    <dialog class="text-editor-dialog" ref="textEditorDialog" @click="closeTextFullscreenOnBackdrop" @close="handleTextFullscreenClosed">
+      <div class="modal text-editor-modal">
+        <header class="text-editor-head">
+          <span class="text-editor-title">消息</span>
+          <div class="text-editor-actions">
+            <button class="icon-btn" type="button" title="发送" :disabled="isConnecting || !text.trim()" @click="sendText"><send-icon ></send-icon></button>
+            <button class="icon-btn" type="button" title="收起编辑器" @click="closeTextFullscreen"><minimize-2-icon ></minimize-2-icon></button>
+          </div>
+        </header>
+        <textarea ref="textEditorInputEl" class="text-editor-field" v-model="text" autocomplete="off" :placeholder="isConnecting ? '正在连接…' : '输入消息...'" :disabled="isConnecting" @keydown="handleTextKeydown"></textarea>
+      </div>
+    </dialog>
 
     <dialog class="usage-dialog" ref="usageDialog" @click="closeUsageDetailsOnBackdrop" @close="activeUsageDetails = null">
       <div class="modal usage-modal" v-if="activeUsageDetails">
@@ -826,7 +849,7 @@ select::-ms-expand {
     import { musicPlayerStore, loadPlaylist as loadMusicPlaylist, MusicPlayer } from "./music-player.js";
     import { GitHubService } from "./github-service.js";
     import {
-      AudioLines, Camera, Captions, CaptionsOff, Check, ChevronDown, ChevronUp, Copy, Github, Keyboard, LogIn, LogOut, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, Music, PanelLeftClose, Pause, Phone, PhoneOff, Play, Plus, Repeat, RotateCcw, ScreenShare, ScreenShareOff, Send, Settings, Settings2, SkipBack, SkipForward, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
+      AudioLines, Camera, Captions, CaptionsOff, Check, ChevronDown, ChevronUp, Copy, Github, Keyboard, LogIn, LogOut, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Minimize2, Monitor, Moon, Music, PanelLeftClose, Pause, Phone, PhoneOff, Play, Plus, Repeat, RotateCcw, ScreenShare, ScreenShareOff, Send, Settings, Settings2, SkipBack, SkipForward, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
@@ -1046,6 +1069,7 @@ select::-ms-expand {
           voiceEnabled: JSON.parse(localStorage.getItem('geminiVoiceEnabled') || 'false'),
           text: '',
           textStyleHeight: '48px',
+          textInputLineCount: 1,
           pendingClientPayloads: [],
           pendingAiCaption: '',
           pendingAiMessageId: '',
@@ -1136,7 +1160,9 @@ select::-ms-expand {
         this.refreshMcpRegistry();
         this.handleOauthMessage = this.handleOauthMessage.bind(this);
         window.addEventListener('message', this.handleOauthMessage);
+        window.addEventListener('resize', this.handleTextInputResize);
         this.refreshStoredGithubInstallations();
+        this.syncTextInputHeight();
       },
       beforeUnmount() {
         this.stopToolTimeTicker();
@@ -1145,6 +1171,7 @@ select::-ms-expand {
         this.mediaService?.destroy();
         this.githubService?.destroy();
         window.removeEventListener('message', this.handleOauthMessage);
+        window.removeEventListener('resize', this.handleTextInputResize);
       },
       watch: {
         themeMode() {
@@ -1152,6 +1179,9 @@ select::-ms-expand {
         },
         captionsVisible() {
           this.scrollCallCaptions();
+        },
+        text() {
+          this.syncTextInputHeight();
         },
         uiMode(value) {
           if (value === 'call') {
@@ -1262,6 +1292,9 @@ select::-ms-expand {
           return this.messageGroups
             .filter((item) => item.message?.type === 'text' && item.message.text)
             .slice(-4);
+        },
+        showTextFullscreenButton() {
+          return this.inputMode === 'text' && this.textInputLineCount > 3;
         },
       },
       methods: {
@@ -1712,16 +1745,69 @@ select::-ms-expand {
           this.stopMic({ sendEnd: false, force: true });
         },
         resizeTextInput(event) {
-          const el = event.target;
+          this.syncTextInputHeight(event?.target);
+        },
+        handleTextInputResize() {
+          this.syncTextInputHeight();
+        },
+        syncTextInputHeight(sourceEl = null) {
+          const explicitLineCount = Math.max(1, String(this.text || '').split('\n').length);
+          const el = sourceEl?.scrollHeight ? sourceEl : this.$refs.textInputEl;
+          if (!el) {
+            this.textInputLineCount = explicitLineCount;
+            this.textStyleHeight = '48px';
+            return;
+          }
+
           this.textStyleHeight = 'auto';
           nextTick(() => {
-            this.textStyleHeight = `${Math.min(el.scrollHeight, 120)}px`;
+            const target = sourceEl?.scrollHeight ? sourceEl : this.$refs.textInputEl;
+            if (!target) {
+              this.textInputLineCount = explicitLineCount;
+              return;
+            }
+
+            this.textStyleHeight = `${Math.min(target.scrollHeight, 120)}px`;
+            const style = getComputedStyle(target);
+            const lineHeight = Number.parseFloat(style.lineHeight) || 24;
+            const paddingTop = Number.parseFloat(style.paddingTop) || 0;
+            const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+            const contentHeight = Math.max(0, target.scrollHeight - paddingTop - paddingBottom);
+            const visualLineCount = Math.max(1, Math.ceil(contentHeight / lineHeight));
+            this.textInputLineCount = Math.max(explicitLineCount, visualLineCount);
           });
         },
         handleTextKeydown(event) {
           if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) return;
           event.preventDefault();
           this.sendText();
+        },
+        openTextFullscreen() {
+          if (this.isConnecting || !this.showTextFullscreenButton) return;
+          const dialog = this.$refs.textEditorDialog;
+          if (!dialog) return;
+          if (!dialog.open) dialog.showModal();
+          nextTick(() => {
+            const el = this.$refs.textEditorInputEl;
+            if (!el) return;
+            el.focus();
+            const cursor = el.value.length;
+            el.setSelectionRange(cursor, cursor);
+          });
+        },
+        closeTextFullscreen() {
+          const dialog = this.$refs.textEditorDialog;
+          if (dialog?.open) dialog.close();
+        },
+        handleTextFullscreenClosed() {
+          this.syncTextInputHeight();
+          nextTick(() => {
+            const el = this.$refs.textInputEl;
+            if (el && this.inputMode === 'text') el.focus();
+          });
+        },
+        closeTextFullscreenOnBackdrop(event) {
+          if (event.target === this.$refs.textEditorDialog) this.closeTextFullscreen();
         },
         openPhotoPicker() {
           if (this.isConnecting) return;
@@ -2731,6 +2817,8 @@ select::-ms-expand {
           this.addMessage('user', value);
           this.text = '';
           this.textStyleHeight = '48px';
+          this.textInputLineCount = 1;
+          this.closeTextFullscreen();
         },
         sendRecord() {
           const hasAudioMessage = this.pendingClientPayloads?.some(item => item.realtimeInput && item.realtimeInput.audio);
@@ -2774,6 +2862,7 @@ select::-ms-expand {
       'message-circle-plus-icon': MessageCirclePlus,
       'mic-icon': Mic,
       'mic-off-icon': MicOff,
+      'minimize-2-icon': Minimize2,
       'monitor-icon': Monitor,
       'moon-icon': Moon,
       'music-icon': Music,
