@@ -1058,6 +1058,7 @@ select::-ms-expand {
           selectedRoleId: '',
           roleDraft: { ...defaultConfig },
           ws: null,
+          wsGeneration: 0,
           audioService: null,
           mediaService: null,
           aiAudioScheduledThisTurn: false,
@@ -1692,12 +1693,14 @@ select::-ms-expand {
           this.$refs.roleDialog.showModal();
         },
         newChat() {
+          this.wsGeneration += 1;
           this.interruptAiPlayback();
           this.holdActive = false;
           this.stopMic({ sendEnd: false, force: true });
           this.ws?.close(1000, 'New chat');
+          this.ws = null;
           this.messageGroups = [];
-          this.usageState = this.createUsageState();
+          this.resetSessionUsage();
           this.setSessionStatus('idle');
           this.drawerOpen = false;
         },
@@ -2036,6 +2039,10 @@ select::-ms-expand {
             sessionDetails: createUsageDetails(),
           };
         },
+        resetSessionUsage() {
+          this.usageState = this.createUsageState();
+          if (this.activeUsageDetails?.scope === 'session') this.closeUsageDetails();
+        },
         normalizeUsageMetadata(usageMetadata) {
           if (!usageMetadata || typeof usageMetadata !== 'object') return null;
           const promptTokenCount = toTokenCount(usageMetadata.promptTokenCount);
@@ -2176,6 +2183,7 @@ select::-ms-expand {
             : [turnIndex >= 0 ? `第 ${turnIndex + 1} 轮` : '', this.formatUsageTime(detailUsage.at)].filter(Boolean).join(' · ');
 
           this.activeUsageDetails = {
+            scope,
             title: scope === 'session' ? '会话 token 用量' : '本轮 token 用量',
             subtitle,
             usage: detailUsage,
@@ -2387,6 +2395,32 @@ select::-ms-expand {
         syncToolMessage(payload) {
           upsertToolMessage(this.messageGroups, payload);
           if (payload?.status === 'running' || this.hasRunningToolCalls()) this.startToolTimeTicker();
+          else this.stopToolTimeTicker();
+        },
+        failRunningToolCalls(error = 'WebSocket 已断开，工具调用未完成') {
+          const endedAt = Date.now();
+          let changed = false;
+          for (let index = 0; index < this.messageGroups.length; index += 1) {
+            const item = this.messageGroups[index];
+            const message = item?.message;
+            if (
+              item?.role !== 'system'
+              || message?.type !== 'toolCall'
+              || message.status !== 'running'
+            ) continue;
+
+            this.messageGroups.splice(index, 1, {
+              ...item,
+              message: {
+                ...message,
+                status: 'error',
+                error: message.error || error,
+                endedAt,
+              },
+            });
+            changed = true;
+          }
+          if (changed) this.stopToolTimeTicker();
         },
         hasRunningToolCalls() {
           return this.messageGroups.some((item) => (
@@ -2425,12 +2459,19 @@ select::-ms-expand {
           const elapsedMs = this.toolElapsedMs(message);
           return elapsedMs == null ? '' : this.formatToolDuration(elapsedMs);
         },
-        async handleBrowserToolCalls(functionCalls) {
+        async handleBrowserToolCalls(functionCalls, wsGeneration = this.wsGeneration) {
           const functionResponses = [];
+          const isCurrentSocketOpen = () => wsGeneration === this.wsGeneration && this.ws?.readyState === WebSocket.OPEN;
+          const stopIfSocketClosed = () => {
+            if (isCurrentSocketOpen()) return false;
+            if (wsGeneration === this.wsGeneration) this.failRunningToolCalls();
+            return true;
+          };
           for (const call of functionCalls) {
             const { id, name, args } = call;
             const startedAt = Date.now();
             this.syncToolMessage({ id, name, kind: 'browser', status: 'running', args: args ?? null, startedAt });
+            if (stopIfSocketClosed()) return;
             const isLocalBrowserTool = Boolean(this.browserTools.handlers?.[name]);
             const handler = this.browserTools.handlers?.[name] ?? this.mcpRegistry.handlers?.[name];
             let response;
@@ -2442,15 +2483,17 @@ select::-ms-expand {
                 response = isLocalBrowserTool
                   ? await handler(args || {}, this.browserToolConfigs?.[name] || {})
                   : await handler(args || {});
+                if (stopIfSocketClosed()) return;
                 this.syncToolMessage({ id, name, kind: 'browser', status: 'done', args: args ?? null, response, startedAt, endedAt: Date.now() });
               } catch (error) {
+                if (stopIfSocketClosed()) return;
                 response = { error: error.message || String(error) };
                 this.syncToolMessage({ id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
               }
             }
             functionResponses.push({ id, name, response });
           }
-          if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ toolResponse: { functionResponses } }));
+          if (isCurrentSocketOpen()) this.ws.send(JSON.stringify({ toolResponse: { functionResponses } }));
         },
         openRenderedPage(message) {
           this.activeRenderPage = message;
@@ -2514,11 +2557,21 @@ select::-ms-expand {
         },
         async connect() {
           if (this.isSessionActive) return;
-          this.ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+          const wsGeneration = this.wsGeneration + 1;
+          this.wsGeneration = wsGeneration;
+          this.resetSessionUsage();
+          const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+          this.ws = ws;
           this.interruptAiPlayback();
           this.setSessionStatus('connecting');
-          this.ws.onopen = async () => { await this.ensureAudio(); this.setSessionStatus('socket_open'); };
-          this.ws.onmessage = (event) => {
+          ws.onopen = async () => {
+            if (wsGeneration !== this.wsGeneration) return;
+            await this.ensureAudio();
+            if (wsGeneration !== this.wsGeneration) return;
+            this.setSessionStatus('socket_open');
+          };
+          ws.onmessage = (event) => {
+            if (wsGeneration !== this.wsGeneration) return;
             let payload;
             try {
               payload = JSON.parse(event.data);
@@ -2528,11 +2581,16 @@ select::-ms-expand {
             }
             this.handleMessage(payload);
           };
-          this.ws.onerror = () => this.setSessionStatus('error');
-          this.ws.onclose = (event) => {
+          ws.onerror = () => {
+            if (wsGeneration === this.wsGeneration) this.setSessionStatus('error');
+          };
+          ws.onclose = (event) => {
+            if (wsGeneration !== this.wsGeneration) return;
             this.interruptAiPlayback();
             this.holdActive = false;
             this.stopMic({ sendEnd: false, force: true });
+            this.failRunningToolCalls(event.code == 1000 ? 'WebSocket 已关闭，工具调用未完成' : 'WebSocket 已断开，工具调用未完成');
+            if (this.ws === ws) this.ws = null;
             this.setSessionStatus(event.code == 1000 ? 'session_closed' : 'socket_closed');
             if (this.uiMode === 'call') this.uiMode = 'chat';
           };
@@ -2570,7 +2628,7 @@ select::-ms-expand {
           const browserFunctionCalls = (msg.toolCall?.functionCalls || []).filter((call) => this.browserTools.handlers?.[call.name] || this.mcpRegistry.handlers?.[call.name]);
           if (browserFunctionCalls.length) {
             this.closeAiTextSegment();
-            this.handleBrowserToolCalls(browserFunctionCalls);
+            this.handleBrowserToolCalls(browserFunctionCalls, this.wsGeneration);
             return;
           }
           const content = msg.serverContent;
