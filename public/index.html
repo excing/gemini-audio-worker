@@ -239,6 +239,7 @@
     .tool-call-badge.running { color:var(--warn); }
     .tool-call-badge.done { color:var(--ok); }
     .tool-call-badge.error { color:var(--bad); }
+    .tool-call-time { flex:0 0 auto; color:var(--muted); font-size:12px; font-weight:750; font-variant-numeric:tabular-nums; }
     .tool-call-prompt, .tool-call-text, .tool-call-error { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
     .tool-call-prompt { color:var(--text); }
     .tool-call-text { color:var(--muted); }
@@ -397,6 +398,7 @@ select::-ms-expand {
                       {{ toolStatusText(item.message.status) }}
                     </span>
                   </div>
+                  <span class="tool-call-time" v-if="toolElapsedText(item.message)">{{ toolElapsedText(item.message) }}</span>
                   <div v-if="item.message.prompt">
                     <p class="tool-call-prompt">{{ item.message.prompt }}</p>
                   </div>
@@ -972,6 +974,8 @@ select::-ms-expand {
           toolsLoading: false,
           browserTools: BROWSER_TOOLS,
           browserToolConfigs: this.loadBrowserToolConfigs(),
+          toolTimeNow: Date.now(),
+          toolTimeTimer: null,
           toolConfigForm: { name: '', apiKey: '', headers: '' },
           openToolConfigName: '',
           mcpServers: this.loadMcpServers(),
@@ -1047,6 +1051,7 @@ select::-ms-expand {
         this.refreshStoredGithubInstallations();
       },
       beforeUnmount() {
+        this.stopToolTimeTicker();
         this.stopWaveLoop();
         this.audioService?.destroy();
         this.mediaService?.destroy();
@@ -1995,27 +2000,68 @@ select::-ms-expand {
           });
           return candidateNames.filter((name) => expanded.includes(name));
         },
+        syncToolMessage(payload) {
+          upsertToolMessage(this.messageGroups, payload);
+          if (payload?.status === 'running' || this.hasRunningToolCalls()) this.startToolTimeTicker();
+        },
+        hasRunningToolCalls() {
+          return this.messageGroups.some((item) => (
+            item.role === 'system'
+            && item.message?.type === 'toolCall'
+            && item.message.status === 'running'
+          ));
+        },
+        startToolTimeTicker() {
+          if (this.toolTimeTimer) return;
+          this.toolTimeNow = Date.now();
+          this.toolTimeTimer = window.setInterval(() => {
+            this.toolTimeNow = Date.now();
+            if (!this.hasRunningToolCalls()) this.stopToolTimeTicker();
+          }, 250);
+        },
+        stopToolTimeTicker() {
+          if (!this.toolTimeTimer) return;
+          window.clearInterval(this.toolTimeTimer);
+          this.toolTimeTimer = null;
+        },
+        toolElapsedMs(message) {
+          const startedAt = Number(message?.startedAt);
+          if (!Number.isFinite(startedAt) || startedAt <= 0) return null;
+          const endedAt = Number(message?.endedAt);
+          const endAt = Number.isFinite(endedAt) && endedAt >= startedAt
+            ? endedAt
+            : (message?.status === 'running' ? this.toolTimeNow : null);
+          if (!endAt) return null;
+          return Math.max(0, endAt - startedAt);
+        },
+        formatToolDuration(ms) {
+          return Number.isFinite(ms) ? `${(ms / 1000).toFixed(1)}s` : '';
+        },
+        toolElapsedText(message) {
+          const elapsedMs = this.toolElapsedMs(message);
+          return elapsedMs == null ? '' : this.formatToolDuration(elapsedMs);
+        },
         async handleBrowserToolCalls(functionCalls) {
           const functionResponses = [];
           for (const call of functionCalls) {
             const { id, name, args } = call;
             const startedAt = Date.now();
-            upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'running', args: args ?? null, startedAt });
+            this.syncToolMessage({ id, name, kind: 'browser', status: 'running', args: args ?? null, startedAt });
             const isLocalBrowserTool = Boolean(this.browserTools.handlers?.[name]);
             const handler = this.browserTools.handlers?.[name] ?? this.mcpRegistry.handlers?.[name];
             let response;
             if (!handler) {
               response = { error: `Unknown browser tool: ${name}` };
-              upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
+              this.syncToolMessage({ id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
             } else {
               try {
                 response = isLocalBrowserTool
                   ? await handler(args || {}, this.browserToolConfigs?.[name] || {})
                   : await handler(args || {});
-                upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'done', args: args ?? null, response, startedAt, endedAt: Date.now() });
+                this.syncToolMessage({ id, name, kind: 'browser', status: 'done', args: args ?? null, response, startedAt, endedAt: Date.now() });
               } catch (error) {
                 response = { error: error.message || String(error) };
-                upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
+                this.syncToolMessage({ id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
               }
             }
             functionResponses.push({ id, name, response });
@@ -2188,7 +2234,7 @@ select::-ms-expand {
           const toolCall = systemContent?.toolCall;
           if (!toolCall) return;
           this.closeAiTextSegment();
-          upsertToolMessage(this.messageGroups, toolCall);
+          this.syncToolMessage(toolCall);
           this.scrollChatToBottom();
         },
         toolDisplayName(name) { return toolEventDisplayName(name); },
