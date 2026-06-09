@@ -148,7 +148,7 @@ export const DEFAULT_ROLES = [
     id: "role-gemili-audio-chat",
     name: "BingwuAI 语音对话",
     voiceName: "Kore",
-    autoLoadTools: 'get_weather,renderPage,urlContext,imageGeneration,imageEditing,fetch,codeExecution,web_search,checkDomainAvailability,musicPlaylist,github__get_me,github__search_repositories,github__get_file_contents,github__search_code,github__search_issues,github__issue_read',
+    autoLoadTools: 'get_weather,renderPage,jinaReader,urlContext,imageGeneration,imageEditing,fetch,codeExecution,web_search,checkDomainAvailability,musicPlaylist,github__get_me,github__search_repositories,github__get_file_contents,github__search_code,github__search_issues,github__issue_read',
     systemInstruction: "You are a concise, friendly Chinese voice assistant."
   },
   {
