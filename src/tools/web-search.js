@@ -1,3 +1,5 @@
+import { withBrowserUserAgent } from '../tool-utils.js';
+
 const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
 const OPENAI_DEFAULT_BASE_URL = 'https://api.openai.com/v1';
 const SEARCH_EFFORT_VALUES = new Set(['low', 'medium', 'high']);
@@ -95,10 +97,10 @@ const handler = async (id, name, { query = '', platform = '', effort = 'medium' 
   const baseUrl = trimTrailingSlash(env.OPENAI_BASE_URL || OPENAI_DEFAULT_BASE_URL);
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: {
+    headers: withBrowserUserAgent({
       Authorization: `Bearer ${env.OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
-    },
+    }),
     body: JSON.stringify({
       model: `${model}-${searchEffort}`,
       messages: [
@@ -147,9 +149,9 @@ export default {
       },
       effort: {
         type: 'string',
-        enum: ['low', 'medium', 'high'],
+        enum: ['low', 'medium', 'high', 'xhigh'],
         default: 'medium',
-        description: '可选，控制搜索模型的思考程度。可选值：low、medium、high；默认 medium。',
+        description: '可选，控制搜索模型的思考程度。当用户要求简单搜索时，使用 low，用户要求深度搜索时使用 high 或 xhigh。默认 medium。',
       },
     },
     required: ['query'],

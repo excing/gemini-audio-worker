@@ -128,7 +128,8 @@
     .main > .music-player-banner { grid-row:2; }
     .main > .chat-plane { grid-row:3; }
     .main > .input-bar { grid-row:4; }
-    .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items: center; justify-items:center; line-height:1.2; } .chat-title { max-width:min(39vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; background:transparent; } .chat-title:hover { background:var(--hover); }
+    .topbar { height:60px; justify-content:space-between; } .topbar-center { min-width:0; display:flex; align-items:center; gap:8px; line-height:1.2; } .title-stack { min-width:0; display:grid; justify-items:center; gap:1px; } .chat-title { max-width:min(39vw,520px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:8px; padding:2px 8px; font-size:16px; font-weight:600; line-height:1.2; background:transparent; } .chat-title:hover { background:var(--hover); } .session-usage { max-width:min(44vw,540px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:9999px; padding:1px 6px; color:var(--muted); background:transparent; font-size:11px; line-height:1.15; font-variant-numeric:tabular-nums; }
+    .session-usage:hover, .message-usage:hover { background:var(--hover); color:var(--text); }
     .dot { width:8px; height:8px; border-radius:9999px; background:transparent; } .dot.ok { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.bad { background:var(--bad); }
     .chat-plane { min-height:0; overflow:hidden; position:relative; } #chat { height:100%; overflow:auto; overflow-x:hidden; padding:18px clamp(0px,5vw,96px); display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
     .group { min-width:0; max-width:min(76%,760px); display:grid; gap:4px; animation:pop .2s ease-in-out; } .group.user { align-self:flex-end; justify-items:end; } .group.ai,.group.system { align-self:flex-start; justify-items:start; } .role { padding:0 4px; color:var(--muted); font-size:12px; }
@@ -149,10 +150,13 @@
     .markdown-body img { max-width:100%; height:auto; border-radius:8px; }
     .message-toolbar { min-height:30px; display:flex; align-items:center; gap:4px; opacity:.72; transition:opacity .16s ease-in-out; }
     .group:hover .message-toolbar, .message-toolbar:focus-within { opacity:1; }
+    .message-usage { min-height:30px; padding:0 8px; border-radius:9999px; display:inline-flex; align-items:center; color:var(--muted); background:transparent; font-size:12px; font-variant-numeric:tabular-nums; }
     .message-action { width:30px; height:30px; min-width:30px; border-radius:9999px; display:inline-grid; place-items:center; background:transparent; color:var(--muted); }
     .message-action:hover { background:var(--hover); color:var(--text); }
     .message-action svg { width:15px; height:15px; }
     .user .message-toolbar { justify-content:flex-end; }
+    .chat-photo { display:block; max-width:min(100%,360px); max-height:360px; object-fit:contain; border-radius:12px; background:rgba(127,127,127,.14); }
+    .photo-input { position:fixed; width:1px; height:1px; opacity:0; pointer-events:none; }
     .caption-line { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; align-items:start; padding:4px 0; } .caption-text { min-width:0; color:inherit; font-size:15px; line-height:1.5; } .caption-line.user .caption-text { color:var(--muted); opacity:.72; } .caption-line.ai .caption-text { color:var(--text); }
     .thought-card summary { min-height:28px; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:13px; font-weight:700; list-style:none; }
     .thought-card summary::-webkit-details-marker { display:none; }
@@ -160,8 +164,8 @@
     .thought-card[open] summary::before { transform:rotate(45deg); }
     .thought-text { margin:8px 0 0; padding:10px 12px; border-radius:8px; background:rgba(127,127,127,.08); white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.55; }
     .empty-state { height:100%; display:grid; place-items:center; color:var(--muted); text-align:center; } .empty-state strong { display:block; color:var(--text); font-size:20px; font-weight:600; }
-    .input-disabled .input-bar .icon-btn, .input-disabled .input-bar .message-field, .input-disabled .input-bar .hold-record, .input-disabled .topbar .topbar-actions .icon-btn { cursor:not-allowed; opacity:.45; pointer-events:none; }
-    .input-bar { min-width:0; min-height:64px; justify-content:space-between; align-items:end; padding-block:8px; overflow:hidden; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; font-size:16px; line-height:1.5; overflow:auto; border:0; outline:none; border-radius:12px; padding:13px 14px; background:var(--hover); transition:background-color .2s ease-in-out, color .2s ease-in-out, box-shadow .2s ease-in-out; }
+    .input-disabled .input-bar .icon-btn, .input-disabled .input-bar .message-field, .input-disabled .input-bar .message-expand-btn, .input-disabled .input-bar .hold-record, .input-disabled .topbar .topbar-actions .icon-btn { cursor:not-allowed; opacity:.45; pointer-events:none; }
+    .input-bar { min-width:0; min-height:64px; justify-content:space-between; align-items:end; padding-block:8px; overflow:hidden; } .message-input-wrap { position:relative; flex:1; min-width:0; min-height:48px; display:flex; } .message-field { flex:1; min-width:0; min-height:48px; max-height:120px; resize:none; overflow:auto; border:0; outline:none; border-radius:12px; padding:12px 14px; background:var(--hover); font-size:16px; line-height:1.5; transition:background-color .2s ease-in-out, color .2s ease-in-out, box-shadow .2s ease-in-out; } .message-input-wrap.has-expand .message-field { padding-right:52px; } .message-expand-btn { position:absolute; top:7px; right:7px; width:34px; height:34px; min-width:34px; border-radius:9999px; display:grid; place-items:center; background:rgba(127,127,127,.12); color:var(--muted); } .message-expand-btn:hover, .message-expand-btn:focus-visible { background:var(--surface); color:var(--text); box-shadow:0 0 0 1px var(--line); } .message-expand-btn svg { width:16px; height:16px; }
     .hold-record { flex:1; min-height:48px; border-radius:12px; background:var(--hover); color:var(--text); font-weight:600; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; } .hold-record.recording { background:linear-gradient(90deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) var(--hold-progress, 0%), transparent var(--hold-progress, 0%) 100%), linear-gradient(135deg,rgba(239,68,68,.9),rgba(245,158,11,.85)); color:#fff; }
     .call-screen { height:100dvh; display:grid; grid-template-rows:60px minmax(0,1fr) auto 82px; padding:0 max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); background:var(--surface); }
     .call-stage { position:relative; min-height:0; display:grid; place-items:center; overflow:hidden; } .wave { width:min(44vw,260px); height:120px; display:flex; align-items:center; justify-content:center; gap:8px; } .wave span { width:7px; height:calc(18px + var(--wave-level, 0) * 90px); border-radius:9999px; background:linear-gradient(180deg,#10b981,#60a5fa); opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; } .user-wave { display:inline-flex; align-items:center; justify-content:center; gap:3px; height:22px; } .user-wave span { width:3px; height:calc(4px + var(--wave-level, 0) * 18px); border-radius:9999px; background:currentColor; opacity:calc(.55 + var(--wave-level, 0) * .45); transition:height .07s ease-out, opacity .07s ease-out; }
@@ -171,6 +175,14 @@
     .call-status { display:grid; justify-items:center; gap:8px; padding:8px 0 14px; color:var(--muted); } .call-status .icon-btn { background:var(--hover); } .call-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:0; min-height:72px; align-items:center; } .call-action { width:100%; min-width:0; min-height:72px; padding:4px 0; border-radius:12px; display:grid; justify-items:center; align-content:center; gap:4px; background:transparent; color:var(--muted); font-size:12px; } .call-action:hover { background:var(--hover); } .call-action .icon-btn { pointer-events:none; background:transparent; }
     dialog { width:min(680px,calc(100% - 24px)); border:0; border-radius:16px; padding:0; color:var(--text); background:var(--glass); box-shadow:var(--shadow); backdrop-filter:blur(12px) saturate(180%); transform:scale(.95); opacity:0; transition:all .2s ease-in-out; } dialog[open] { transform:scale(1); opacity:1; } dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(6px); } :root[data-theme="dark"] dialog::backdrop { background:rgba(0,0,0,.6); }
     .modal { padding:24px; display:grid; gap:16px; } .modal h2 { margin:0; font-size:20px; font-weight:600; } .modal-head { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:12px; } .modal-close { width:44px; height:44px; min-width:44px; border-radius:9999px; background:var(--hover); } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } label { display:grid; gap:7px; color:var(--muted); font-size:12px; } label.full, .tool-picker.full { grid-column:1/-1; }
+    .usage-dialog { width:min(460px,calc(100% - 24px)); } .usage-modal { gap:14px; } .usage-head-text { min-width:0; display:grid; gap:3px; } .usage-subtitle { margin:0; color:var(--muted); font-size:12px; } .usage-grid, .usage-detail-groups { display:grid; gap:2px; } .usage-row, .usage-detail-row { min-height:32px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); color:var(--muted); font-size:13px; } .usage-row strong, .usage-detail-row strong { color:var(--text); font-weight:650; font-variant-numeric:tabular-nums; } .usage-section-title { margin:4px 0 0; color:var(--text); font-size:13px; font-weight:650; } .usage-detail-group { display:grid; gap:2px; } .usage-detail-head { padding-top:6px; color:var(--muted); font-size:12px; font-weight:650; }
+    .text-editor-dialog { width:min(960px,calc(100% - 32px)); height:min(760px,calc(100dvh - 32px)); max-width:960px; max-height:760px; border-radius:18px; overflow:hidden; background:var(--surface); }
+    .text-editor-modal { height:100%; min-height:0; padding:0; display:grid; grid-template-rows:auto minmax(0,1fr); gap:0; background:var(--surface); }
+    .text-editor-head { min-height:56px; padding:8px 10px 8px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .text-editor-title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:650; }
+    .text-editor-actions { display:flex; align-items:center; gap:4px; }
+    .text-editor-field { width:100%; height:100%; min-height:0; border-radius:0; padding:18px 20px; resize:none; overflow:auto; background:var(--surface); color:var(--text); font-size:16px; line-height:1.55; }
+    .text-editor-field:focus { box-shadow:inset 0 0 0 1px transparent; }
     input, textarea, select { width:100%; min-height:44px; border:0; border-radius:8px; padding:0 12px; outline:none; background:var(--hover); font-size:16px; line-height:1.5; } textarea { min-height:120px; padding:12px; resize:vertical; } .modal-actions { justify-content:flex-end; } .tool-actions, .tool-list { display:flex; flex-wrap:wrap; gap:8px; } .tool-chip, .tool-actions button { min-height:34px; border-radius:9999px; padding:0 12px; background:var(--hover); } .tool-chip.active { background:var(--text); color:var(--bg); } .tool-chip.blocked { opacity:.48; } .warning { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--bad); color:#fff; } .secondary-btn { min-height:44px; border-radius:9999px; padding:8px 12px; background:var(--hover); }
     .danger-note { margin:0; padding:12px; border-radius:12px; background:rgba(239,68,68,.12); color:var(--bad); font-weight:600; }
     .system-dialog { width:min(680px,calc(100% - 24px)); height:min(840px,calc(100dvh - 12px)); border-radius:28px; }
@@ -232,11 +244,12 @@
     .render-modal-close { min-width:42px; min-height:42px; padding:0; border-radius:14px; font-size:22px; line-height:1; }
     .tool-call-card { min-width:0; width:100%; max-width:100%; display:grid; gap:10px; text-align:left; }
     .tool-call-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    .tool-call-name { font-size:13px; font-weight:800; color:var(--muted); }
+    .tool-call-name { flex:1 1 auto; min-width:0; font-size:13px; font-weight:800; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .tool-call-badge { flex:0 0 auto; min-height:24px; padding:2px 9px; border:1px solid var(--line); border-radius:999px; font-size:12px; font-weight:750; color:var(--muted); background:rgba(255,255,255,.08); display:inline-flex; align-items:center; gap:6px; }
     .tool-call-badge.running { color:var(--warn); }
     .tool-call-badge.done { color:var(--ok); }
     .tool-call-badge.error { color:var(--bad); }
+    .tool-call-time { flex:0 0 auto; color:var(--muted); font-size:12px; font-weight:750; font-variant-numeric:tabular-nums; }
     .tool-call-prompt, .tool-call-text, .tool-call-error { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
     .tool-call-prompt { color:var(--text); }
     .tool-call-text { color:var(--muted); }
@@ -305,7 +318,7 @@
     [data-sonner-toaster] [data-sonner-toast] [data-close-button] { left:auto !important; right:0 !important; transform:translate(40%, -40%); width: 28px; height: 28px; }
     @keyframes pop { from { transform:translateY(6px); opacity:0; } } @keyframes spin { to { transform:rotate(360deg); } }
     @media (max-width:960px) { .app-shell { grid-template-columns:minmax(0,1fr); } .sidebar { position:fixed; width:280px; transform:translateX(-105%); } .drawer-open .sidebar { transform:translateX(0); } .app-shell.sidebar-collapsed { grid-template-columns:minmax(0,1fr); } .app-shell.sidebar-collapsed .sidebar { width:280px; padding:16px; } .drawer-scrim { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.28); } }
-    @media (max-width:700px) { .main { grid-template-rows:56px auto minmax(0,1fr) auto; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .system-dialog { width:min(680px,calc(100% - 24px)); max-width:calc(100% - 24px); height:calc(100dvh - 24px); max-height:calc(100dvh - 24px); border-radius:16px; } .system-modal { min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); } .system-sidebar { padding:10px 12px 12px; border-right:0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr auto; grid-template-areas:"title close" "nav nav"; gap:8px; overflow:hidden; } .system-sidebar .system-close { grid-area:close; width:48px; height:48px; min-width:48px; background:transparent; } .system-mobile-title { grid-area:title; display:block; margin:0; align-self:center; font-size:20px; font-weight:650; } .system-nav { grid-area:nav; display:flex; gap:8px; overflow-x:auto; padding:0; } .system-nav-item { flex:0 0 auto; min-height:56px; padding:0 16px; font-size:16px; } .system-nav-item svg { width:22px; height:22px; } .system-main { min-height:0; padding:20px 24px; gap:18px; overflow:auto; overscroll-behavior:contain; } .system-page-head { display:none; } .settings-section-title, .mcp-section-title strong { font-size:16px; } .setting-row-title strong { font-size:14px; } .setting-row { min-height:92px; align-items:center; gap:14px; } .system-select { min-width:132px; } .mcp-section-head { min-height:60px; align-items:flex-start; } .mcp-server-form { grid-template-columns:1fr; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
+    @media (max-width:700px) { .main { grid-template-rows:56px auto minmax(0,1fr) auto; padding-inline:max(10px,env(safe-area-inset-left)); } .topbar { height:56px; } .icon-btn { width:48px; height:48px; min-width:48px; } .message-expand-btn { width:36px; height:36px; min-width:36px; } .group { max-width:94%; } #chat { padding:12px 0; } .grid { grid-template-columns:1fr; } .text-editor-dialog { width:100%; max-width:100%; height:100dvh; max-height:100dvh; border-radius:0; } .text-editor-head { min-height:56px; padding:6px 8px 6px 16px; } .text-editor-field { padding:16px; } .system-dialog { width:min(680px,calc(100% - 24px)); max-width:calc(100% - 24px); height:calc(100dvh - 24px); max-height:calc(100dvh - 24px); border-radius:16px; } .system-modal { min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); } .system-sidebar { padding:10px 12px 12px; border-right:0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr auto; grid-template-areas:"title close" "nav nav"; gap:8px; overflow:hidden; } .system-sidebar .system-close { grid-area:close; width:48px; height:48px; min-width:48px; background:transparent; } .system-mobile-title { grid-area:title; display:block; margin:0; align-self:center; font-size:20px; font-weight:650; } .system-nav { grid-area:nav; display:flex; gap:8px; overflow-x:auto; padding:0; } .system-nav-item { flex:0 0 auto; min-height:56px; padding:0 16px; font-size:16px; } .system-nav-item svg { width:22px; height:22px; } .system-main { min-height:0; padding:20px 24px; gap:18px; overflow:auto; overscroll-behavior:contain; } .system-page-head { display:none; } .settings-section-title, .mcp-section-title strong { font-size:16px; } .setting-row-title strong { font-size:14px; } .setting-row { min-height:92px; align-items:center; gap:14px; } .system-select { min-width:132px; } .mcp-section-head { min-height:60px; align-items:flex-start; } .mcp-server-form { grid-template-columns:1fr; } .tool-call-card{min-width:0; width:100%; max-width:100%}.render-card-preview iframe{height:280px}.render-block-code{max-height:280px}.render-modal{padding:10px}.render-dialog{width:calc(100% - 12px); height:calc(100dvh - 12px)} }
   </style>
   <style>
     select {
@@ -371,7 +384,11 @@ select::-ms-expand {
         <header class="topbar">
           <button class="icon-btn" type="button" title="菜单" @click="toggleSidebar"><menu-icon ></menu-icon></button>
           <div class="topbar-center">
-            <span class="dot" :class="statusKind"></span><button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
+            <span class="dot" :class="statusKind"></span>
+            <div class="title-stack">
+              <button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
+              <button v-if="sessionUsageText" class="session-usage" type="button" :title="sessionUsageTitle" @click="openUsageDetails('session')">{{ sessionUsageText }}</button>
+            </div>
           </div>
           <div class="topbar-actions">
             <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon ></phone-icon></button>
@@ -390,6 +407,7 @@ select::-ms-expand {
                 <div class="tool-call-card">
                   <div class="tool-call-head">
                     <span class="tool-call-name">{{ toolDisplayName(item.message.name) }}</span>
+                    <span class="tool-call-time" v-if="toolElapsedText(item.message)">{{ toolElapsedText(item.message) }}</span>
                     <span class="tool-call-badge" :class="item.message.status">
                       <span v-if="item.message.status === 'running'" class="tool-call-spinner" aria-hidden="true"></span>
                       {{ toolStatusText(item.message.status) }}
@@ -474,11 +492,18 @@ select::-ms-expand {
                   v-if="item.message.type === 'text'"
                   :text="item.message.text"
                 ></markdown-text>
+                <img
+                  v-else-if="item.message.type === 'photo'"
+                  class="chat-photo"
+                  :src="item.message.url"
+                  :alt="item.message.name || '已选择照片'"
+                />
                 <template v-else>{{ item.message.text || item.message }}</template>
               </template>
             </div>
             <div v-if="canShowMessageToolbar(item)" class="message-toolbar">
-              <button class="message-action" type="button" :title="item.message.toolbarCopyState === 'ok' ? '已复制' : '复制'" @click="copyMessage(item.message)">
+              <button v-if="messageUsageText(item.message)" class="message-usage" type="button" :title="messageUsageTitle(item.message)" @click="openUsageDetails('message', item.message.usage)">{{ messageUsageText(item.message) }}</button>
+              <button v-if="getMessageCopyText(item.message)" class="message-action" type="button" :title="item.message.toolbarCopyState === 'ok' ? '已复制' : '复制'" @click="copyMessage(item.message)">
                 <component :is="item.message.toolbarCopyState === 'ok' ? 'check-icon' : 'copy-icon'" ></component>
               </button>
             </div>
@@ -487,9 +512,13 @@ select::-ms-expand {
         </section>
 
         <form class="input-bar" @submit.prevent="sendText">
-          <button class="icon-btn" type="button" title="打电话" @click="enterCallMode()"><phone-icon ></phone-icon></button>
+          <input ref="photoInputEl" class="photo-input" type="file" accept="image/*" @change="handlePhotoSelected" />
+          <button class="icon-btn" type="button" title="选择照片" :disabled="isConnecting" @click="openPhotoPicker"><camera-icon ></camera-icon></button>
           <hold-record v-if="inputMode === 'voice'" v-model="holdActive" :mic-status="micStatus" :before-start="prepareHoldRecord" @release="handleHoldRelease"></hold-record>
-          <textarea v-else class="message-field" :style="{ height: textStyleHeight }" v-model="text" rows="1" autocomplete="off" :placeholder="isConnecting ? '正在连接…' : '输入消息...'" :disabled="isConnecting" @input="resizeTextInput" @keydown="handleTextKeydown"></textarea>
+          <div v-else class="message-input-wrap" :class="{ 'has-expand': showTextFullscreenButton }">
+            <textarea ref="textInputEl" class="message-field" :style="{ height: textStyleHeight }" v-model="text" rows="1" autocomplete="off" :placeholder="isConnecting ? '正在连接…' : '输入消息...'" :disabled="isConnecting" @input="resizeTextInput" @keydown="handleTextKeydown"></textarea>
+            <button v-if="showTextFullscreenButton" class="message-expand-btn" type="button" title="全屏编辑" :disabled="isConnecting" @click="openTextFullscreen"><maximize-2-icon ></maximize-2-icon></button>
+          </div>
           <button class="icon-btn" v-if="text.trim()" type="submit" :disabled="isConnecting" title="发送"><send-icon ></send-icon></button>
           <button class="icon-btn" v-else-if="inputMode === 'voice'" type="button" title="文本输入" @click="toggleInputMode"><keyboard-icon ></keyboard-icon></button>
           <button class="icon-btn" v-else type="button" title="语音输入" @click="toggleInputMode"><mic-icon ></mic-icon></button>
@@ -501,7 +530,11 @@ select::-ms-expand {
       <header class="topbar">
         <button class="icon-btn" type="button" title="取消通话" @click="exitCallMode"><x-icon ></x-icon></button>
           <div class="topbar-center">
-            <span class="dot" :class="statusKind"></span><button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
+            <span class="dot" :class="statusKind"></span>
+            <div class="title-stack">
+              <button class="chat-title" type="button" @click="openRoleConfig()">{{ currentTitle }}</button>
+              <button v-if="sessionUsageText" class="session-usage" type="button" :title="sessionUsageTitle" @click="openUsageDetails('session')">{{ sessionUsageText }}</button>
+            </div>
           </div>
         <div class="topbar-actions">
           <button v-if="callMediaMode === 'video'" class="icon-btn" type="button" title="切换摄像头" :disabled="mediaStarting" @click="switchCallCamera"><switch-camera-icon ></switch-camera-icon></button>
@@ -550,6 +583,49 @@ select::-ms-expand {
         <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon ></phone-off-icon></span></button>
       </footer>
     </div>
+
+    <dialog class="text-editor-dialog" ref="textEditorDialog" @click="closeTextFullscreenOnBackdrop" @close="handleTextFullscreenClosed">
+      <div class="modal text-editor-modal">
+        <header class="text-editor-head">
+          <span class="text-editor-title">消息</span>
+          <div class="text-editor-actions">
+            <button class="icon-btn" type="button" title="发送" :disabled="isConnecting || !text.trim()" @click="sendText"><send-icon ></send-icon></button>
+            <button class="icon-btn" type="button" title="收起编辑器" @click="closeTextFullscreen"><minimize-2-icon ></minimize-2-icon></button>
+          </div>
+        </header>
+        <textarea ref="textEditorInputEl" class="text-editor-field" v-model="text" autocomplete="off" :placeholder="isConnecting ? '正在连接…' : '输入消息...'" :disabled="isConnecting" @keydown="handleTextKeydown"></textarea>
+      </div>
+    </dialog>
+
+    <dialog class="usage-dialog" ref="usageDialog" @click="closeUsageDetailsOnBackdrop" @close="activeUsageDetails = null">
+      <div class="modal usage-modal" v-if="activeUsageDetails">
+        <div class="modal-head">
+          <div class="usage-head-text">
+            <h2>{{ activeUsageDetails.title }}</h2>
+            <p v-if="activeUsageDetails.subtitle" class="usage-subtitle">{{ activeUsageDetails.subtitle }}</p>
+          </div>
+          <button class="icon-btn modal-close" type="button" title="关闭" @click="closeUsageDetails"><x-icon ></x-icon></button>
+        </div>
+        <div class="usage-grid">
+          <div v-for="row in usageSummaryRows(activeUsageDetails.usage)" :key="row.key" class="usage-row">
+            <span>{{ row.label }}</span>
+            <strong>{{ formatTokenCount(row.value) }}</strong>
+          </div>
+        </div>
+        <template v-if="usageDetailGroups(activeUsageDetails.usage).length">
+          <h3 class="usage-section-title">模态明细</h3>
+          <div class="usage-detail-groups">
+            <div v-for="group in usageDetailGroups(activeUsageDetails.usage)" :key="group.key" class="usage-detail-group">
+              <div class="usage-detail-head">{{ group.label }}</div>
+              <div v-for="item in group.items" :key="`${group.key}-${item.modality}`" class="usage-detail-row">
+                <span>{{ modalityLabel(item.modality) }}</span>
+                <strong>{{ formatTokenCount(item.tokenCount) }}</strong>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </dialog>
 
     <dialog ref="roleDialog" @click="closeRoleConfigOnBackdrop">
       <div class="modal">
@@ -614,7 +690,7 @@ select::-ms-expand {
           <nav class="system-nav" aria-label="系统配置分类">
             <button class="system-nav-item" :class="{ active: systemSettingsTab === 'general' }" type="button" @click="systemSettingsTab = 'general'"><settings-icon></settings-icon><span>常规</span></button>
             <button class="system-nav-item" :class="{ active: systemSettingsTab === 'tools' }" type="button" @click="systemSettingsTab = 'tools'"><settings-2-icon></settings-2-icon><span>工具调用</span></button>
-            <!-- <button class="system-nav-item" :class="{ active: systemSettingsTab === 'mcp' }" type="button" @click="systemSettingsTab = 'mcp'"><sparkles-icon></sparkles-icon><span>MCP</span></button> -->
+            <button class="system-nav-item" :class="{ active: systemSettingsTab === 'mcp' }" type="button" @click="systemSettingsTab = 'mcp'"><sparkles-icon></sparkles-icon><span>MCP</span></button>
           </nav>
         </aside>
         <main class="system-main">
@@ -773,7 +849,7 @@ select::-ms-expand {
     import { musicPlayerStore, loadPlaylist as loadMusicPlaylist, MusicPlayer } from "./music-player.js";
     import { GitHubService } from "./github-service.js";
     import {
-      AudioLines, Captions, CaptionsOff, Check, ChevronDown, ChevronUp, Copy, Github, Keyboard, LogIn, LogOut, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Monitor, Moon, Music, PanelLeftClose, Pause, Phone, PhoneOff, Play, Plus, Repeat, RotateCcw, ScreenShare, ScreenShareOff, Send, Settings, Settings2, SkipBack, SkipForward, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
+      AudioLines, Camera, Captions, CaptionsOff, Check, ChevronDown, ChevronUp, Copy, Github, Keyboard, LogIn, LogOut, Maximize2, Menu, MessageCirclePlus, Mic, MicOff, Minimize2, Monitor, Moon, Music, PanelLeftClose, Pause, Phone, PhoneOff, Play, Plus, Repeat, RotateCcw, ScreenShare, ScreenShareOff, Send, Settings, Settings2, SkipBack, SkipForward, Sparkles, Square, Sun, SwitchCamera, UserPlus, Video, VideoOff, Volume2, VolumeX, X,
     } from "https://esm.sh/lucide-vue-next@1.0.0/es2022/lucide-vue-next.mjs";
 
     const TOOL_CACHE_KEY = 'geminiToolDeclarations';
@@ -827,6 +903,45 @@ select::-ms-expand {
         return false;
       }
     }
+
+    const USAGE_TOTAL_FIELDS = [
+      'promptTokenCount',
+      'cachedContentTokenCount',
+      'responseTokenCount',
+      'toolUsePromptTokenCount',
+      'thoughtsTokenCount',
+      'totalTokenCount',
+      'uncachedPromptTokenCount',
+    ];
+
+    const USAGE_DETAIL_FIELDS = [
+      'promptTokensDetails',
+      'cacheTokensDetails',
+      'responseTokensDetails',
+      'toolUsePromptTokensDetails',
+    ];
+
+    const createUsageTotals = () => USAGE_TOTAL_FIELDS.reduce((totals, field) => {
+      totals[field] = 0;
+      return totals;
+    }, {});
+
+    const createUsageDetails = () => USAGE_DETAIL_FIELDS.reduce((details, field) => {
+      details[field] = [];
+      return details;
+    }, {});
+
+    const toTokenCount = (value) => {
+      const count = Number(value);
+      return Number.isFinite(count) && count > 0 ? count : 0;
+    };
+
+    const cloneUsageDetails = (details) => Array.isArray(details)
+      ? details.map((item) => ({
+        modality: String(item?.modality || ''),
+        tokenCount: toTokenCount(item?.tokenCount),
+      })).filter((item) => item.modality || item.tokenCount)
+      : [];
 
     const MarkdownText = {
       props: {
@@ -943,6 +1058,7 @@ select::-ms-expand {
           selectedRoleId: '',
           roleDraft: { ...defaultConfig },
           ws: null,
+          wsGeneration: 0,
           audioService: null,
           mediaService: null,
           aiAudioScheduledThisTurn: false,
@@ -954,15 +1070,25 @@ select::-ms-expand {
           voiceEnabled: JSON.parse(localStorage.getItem('geminiVoiceEnabled') || 'false'),
           text: '',
           textStyleHeight: '48px',
+          textInputLineCount: 1,
           pendingClientPayloads: [],
           pendingAiCaption: '',
           pendingAiMessageId: '',
           messageGroups: [],
+          usageState: {
+            latest: null,
+            turns: [],
+            sessionTotal: createUsageTotals(),
+            sessionDetails: createUsageDetails(),
+          },
+          activeUsageDetails: null,
           activeRenderPage: null,
           workerToolDeclarations: this.loadCachedToolDeclarations(),
           toolsLoading: false,
           browserTools: BROWSER_TOOLS,
           browserToolConfigs: this.loadBrowserToolConfigs(),
+          toolTimeNow: Date.now(),
+          toolTimeTimer: null,
           toolConfigForm: { name: '', apiKey: '', headers: '' },
           openToolConfigName: '',
           mcpServers: this.loadMcpServers(),
@@ -1035,14 +1161,18 @@ select::-ms-expand {
         this.refreshMcpRegistry();
         this.handleOauthMessage = this.handleOauthMessage.bind(this);
         window.addEventListener('message', this.handleOauthMessage);
+        window.addEventListener('resize', this.handleTextInputResize);
         this.refreshStoredGithubInstallations();
+        this.syncTextInputHeight();
       },
       beforeUnmount() {
+        this.stopToolTimeTicker();
         this.stopWaveLoop();
         this.audioService?.destroy();
         this.mediaService?.destroy();
         this.githubService?.destroy();
         window.removeEventListener('message', this.handleOauthMessage);
+        window.removeEventListener('resize', this.handleTextInputResize);
       },
       watch: {
         themeMode() {
@@ -1050,6 +1180,9 @@ select::-ms-expand {
         },
         captionsVisible() {
           this.scrollCallCaptions();
+        },
+        text() {
+          this.syncTextInputHeight();
         },
         uiMode(value) {
           if (value === 'call') {
@@ -1080,6 +1213,14 @@ select::-ms-expand {
         },
         currentTitle() {
           return this.currentRoleName;
+        },
+        sessionUsageText() {
+          const total = this.usageState.sessionTotal;
+          if (!total.totalTokenCount) return '';
+          return `会话 ${this.formatTokenCount(total.totalTokenCount)} tokens · 输入 ${this.formatTokenCount(total.promptTokenCount)} · 输出 ${this.formatTokenCount(total.responseTokenCount)}`;
+        },
+        sessionUsageTitle() {
+          return this.usageBreakdownTitle(this.usageState.sessionTotal);
         },
         themeIcon() {
           if (this.themeMode === 'dark') return 'moon-icon';
@@ -1152,6 +1293,9 @@ select::-ms-expand {
           return this.messageGroups
             .filter((item) => item.message?.type === 'text' && item.message.text)
             .slice(-4);
+        },
+        showTextFullscreenButton() {
+          return this.inputMode === 'text' && this.textInputLineCount > 3;
         },
       },
       methods: {
@@ -1549,11 +1693,14 @@ select::-ms-expand {
           this.$refs.roleDialog.showModal();
         },
         newChat() {
+          this.wsGeneration += 1;
           this.interruptAiPlayback();
           this.holdActive = false;
           this.stopMic({ sendEnd: false, force: true });
           this.ws?.close(1000, 'New chat');
+          this.ws = null;
           this.messageGroups = [];
+          this.resetSessionUsage();
           this.setSessionStatus('idle');
           this.drawerOpen = false;
         },
@@ -1601,16 +1748,136 @@ select::-ms-expand {
           this.stopMic({ sendEnd: false, force: true });
         },
         resizeTextInput(event) {
-          const el = event.target;
+          this.syncTextInputHeight(event?.target);
+        },
+        handleTextInputResize() {
+          this.syncTextInputHeight();
+        },
+        syncTextInputHeight(sourceEl = null) {
+          const explicitLineCount = Math.max(1, String(this.text || '').split('\n').length);
+          const el = sourceEl?.scrollHeight ? sourceEl : this.$refs.textInputEl;
+          if (!el) {
+            this.textInputLineCount = explicitLineCount;
+            this.textStyleHeight = '48px';
+            return;
+          }
+
           this.textStyleHeight = 'auto';
           nextTick(() => {
-            this.textStyleHeight = `${Math.min(el.scrollHeight, 120)}px`;
+            const target = sourceEl?.scrollHeight ? sourceEl : this.$refs.textInputEl;
+            if (!target) {
+              this.textInputLineCount = explicitLineCount;
+              return;
+            }
+
+            this.textStyleHeight = `${Math.min(target.scrollHeight, 120)}px`;
+            const style = getComputedStyle(target);
+            const lineHeight = Number.parseFloat(style.lineHeight) || 24;
+            const paddingTop = Number.parseFloat(style.paddingTop) || 0;
+            const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+            const contentHeight = Math.max(0, target.scrollHeight - paddingTop - paddingBottom);
+            const visualLineCount = Math.max(1, Math.ceil(contentHeight / lineHeight));
+            this.textInputLineCount = Math.max(explicitLineCount, visualLineCount);
           });
         },
         handleTextKeydown(event) {
           if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) return;
           event.preventDefault();
           this.sendText();
+        },
+        openTextFullscreen() {
+          if (this.isConnecting || !this.showTextFullscreenButton) return;
+          const dialog = this.$refs.textEditorDialog;
+          if (!dialog) return;
+          if (!dialog.open) dialog.showModal();
+          nextTick(() => {
+            const el = this.$refs.textEditorInputEl;
+            if (!el) return;
+            el.focus();
+            const cursor = el.value.length;
+            el.setSelectionRange(cursor, cursor);
+          });
+        },
+        closeTextFullscreen() {
+          const dialog = this.$refs.textEditorDialog;
+          if (dialog?.open) dialog.close();
+        },
+        handleTextFullscreenClosed() {
+          this.syncTextInputHeight();
+          nextTick(() => {
+            const el = this.$refs.textInputEl;
+            if (el && this.inputMode === 'text') el.focus();
+          });
+        },
+        closeTextFullscreenOnBackdrop(event) {
+          if (event.target === this.$refs.textEditorDialog) this.closeTextFullscreen();
+        },
+        openPhotoPicker() {
+          if (this.isConnecting) return;
+          this.$refs.photoInputEl?.click();
+        },
+        async handlePhotoSelected(event) {
+          const input = event.target;
+          const file = input.files?.[0];
+          input.value = '';
+          if (!file) return;
+          if (!file.type?.startsWith('image/')) {
+            toast.error('请选择图片文件');
+            return;
+          }
+          try {
+            const image = await this.preparePhotoFrame(file);
+            this.pendingClientPayloads.push({
+              realtimeInput: {
+                image: {
+                  data: image.data,
+                  mimeType: image.mimeType,
+                },
+              },
+            });
+            this.sendRealtimeInputs();
+            this.closeAiTextSegment();
+            this.addMessage('user', {
+              type: 'photo',
+              url: image.url,
+              name: file.name,
+              mimeType: image.mimeType,
+            });
+          } catch (error) {
+            toast.error('照片处理失败', { description: error?.message || '请换一张图片后重试' });
+          }
+        },
+        preparePhotoFrame(file) {
+          return new Promise((resolve, reject) => {
+            const objectUrl = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+              try {
+                const maxSize = 1280;
+                const ratio = Math.min(1, maxSize / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+                const width = Math.max(1, Math.round((img.naturalWidth || 1) * ratio));
+                const height = Math.max(1, Math.round((img.naturalHeight || 1) * ratio));
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) throw new Error('Canvas unavailable');
+                ctx.drawImage(img, 0, 0, width, height);
+                const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+                const url = canvas.toDataURL(mimeType, mimeType === 'image/jpeg' ? 0.86 : undefined);
+                resolve({ data: url.split(',')[1] || '', mimeType, url });
+              } catch (error) {
+                reject(error);
+              } finally {
+                URL.revokeObjectURL(objectUrl);
+              }
+            };
+            img.onerror = () => {
+              URL.revokeObjectURL(objectUrl);
+              reject(new Error('无法读取图片'));
+            };
+            img.src = objectUrl;
+          });
         },
         createDefaultRole() {
           return { ...this.defaultConfig, id: `role-${Date.now()}` };
@@ -1763,6 +2030,212 @@ select::-ms-expand {
         },
         setSessionStatus(next) {
           this.sessionStatus = next;
+        },
+        createUsageState() {
+          return {
+            latest: null,
+            turns: [],
+            sessionTotal: createUsageTotals(),
+            sessionDetails: createUsageDetails(),
+          };
+        },
+        resetSessionUsage() {
+          this.usageState = this.createUsageState();
+          if (this.activeUsageDetails?.scope === 'session') this.closeUsageDetails();
+        },
+        normalizeUsageMetadata(usageMetadata) {
+          if (!usageMetadata || typeof usageMetadata !== 'object') return null;
+          const promptTokenCount = toTokenCount(usageMetadata.promptTokenCount);
+          const cachedContentTokenCount = toTokenCount(usageMetadata.cachedContentTokenCount);
+          const responseTokenCount = toTokenCount(usageMetadata.responseTokenCount);
+          const toolUsePromptTokenCount = toTokenCount(usageMetadata.toolUsePromptTokenCount);
+          const thoughtsTokenCount = toTokenCount(usageMetadata.thoughtsTokenCount);
+          const fallbackTotal = promptTokenCount + responseTokenCount + thoughtsTokenCount;
+          const totalTokenCount = toTokenCount(usageMetadata.totalTokenCount) || fallbackTotal;
+
+          return {
+            promptTokenCount,
+            cachedContentTokenCount,
+            responseTokenCount,
+            toolUsePromptTokenCount,
+            thoughtsTokenCount,
+            totalTokenCount,
+            uncachedPromptTokenCount: Math.max(0, promptTokenCount - cachedContentTokenCount),
+            promptTokensDetails: cloneUsageDetails(usageMetadata.promptTokensDetails),
+            cacheTokensDetails: cloneUsageDetails(usageMetadata.cacheTokensDetails),
+            responseTokensDetails: cloneUsageDetails(usageMetadata.responseTokensDetails),
+            toolUsePromptTokensDetails: cloneUsageDetails(usageMetadata.toolUsePromptTokensDetails),
+          };
+        },
+        addUsageToSessionTotal(usage, multiplier = 1) {
+          for (const field of USAGE_TOTAL_FIELDS) {
+            this.usageState.sessionTotal[field] += toTokenCount(usage?.[field]) * multiplier;
+            if (this.usageState.sessionTotal[field] < 0) this.usageState.sessionTotal[field] = 0;
+          }
+        },
+        addUsageDetailsToSession(usage, multiplier = 1) {
+          for (const field of USAGE_DETAIL_FIELDS) {
+            const target = this.usageState.sessionDetails[field];
+            for (const item of cloneUsageDetails(usage?.[field])) {
+              const modality = item.modality || 'UNKNOWN';
+              let existing = target.find((entry) => entry.modality === modality);
+              if (!existing) {
+                existing = { modality, tokenCount: 0 };
+                target.push(existing);
+              }
+              existing.tokenCount += item.tokenCount * multiplier;
+            }
+            this.usageState.sessionDetails[field] = target
+              .filter((item) => item.tokenCount > 0)
+              .sort((a, b) => b.tokenCount - a.tokenCount);
+          }
+        },
+        findUsageTurnByMessageId(messageId) {
+          if (!messageId) return null;
+          for (let index = this.usageState.turns.length - 1; index >= 0; index -= 1) {
+            const usage = this.usageState.turns[index];
+            if (usage?.messageId === messageId) return usage;
+          }
+          return null;
+        },
+        attachUsageToMessage(usage) {
+          const target = this.findMessageById(usage?.messageId);
+          if (target?.role === 'ai' && target.message) target.message.usage = usage;
+        },
+        recordUsageMetadata(usageMetadata) {
+          const normalized = this.normalizeUsageMetadata(usageMetadata);
+          if (!normalized) return;
+
+          const messageId = this.pendingAiMessageId || '';
+          const existing = this.findUsageTurnByMessageId(messageId);
+          if (existing) {
+            this.addUsageToSessionTotal(existing, -1);
+            this.addUsageDetailsToSession(existing, -1);
+            Object.assign(existing, normalized, { at: Date.now() });
+            this.addUsageToSessionTotal(existing, 1);
+            this.addUsageDetailsToSession(existing, 1);
+            this.usageState.latest = existing;
+            this.attachUsageToMessage(existing);
+            return;
+          }
+
+          const usage = {
+            id: `usage-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            at: Date.now(),
+            messageId,
+            ...normalized,
+          };
+          this.usageState.turns.push(usage);
+          this.usageState.latest = usage;
+          this.addUsageToSessionTotal(usage, 1);
+          this.addUsageDetailsToSession(usage, 1);
+          this.attachUsageToMessage(usage);
+        },
+        formatTokenCount(count) {
+          return new Intl.NumberFormat('zh-CN').format(Math.round(toTokenCount(count)));
+        },
+        usageBreakdownTitle(usage) {
+          if (!usage?.totalTokenCount) return '';
+          const parts = [
+            `总计 ${this.formatTokenCount(usage.totalTokenCount)} tokens`,
+            `输入 ${this.formatTokenCount(usage.promptTokenCount)}`,
+            `输出 ${this.formatTokenCount(usage.responseTokenCount)}`,
+          ];
+          if (usage.cachedContentTokenCount) parts.push(`缓存 ${this.formatTokenCount(usage.cachedContentTokenCount)}`);
+          if (usage.thoughtsTokenCount) parts.push(`思考 ${this.formatTokenCount(usage.thoughtsTokenCount)}`);
+          if (usage.toolUsePromptTokenCount) parts.push(`工具 ${this.formatTokenCount(usage.toolUsePromptTokenCount)}`);
+          return parts.join(' · ');
+        },
+        messageUsageText(message) {
+          const total = toTokenCount(message?.usage?.totalTokenCount);
+          return total ? `${this.formatTokenCount(total)} tokens` : '';
+        },
+        messageUsageTitle(message) {
+          return this.usageBreakdownTitle(message?.usage);
+        },
+        sessionUsageSnapshot() {
+          const details = createUsageDetails();
+          for (const field of USAGE_DETAIL_FIELDS) {
+            details[field] = cloneUsageDetails(this.usageState.sessionDetails[field]);
+          }
+          return {
+            ...this.usageState.sessionTotal,
+            ...details,
+          };
+        },
+        formatUsageTime(at) {
+          const timestamp = Number(at);
+          if (!Number.isFinite(timestamp) || timestamp <= 0) return '';
+          return new Intl.DateTimeFormat('zh-CN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          }).format(new Date(timestamp));
+        },
+        openUsageDetails(scope, usage = null) {
+          const detailUsage = scope === 'session' ? this.sessionUsageSnapshot() : usage;
+          if (!detailUsage?.totalTokenCount) return;
+          const turnIndex = scope === 'message'
+            ? this.usageState.turns.findIndex((item) => item.id === detailUsage.id)
+            : -1;
+          const subtitle = scope === 'session'
+            ? `共 ${this.usageState.turns.length} 轮`
+            : [turnIndex >= 0 ? `第 ${turnIndex + 1} 轮` : '', this.formatUsageTime(detailUsage.at)].filter(Boolean).join(' · ');
+
+          this.activeUsageDetails = {
+            scope,
+            title: scope === 'session' ? '会话 token 用量' : '本轮 token 用量',
+            subtitle,
+            usage: detailUsage,
+          };
+          nextTick(() => {
+            const dialog = this.$refs.usageDialog;
+            if (dialog && !dialog.open) dialog.showModal();
+          });
+        },
+        closeUsageDetails() {
+          this.$refs.usageDialog?.close();
+          this.activeUsageDetails = null;
+        },
+        closeUsageDetailsOnBackdrop(event) {
+          if (event.target === this.$refs.usageDialog) this.closeUsageDetails();
+        },
+        usageSummaryRows(usage) {
+          if (!usage) return [];
+          const rows = [
+            { key: 'total', label: '总计', value: usage.totalTokenCount },
+            { key: 'prompt', label: '输入', value: usage.promptTokenCount },
+          ];
+          if (usage.cachedContentTokenCount) {
+            rows.push(
+              { key: 'uncachedPrompt', label: '非缓存输入', value: usage.uncachedPromptTokenCount },
+              { key: 'cached', label: '缓存输入', value: usage.cachedContentTokenCount },
+            );
+          }
+          rows.push({ key: 'response', label: '输出', value: usage.responseTokenCount });
+          if (usage.thoughtsTokenCount) rows.push({ key: 'thoughts', label: '思考', value: usage.thoughtsTokenCount });
+          if (usage.toolUsePromptTokenCount) rows.push({ key: 'toolUsePrompt', label: '工具提示', value: usage.toolUsePromptTokenCount });
+          return rows.filter((row) => toTokenCount(row.value) > 0 || row.key === 'response');
+        },
+        usageDetailGroups(usage) {
+          if (!usage) return [];
+          const groups = [
+            { key: 'promptTokensDetails', label: '输入', items: cloneUsageDetails(usage.promptTokensDetails) },
+            { key: 'cacheTokensDetails', label: '缓存输入', items: cloneUsageDetails(usage.cacheTokensDetails) },
+            { key: 'responseTokensDetails', label: '输出', items: cloneUsageDetails(usage.responseTokensDetails) },
+            { key: 'toolUsePromptTokensDetails', label: '工具提示', items: cloneUsageDetails(usage.toolUsePromptTokensDetails) },
+          ];
+          return groups.filter((group) => group.items.length);
+        },
+        modalityLabel(modality) {
+          const labels = {
+            TEXT: '文本',
+            AUDIO: '音频',
+            IMAGE: '图片',
+            VIDEO: '视频',
+            DOCUMENT: '文档',
+          };
+          return labels[modality] || modality || '未知';
         },
         isWebSocketOpen() {
           return this.ws?.readyState === WebSocket.OPEN;
@@ -1919,32 +2392,108 @@ select::-ms-expand {
           });
           return candidateNames.filter((name) => expanded.includes(name));
         },
-        async handleBrowserToolCalls(functionCalls) {
+        syncToolMessage(payload) {
+          upsertToolMessage(this.messageGroups, payload);
+          if (payload?.status === 'running' || this.hasRunningToolCalls()) this.startToolTimeTicker();
+          else this.stopToolTimeTicker();
+        },
+        failRunningToolCalls(error = 'WebSocket 已断开，工具调用未完成') {
+          const endedAt = Date.now();
+          let changed = false;
+          for (let index = 0; index < this.messageGroups.length; index += 1) {
+            const item = this.messageGroups[index];
+            const message = item?.message;
+            if (
+              item?.role !== 'system'
+              || message?.type !== 'toolCall'
+              || message.status !== 'running'
+            ) continue;
+
+            this.messageGroups.splice(index, 1, {
+              ...item,
+              message: {
+                ...message,
+                status: 'error',
+                error: message.error || error,
+                endedAt,
+              },
+            });
+            changed = true;
+          }
+          if (changed) this.stopToolTimeTicker();
+        },
+        hasRunningToolCalls() {
+          return this.messageGroups.some((item) => (
+            item.role === 'system'
+            && item.message?.type === 'toolCall'
+            && item.message.status === 'running'
+          ));
+        },
+        startToolTimeTicker() {
+          if (this.toolTimeTimer) return;
+          this.toolTimeNow = Date.now();
+          this.toolTimeTimer = window.setInterval(() => {
+            this.toolTimeNow = Date.now();
+            if (!this.hasRunningToolCalls()) this.stopToolTimeTicker();
+          }, 250);
+        },
+        stopToolTimeTicker() {
+          if (!this.toolTimeTimer) return;
+          window.clearInterval(this.toolTimeTimer);
+          this.toolTimeTimer = null;
+        },
+        toolElapsedMs(message) {
+          const startedAt = Number(message?.startedAt);
+          if (!Number.isFinite(startedAt) || startedAt <= 0) return null;
+          const endedAt = Number(message?.endedAt);
+          const endAt = Number.isFinite(endedAt) && endedAt >= startedAt
+            ? endedAt
+            : (message?.status === 'running' ? this.toolTimeNow : null);
+          if (!endAt) return null;
+          return Math.max(0, endAt - startedAt);
+        },
+        formatToolDuration(ms) {
+          return Number.isFinite(ms) ? `${(ms / 1000).toFixed(1)}s` : '';
+        },
+        toolElapsedText(message) {
+          const elapsedMs = this.toolElapsedMs(message);
+          return elapsedMs == null ? '' : this.formatToolDuration(elapsedMs);
+        },
+        async handleBrowserToolCalls(functionCalls, wsGeneration = this.wsGeneration) {
           const functionResponses = [];
+          const isCurrentSocketOpen = () => wsGeneration === this.wsGeneration && this.ws?.readyState === WebSocket.OPEN;
+          const stopIfSocketClosed = () => {
+            if (isCurrentSocketOpen()) return false;
+            if (wsGeneration === this.wsGeneration) this.failRunningToolCalls();
+            return true;
+          };
           for (const call of functionCalls) {
             const { id, name, args } = call;
             const startedAt = Date.now();
-            upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'running', args: args ?? null, startedAt });
+            this.syncToolMessage({ id, name, kind: 'browser', status: 'running', args: args ?? null, startedAt });
+            if (stopIfSocketClosed()) return;
             const isLocalBrowserTool = Boolean(this.browserTools.handlers?.[name]);
             const handler = this.browserTools.handlers?.[name] ?? this.mcpRegistry.handlers?.[name];
             let response;
             if (!handler) {
               response = { error: `Unknown browser tool: ${name}` };
-              upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
+              this.syncToolMessage({ id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
             } else {
               try {
                 response = isLocalBrowserTool
                   ? await handler(args || {}, this.browserToolConfigs?.[name] || {})
                   : await handler(args || {});
-                upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'done', args: args ?? null, response, startedAt, endedAt: Date.now() });
+                if (stopIfSocketClosed()) return;
+                this.syncToolMessage({ id, name, kind: 'browser', status: 'done', args: args ?? null, response, startedAt, endedAt: Date.now() });
               } catch (error) {
+                if (stopIfSocketClosed()) return;
                 response = { error: error.message || String(error) };
-                upsertToolMessage(this.messageGroups, { id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
+                this.syncToolMessage({ id, name, kind: 'browser', status: 'error', args: args ?? null, error: response.error, startedAt, endedAt: Date.now() });
               }
             }
             functionResponses.push({ id, name, response });
           }
-          if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ toolResponse: { functionResponses } }));
+          if (isCurrentSocketOpen()) this.ws.send(JSON.stringify({ toolResponse: { functionResponses } }));
         },
         openRenderedPage(message) {
           this.activeRenderPage = message;
@@ -1971,7 +2520,8 @@ select::-ms-expand {
           }
         },
         canShowMessageToolbar(item) {
-          return ['user', 'ai'].includes(item?.role) && Boolean(this.getMessageCopyText(item?.message));
+          return ['user', 'ai'].includes(item?.role)
+            && (Boolean(this.getMessageCopyText(item?.message)) || Boolean(this.messageUsageText(item?.message)));
         },
         getMessageCopyText(message) {
           if (!message) return '';
@@ -2007,11 +2557,21 @@ select::-ms-expand {
         },
         async connect() {
           if (this.isSessionActive) return;
-          this.ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+          const wsGeneration = this.wsGeneration + 1;
+          this.wsGeneration = wsGeneration;
+          this.resetSessionUsage();
+          const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+          this.ws = ws;
           this.interruptAiPlayback();
           this.setSessionStatus('connecting');
-          this.ws.onopen = async () => { await this.ensureAudio(); this.setSessionStatus('socket_open'); };
-          this.ws.onmessage = (event) => {
+          ws.onopen = async () => {
+            if (wsGeneration !== this.wsGeneration) return;
+            await this.ensureAudio();
+            if (wsGeneration !== this.wsGeneration) return;
+            this.setSessionStatus('socket_open');
+          };
+          ws.onmessage = (event) => {
+            if (wsGeneration !== this.wsGeneration) return;
             let payload;
             try {
               payload = JSON.parse(event.data);
@@ -2021,16 +2581,23 @@ select::-ms-expand {
             }
             this.handleMessage(payload);
           };
-          this.ws.onerror = () => this.setSessionStatus('error');
-          this.ws.onclose = (event) => {
+          ws.onerror = () => {
+            if (wsGeneration === this.wsGeneration) this.setSessionStatus('error');
+          };
+          ws.onclose = (event) => {
+            if (wsGeneration !== this.wsGeneration) return;
             this.interruptAiPlayback();
             this.holdActive = false;
             this.stopMic({ sendEnd: false, force: true });
+            this.failRunningToolCalls(event.code == 1000 ? 'WebSocket 已关闭，工具调用未完成' : 'WebSocket 已断开，工具调用未完成');
+            if (this.ws === ws) this.ws = null;
             this.setSessionStatus(event.code == 1000 ? 'session_closed' : 'socket_closed');
             if (this.uiMode === 'call') this.uiMode = 'chat';
           };
         },
         handleMessage(msg) {
+          if (msg.usageMetadata) this.recordUsageMetadata(msg.usageMetadata);
+
           if (msg.systemContent) {
             this.handleSystemContent(msg.systemContent);
             return;
@@ -2061,7 +2628,7 @@ select::-ms-expand {
           const browserFunctionCalls = (msg.toolCall?.functionCalls || []).filter((call) => this.browserTools.handlers?.[call.name] || this.mcpRegistry.handlers?.[call.name]);
           if (browserFunctionCalls.length) {
             this.closeAiTextSegment();
-            this.handleBrowserToolCalls(browserFunctionCalls);
+            this.handleBrowserToolCalls(browserFunctionCalls, this.wsGeneration);
             return;
           }
           const content = msg.serverContent;
@@ -2112,7 +2679,7 @@ select::-ms-expand {
           const toolCall = systemContent?.toolCall;
           if (!toolCall) return;
           this.closeAiTextSegment();
-          upsertToolMessage(this.messageGroups, toolCall);
+          this.syncToolMessage(toolCall);
           this.scrollChatToBottom();
         },
         toolDisplayName(name) { return toolEventDisplayName(name); },
@@ -2308,6 +2875,8 @@ select::-ms-expand {
           this.addMessage('user', value);
           this.text = '';
           this.textStyleHeight = '48px';
+          this.textInputLineCount = 1;
+          this.closeTextFullscreen();
         },
         sendRecord() {
           const hasAudioMessage = this.pendingClientPayloads?.some(item => item.realtimeInput && item.realtimeInput.audio);
@@ -2335,6 +2904,7 @@ select::-ms-expand {
 
     const lucideComponents = {
       'audio-lines-icon': AudioLines,
+      'camera-icon': Camera,
       'captions-icon': Captions,
       'captions-off-icon': CaptionsOff,
       'check-icon': Check,
@@ -2350,6 +2920,7 @@ select::-ms-expand {
       'message-circle-plus-icon': MessageCirclePlus,
       'mic-icon': Mic,
       'mic-off-icon': MicOff,
+      'minimize-2-icon': Minimize2,
       'monitor-icon': Monitor,
       'moon-icon': Moon,
       'music-icon': Music,

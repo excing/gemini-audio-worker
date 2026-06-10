@@ -79,6 +79,86 @@ const compactStringArray = (value) => Array.isArray(value)
   ? value.map((item) => String(item || '').trim()).filter(Boolean)
   : [];
 
+const isReadableUrl = (value) => {
+  try {
+    const url = new URL(String(value || '').trim());
+    return ['http:', 'https:'].includes(url.protocol);
+  } catch {
+    return false;
+  }
+};
+
+const jinaReaderHandler = async ({
+  urls = [],
+  max_chars = 12000,
+  timeout_seconds = 30,
+} = {}) => {
+  const targetUrls = (Array.isArray(urls) ? urls : [urls])
+    .map((item) => String(item || '').trim())
+    .filter((item, index, items) => item && items.indexOf(item) === index)
+    .slice(0, 5);
+  if (!targetUrls.length) throw new Error('jinaReader 需要提供 URLs');
+
+  const maxChars = clampNumber(max_chars, 12000, 1000, 50000);
+  const timeoutSeconds = clampNumber(timeout_seconds, 30, 5, 120);
+
+  const readUrl = async (targetUrl) => {
+    if (!isReadableUrl(targetUrl)) {
+      return { ok: false, requested_url: targetUrl, error: 'jinaReader 仅支持 http 和 https URL' };
+    }
+
+    const readerUrl = `https://r.jina.ai/${targetUrl}`;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), timeoutSeconds * 1000);
+
+    try {
+      const response = await fetch(readerUrl, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+      const responseText = await response.text();
+      let data;
+      try {
+        data = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        data = { content: responseText };
+      }
+      if (!response.ok) {
+        const message = data?.message || data?.error || response.statusText || 'Jina Reader request failed';
+        throw new Error(`Jina Reader 请求失败 (${response.status}): ${serializeValue(message)}`);
+      }
+
+      const content = String(data?.data?.content ?? data?.content ?? responseText ?? '').trim();
+      return {
+        ok: true,
+        requested_url: targetUrl,
+        reader_url: readerUrl,
+        url: data?.data?.url || data?.url || targetUrl,
+        title: data?.data?.title || data?.title || '',
+        content: content.slice(0, maxChars),
+        truncated: content.length > maxChars,
+        length: content.length,
+        usage: data?.data?.usage || data?.usage || null,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        requested_url: targetUrl,
+        reader_url: readerUrl,
+        error: error?.name === 'AbortError'
+          ? `Jina Reader 请求超时 (${timeoutSeconds}s)`
+          : (error?.message || String(error)),
+      };
+    } finally {
+      window.clearTimeout(timer);
+    }
+  };
+
+  const results = await Promise.all(targetUrls.map(readUrl));
+  return { ok: true, source: 'jina-reader', results };
+};
+
 const tavilySearchHandler = async ({
   query = '',
   topic = 'general',
@@ -189,6 +269,32 @@ const renderPage = {
   handler: renderPageHandler,
 };
 
+const jinaReader = {
+  name: 'jinaReader',
+  configType: 'none',
+  description: '使用 r.jina.ai 服务获取网页内容工具, 当需要获取指定网页内容时, 调用此工具.',
+  parameters: {
+    type: 'object',
+    properties: {
+      urls: {
+        type: 'array',
+        description: '要读取的网页或文档 URL 列表，最多 5 个。支持 http 和 https。',
+        items: { type: 'string' },
+      },
+      max_chars: {
+        type: 'number',
+        description: '返回正文最大字符数，默认 12000，范围 1000-50000。',
+      },
+      timeout_seconds: {
+        type: 'number',
+        description: '请求超时时间，默认 30 秒，范围 5-120。',
+      },
+    },
+    required: ['urls'],
+  },
+  handler: jinaReaderHandler,
+};
+
 const tavilySearch = {
   name: 'tavilySearch',
   configType: 'apiKey',
@@ -272,6 +378,7 @@ const tavilySearch = {
 export const tools = [
   codeExecution,
   // renderPage,
+  // jinaReader,
   // tavilySearch,
 ];
 

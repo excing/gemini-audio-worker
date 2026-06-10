@@ -1,4 +1,4 @@
-import { decodeHtmlEntities, stripHtml } from '../tool-utils.js';
+import { decodeHtmlEntities, stripHtml, withBrowserUserAgent } from '../tool-utils.js';
 
 const normalizeDuckDuckGoUrl = (value = '') => {
   const decodedValue = decodeHtmlEntities(value).trim();
@@ -72,11 +72,10 @@ const handler = async (id, name, { query, max_results = 5, region = 'wt-wt', saf
 
   const response = await fetch('https://html.duckduckgo.com/html/', {
     method: 'POST',
-    headers: {
-      'User-Agent': 'gemini-audio-worker/1.0',
+    headers: withBrowserUserAgent({
       Accept: 'text/html,application/xhtml+xml',
       'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    }),
     body: searchParams.toString(),
   });
 

@@ -1,4 +1,4 @@
-import { clampInteger, isAllowedFetchProtocol } from '../tool-utils.js';
+import { clampInteger, isAllowedFetchProtocol, withBrowserUserAgent } from '../tool-utils.js';
 
 const normalizeHeaders = (headers = {}) => {
   if (!headers || typeof headers !== 'object' || Array.isArray(headers)) return {};
@@ -88,7 +88,7 @@ const handler = async (id, name, { url = '', method = 'GET', headers = {}, body,
   const redirectMode = ['follow', 'manual', 'error'].includes(normalizedRedirect) ? normalizedRedirect : 'follow';
   const requestInit = {
     method: normalizedMethod,
-    headers: normalizeHeaders(headers),
+    headers: withBrowserUserAgent(normalizeHeaders(headers)),
     redirect: redirectMode,
   };
 

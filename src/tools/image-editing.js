@@ -2,7 +2,15 @@ import { withBrowserUserAgent } from '../tool-utils.js';
 
 const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
 
-const formatImageGenerationResponse = (result) => {
+const normalizeImages = (images) => {
+  const values = Array.isArray(images) ? images : [];
+
+  return values
+    .map((item) => String(item || '').trim())
+    .filter((item, index, items) => item && items.indexOf(item) === index);
+};
+
+const formatImageEditingResponse = (result) => {
   const data = Array.isArray(result?.data) ? result.data : [];
   const images = [];
   const texts = [];
@@ -32,25 +40,31 @@ const handler = async (
   name,
   {
     prompt = '',
+    images = [],
+    mask,
     level = 'standard',
     n,
     size,
     quality,
-    style,
     background,
   } = {},
   { server, geminiWs, env },
 ) => {
   const textPrompt = String(prompt || '').trim();
   if (!textPrompt) {
-    throw new Error('imageGeneration prompt 不能为空');
+    throw new Error('imageEditing prompt 不能为空');
+  }
+
+  const inputImages = normalizeImages(images);
+  if (inputImages.length === 0) {
+    throw new Error('imageEditing images 不能为空');
   }
 
   if (!env.OPENAI_API_KEY) {
     throw new Error('Worker 缺少 OPENAI_API_KEY secret');
   }
 
-  const baseModel = String(env.OPENAI_IMAGE_GEN_MODEL || '').trim();
+  const baseModel = String(env.OPENAI_IMAGE_EDIT_MODEL || '').trim();
   if (!baseModel) {
     throw new Error('Worker 缺少 OPENAI_IMAGE_MODEL 配置');
   }
@@ -60,14 +74,18 @@ const handler = async (
 
   const baseUrl = trimTrailingSlash(env.OPENAI_BASE_URL || 'https://api.openai.com/v1');
 
-  const body = { model, prompt: textPrompt };
+  const body = {
+    model,
+    prompt: textPrompt,
+    image: inputImages.length === 1 ? inputImages[0] : inputImages,
+  };
+  if (mask) body.mask = String(mask).trim();
   if (Number.isFinite(n)) body.n = n;
   if (size) body.size = String(size).trim();
   if (quality) body.quality = String(quality).trim();
-  if (style) body.style = String(style).trim();
   if (background) body.background = String(background).trim();
 
-  const response = await fetch(`${baseUrl}/images/generations`, {
+  const response = await fetch(`${baseUrl}/images/edits`, {
     method: 'POST',
     headers: withBrowserUserAgent({
       Authorization: `Bearer ${env.OPENAI_API_KEY}`,
@@ -86,22 +104,31 @@ const handler = async (
     throw new Error(`图片请求失败: ${response.status} ${response.statusText}: ${responseText}`);
   }
 
-  const formatResult = formatImageGenerationResponse(result);
+  const formatResult = formatImageEditingResponse(result);
   if (formatResult.images?.length === 0 && !formatResult.text) {
-    throw new Error(`图片生成失败: ${responseText}`);
+    throw new Error(`图片编辑失败: ${responseText}`);
   }
   return formatResult;
 };
 
 export default {
-  name: 'imageGeneration',
-  description: '调用 OpenAI 兼容的 /v1/images/generations 接口，根据文本提示词生成图片。当用户需要凭空创作新图片（绘制、设计、插画、海报、概念图等）时调用此工具。可通过 size/quality/style/background 等参数控制输出；部分参数仅对特定模型生效（style 仅 dall-e-3，background 仅 gpt-image-1），未设置时由后端使用默认值。',
+  name: 'imageEditing',
+  description: '调用 OpenAI 兼容的 /v1/images/edits 接口，基于已有图片进行修改、重绘、扩图或多图合成。当用户需要在输入图片基础上做局部改动、风格转换、元素替换或将多张图融合为一张时调用此工具。可通过 size/quality/background 等参数控制输出；部分参数仅对特定模型生效（background 仅 gpt-image-1），未设置时由后端使用默认值。',
   parameters: {
     type: 'object',
     properties: {
       prompt: {
         type: 'string',
-        description: '图片生成提示词：详细描述想要生成的画面内容、主体、风格、构图、光照、氛围等。越具体效果越好。',
+        description: '图片编辑提示词：详细描述希望对输入图片做出的修改或目标画面效果。越具体效果越好。',
+      },
+      images: {
+        type: 'array',
+        description: '输入图片列表，每项可以是图片链接(http(s))、纯 base64 或 image data URL，原样透传给上游。dall-e-2 仅支持 1 张，gpt-image-1 可传多张做合成。',
+        items: { type: 'string' },
+      },
+      mask: {
+        type: 'string',
+        description: '蒙版图片（可选），透明区域 = 要被重绘的区域，其他区域保持原样。可以是图片链接、纯 base64 或 image data URL。仅作用于 images 中的第一张。',
       },
       level: {
         type: 'string',
@@ -121,12 +148,7 @@ export default {
       },
       quality: {
         type: 'string',
-        description: '图片质量。值有: standard / hd / low / medium / high, 默认为空, 由模型决定.',
-      },
-      style: {
-        type: 'string',
-        description: '图片风格, 默认为空, 由模型决定.',
-        enum: ['vivid', 'natural'],
+        description: '图片质量。值有: standard / low / medium / high, 默认为空, 由模型决定.',
       },
       background: {
         type: 'string',
@@ -134,7 +156,7 @@ export default {
         enum: ['transparent', 'opaque', 'auto'],
       },
     },
-    required: ['prompt'],
+    required: ['prompt', 'images'],
   },
   handler,
 };

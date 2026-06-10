@@ -1,5 +1,6 @@
 const GEMINI_LIVE_ENDPOINT = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
 const RECONNECT_DELAY_MS = 250;
+const INVALID_ARGUMENT_CLOSE_CODE = 1007;
 
 export const parseGeminiJson = (data) => {
   try {
@@ -24,6 +25,7 @@ export const createGeminiSessionManager = ({
   apiKey,
   server,
   sendClientStatus,
+  sendInitialMessage,
   onGeminiMessage,
 }) => {
   let currentWs = null;
@@ -41,12 +43,15 @@ export const createGeminiSessionManager = ({
 
   const buildUrl = () => `${GEMINI_LIVE_ENDPOINT}?key=${apiKey}`;
 
-  const scheduleReconnect = (reason = 'scheduled') => {
-    if (closedByClient || reconnectTimer || !setupMessage || !sessionHandle || !isClientOpen()) return;
+  const scheduleReconnect = (reason = 'scheduled', options = {}) => {
+    if (closedByClient || reconnectTimer || !setupMessage || !isClientOpen()) return;
+
+    const resume = options.resume ?? Boolean(sessionHandle);
+    if (resume && !sessionHandle) return;
 
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
-      connect({ reason, resume: true });
+      connect({ reason, resume });
     }, RECONNECT_DELAY_MS);
   };
 
@@ -117,14 +122,15 @@ export const createGeminiSessionManager = ({
           message: 'Gemini 当前连接即将结束，准备恢复会话',
           timeLeft: message.goAway.timeLeft,
         });
-        scheduleReconnect('goAway');
+        scheduleReconnect('goAway', { resume: true });
       }
 
       if (message?.setupComplete && !initialMessagesSent && initialMessages.length && isGeminiOpen()) {
         initialMessagesSent = true;
         for (const realtimeInput of initialMessages) {
           if (!isGeminiOpen() || generation !== currentGeneration) break;
-          currentWs.send(JSON.stringify(realtimeInput));
+          if (sendInitialMessage) await sendInitialMessage(realtimeInput);
+          else currentWs.send(JSON.stringify(realtimeInput));
         }
       }
 
@@ -139,14 +145,41 @@ export const createGeminiSessionManager = ({
     geminiWs.addEventListener('close', (event) => {
       if (generation !== currentGeneration) return;
 
-      if (!closedByClient && sessionHandle && setupMessage && event.code !== 1000) {
+      if (!closedByClient && setupMessage && event.code !== 1000) {
+        if (resume && event.code === INVALID_ARGUMENT_CLOSE_CODE) {
+          sessionHandle = '';
+          sendClientStatus({
+            type: 'gemini_close',
+            message: `Gemini 拒绝恢复令牌，会话不可恢复 code=${event.code || 'unknown'} reason=${event.reason || '无'}`,
+            code: event.code,
+            reason: event.reason,
+            resumable: false,
+          });
+          closedByClient = true;
+          server.close(1000, 'Gemini session is not resumable');
+          return;
+        }
+
+        if (!sessionHandle) {
+          sendClientStatus({
+            type: everOpened ? 'gemini_close' : 'gemini_error',
+            message: `Gemini 连接关闭且没有可用恢复令牌 code=${event.code || 'unknown'} reason=${event.reason || '无'}`,
+            code: event.code,
+            reason: event.reason,
+            resumable: false,
+          });
+          closedByClient = true;
+          server.close(1000, 'Gemini session is not resumable');
+          return;
+        }
+
         sendClientStatus({
           type: 'session_reconnect',
           message: `Gemini 连接中断，正在恢复会话 code=${event.code || 'unknown'} reason=${event.reason || '无'}`,
           code: event.code,
           reason: event.reason,
         });
-        scheduleReconnect('close');
+        scheduleReconnect('close', { resume: true });
         return;
       }
 
