@@ -6,6 +6,7 @@ const DISPLAY_NAMES = {
   duckduckgo_search: 'DuckDuckGo 搜索',
   fetch: '网络请求',
   urlContext: '网页内容',
+  jinaReader: 'Jina阅读器',
   musicPlaylist: '音乐播放列表',
   codeExecution: '代码执行',
   renderPage: '页面渲染',
@@ -160,7 +161,7 @@ const deriveDisplay = (name, args, response) => {
   }
 
   // prompt 文本：各工具入参里的主要描述字段
-  if (name === 'urlContext') {
+  if (name === 'urlContext' || name === 'jinaReader') {
     const urlList = (Array.isArray(args?.urls) ? args.urls : []).filter(Boolean);
     if (urlList.length) display.prompt = urlList.join('\n');
   } else if (name === 'fetch') {
