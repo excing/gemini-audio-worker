@@ -12,12 +12,12 @@ export const tools = [
   getWeatherTool,
   webSearchTool,
   urlContextTool,
-  fetchTool,
+  // fetchTool,
   checkDomainAvailabilityTool,
-  imageGenerationTool,
-  imageEditingTool,
-  musicPlaylistTool,
-  duckduckgoSearchTool,
+  // imageGenerationTool,
+  // imageEditingTool,
+  // musicPlaylistTool,
+  // duckduckgoSearchTool,
 ];
 
 export const toolDeclarations = tools.map(({ name, description, parameters }) => ({

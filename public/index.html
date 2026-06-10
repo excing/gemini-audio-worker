@@ -578,8 +578,8 @@ select::-ms-expand {
       </div>
       <footer class="call-actions">
         <button class="call-action" type="button" @click="toggleCallAudioMode"><span class="icon-btn"><component :is="muteModeIcon" ></component></span></button>
-        <button class="call-action" type="button" :disabled="mediaStarting" @click="toggleCallScreenShare"><span class="icon-btn" :class="{ active: callMediaMode === 'screen' }"><component :is="callMediaMode === 'screen' ? 'screen-share-off-icon' : 'screen-share-icon'" ></component></span></button>
-        <button class="call-action" type="button" :disabled="mediaStarting" @click="toggleCallVideo"><span class="icon-btn" :class="{ active: callMediaMode === 'video' }"><component :is="callMediaMode === 'video' ? 'video-off-icon' : 'video-icon'" ></component></span></button>
+        <button class="call-action" type="button" :disabled="true" @click="toggleCallScreenShare"><span class="icon-btn" :class="{ active: callMediaMode === 'screen' }"><component :is="callMediaMode === 'screen' ? 'screen-share-off-icon' : 'screen-share-icon'" ></component></span></button>
+        <button class="call-action" type="button" :disabled="true" @click="toggleCallVideo"><span class="icon-btn" :class="{ active: callMediaMode === 'video' }"><component :is="callMediaMode === 'video' ? 'video-off-icon' : 'video-icon'" ></component></span></button>
         <button class="call-action" type="button" @click="exitCallMode"><span class="icon-btn danger"><phone-off-icon ></phone-off-icon></span></button>
       </footer>
     </div>
