@@ -79,6 +79,25 @@ const normalizeLyrics = (lyricData) => ({
   karaoke_lyric: String(lyricData?.klyric || '').trim(),
 });
 
+const normalizeCreator = (creator) => ({
+  id: creator?.userId ?? creator?.id ?? null,
+  nickname: String(creator?.nickname || '').trim(),
+  avatar_url: String(creator?.avatarUrl || '').trim(),
+  signature: String(creator?.signature || '').trim(),
+});
+
+const normalizePlaylistInfo = (playlistData) => ({
+  id: playlistData?.id ?? null,
+  name: String(playlistData?.name || '').trim(),
+  description: String(playlistData?.description || '').trim(),
+  cover: String(playlistData?.coverImgUrl || playlistData?.picUrl || '').trim(),
+  track_count: Number(playlistData?.trackCount || 0) || 0,
+  play_count: Number(playlistData?.playCount || 0) || 0,
+  share_count: Number(playlistData?.shareCount || 0) || 0,
+  subscribed_count: Number(playlistData?.subscribedCount || 0) || 0,
+  creator: normalizeCreator(playlistData?.creator),
+});
+
 const enrichSong = async (song, level) => {
   const baseSong = normalizeSearchSong(song);
   if (!baseSong.id) {
@@ -119,21 +138,26 @@ const enrichSong = async (song, level) => {
   };
 };
 
-const handler = async (id, name, { keyword, limit = DEFAULT_LIMIT, offset = 0, level = DEFAULT_LEVEL } = {}) => {
+const normalizeCommonOptions = ({ limit = DEFAULT_LIMIT, offset = 0, level = DEFAULT_LEVEL } = {}) => {
+  const normalizedLevel = String(level || DEFAULT_LEVEL).trim().toLowerCase();
+
+  return {
+    limit: clampInteger(limit, DEFAULT_LIMIT, 1, MAX_LIMIT),
+    offset: clampInteger(offset, 0, 0, 1000),
+    level: ALLOWED_LEVELS.has(normalizedLevel) ? normalizedLevel : DEFAULT_LEVEL,
+  };
+};
+
+const getSearchPlaylist = async (keyword, options) => {
   const searchKeyword = String(keyword || '').trim();
   if (!searchKeyword) {
     throw new Error('musicPlaylist keyword 不能为空');
   }
 
-  const normalizedLimit = clampInteger(limit, DEFAULT_LIMIT, 1, MAX_LIMIT);
-  const normalizedOffset = clampInteger(offset, 0, 0, 1000);
-  const normalizedLevel = String(level || DEFAULT_LEVEL).trim().toLowerCase();
-  const selectedLevel = ALLOWED_LEVELS.has(normalizedLevel) ? normalizedLevel : DEFAULT_LEVEL;
-
   const searchUrl = buildUrl('163_search', {
     keyword: searchKeyword,
-    limit: normalizedLimit,
-    offset: normalizedOffset,
+    limit: options.limit,
+    offset: options.offset,
   });
   const searchPayload = await fetchJson(searchUrl);
   const songs = Array.isArray(searchPayload?.data?.songs)
@@ -143,28 +167,72 @@ const handler = async (id, name, { keyword, limit = DEFAULT_LIMIT, offset = 0, l
       : [];
 
   const playlist = await Promise.all(
-    songs.slice(0, normalizedLimit).map((song) => enrichSong(song, selectedLevel)),
+    songs.slice(0, options.limit).map((song) => enrichSong(song, options.level)),
   );
 
   return {
+    source: 'search',
     keyword: searchKeyword,
-    limit: normalizedLimit,
-    offset: normalizedOffset,
-    level: selectedLevel,
+    limit: options.limit,
+    offset: options.offset,
+    level: options.level,
     total: Number(searchPayload?.data?.total || songs.length) || songs.length,
     playlist,
   };
 };
 
+const getPlaylistById = async (playlistId, options) => {
+  const normalizedPlaylistId = String(playlistId || '').trim();
+  if (!normalizedPlaylistId) {
+    throw new Error('musicPlaylist playlist_id 不能为空');
+  }
+
+  const playlistUrl = buildUrl('163_playlist', { id: normalizedPlaylistId });
+  const playlistPayload = await fetchJson(playlistUrl);
+  const playlistData = playlistPayload?.data || {};
+  const tracks = Array.isArray(playlistData?.tracks) ? playlistData.tracks : [];
+  const selectedTracks = tracks.slice(options.offset, options.offset + options.limit);
+
+  const playlist = await Promise.all(
+    selectedTracks.map((song) => enrichSong(song, options.level)),
+  );
+
+  return {
+    source: 'playlist',
+    playlist_id: normalizedPlaylistId,
+    playlist_info: normalizePlaylistInfo(playlistData),
+    limit: options.limit,
+    offset: options.offset,
+    level: options.level,
+    total: Number(playlistData?.trackCount || tracks.length) || tracks.length,
+    playlist,
+  };
+};
+
+const handler = async (id, name, { keyword, playlist_id: playlistId, playlistId: camelPlaylistId, limit = DEFAULT_LIMIT, offset = 0, level = DEFAULT_LEVEL } = {}) => {
+  const options = normalizeCommonOptions({ limit, offset, level });
+  const normalizedPlaylistId = String(playlistId || camelPlaylistId || '').trim();
+
+  if (normalizedPlaylistId) {
+    return getPlaylistById(normalizedPlaylistId, options);
+  }
+
+  return getSearchPlaylist(keyword, options);
+};
+
 export default {
   name: 'musicPlaylist',
-  description: '搜索网易云音乐并返回完整播放列表。会先按关键词搜索歌曲，再补全每首歌的播放链接、封面和歌词；默认返回 10 首。',
+  description: '搜索网易云音乐或按歌单 ID 获取网易云歌单歌曲列表。会补全每首歌的播放链接、封面和歌词；默认返回 10 首。',
   parameters: {
     type: 'object',
     properties: {
       keyword: {
         type: 'string',
-        description: '搜索关键词，例如歌曲名、歌手名或专辑名。',
+        description: '搜索关键词，例如歌曲名、歌手名或专辑名。未提供 playlist_id 时必填。',
+      },
+      playlist_id: {
+        type: 'string',
+        description: '网易云歌单 ID，例如 5202687076。提供后优先按歌单 ID 获取歌曲列表。',
       },
       limit: {
         type: 'number',
@@ -172,14 +240,13 @@ export default {
       },
       offset: {
         type: 'number',
-        description: '搜索偏移量，默认 0。',
+        description: '偏移量，搜索模式传给搜索接口；歌单模式用于截取歌单歌曲列表。默认 0。',
       },
       level: {
         type: 'string',
         description: '音质等级，可选 standard、exhigh、lossless、hires、jymaster、sky、jyeffect。默认 lossless。',
       },
     },
-    required: ['keyword'],
   },
   handler,
 };
