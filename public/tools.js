@@ -378,7 +378,7 @@ const tavilySearch = {
 export const tools = [
   codeExecution,
   renderPage,
-  // jinaReader,
+  jinaReader,
   tavilySearch,
 ];
 
