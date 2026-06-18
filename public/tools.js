@@ -377,9 +377,9 @@ const tavilySearch = {
 
 export const tools = [
   codeExecution,
-  // renderPage,
+  renderPage,
   // jinaReader,
-  // tavilySearch,
+  tavilySearch,
 ];
 
 export const toolDeclarations = tools.map(({ name, configType, description, parameters }) => ({

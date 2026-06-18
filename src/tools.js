@@ -16,8 +16,8 @@ export const tools = [
   checkDomainAvailabilityTool,
   // imageGenerationTool,
   // imageEditingTool,
-  // musicPlaylistTool,
-  // duckduckgoSearchTool,
+  musicPlaylistTool,
+  duckduckgoSearchTool,
 ];
 
 export const toolDeclarations = tools.map(({ name, description, parameters }) => ({
