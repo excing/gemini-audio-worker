@@ -340,6 +340,281 @@
 select::-ms-expand {
   display: none;
 }
+
+/* 激活码保护遮罩层 */
+.activation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000; /* 必须高于 boot-screen 和一切 modal */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(9, 9, 11, 0.85); /* 沉浸式暗色底 */
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  color: #fafafa;
+  font-family: system-ui, -apple-system, sans-serif;
+  padding: 20px;
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 激活卡片 */
+.activation-card {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(20, 20, 25, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 32px 28px;
+  box-shadow: 0 0 40px rgba(124, 58, 237, 0.1), 0 24px 70px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, opacity;
+}
+
+/* 标题样式 */
+.activation-title {
+  font-size: 22px;
+  font-weight: 650;
+  margin: 0 0 10px;
+  background: linear-gradient(135deg, #a855f7, #ec4899, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.activation-subtitle {
+  font-size: 14px;
+  color: #a1a1aa;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+
+/* 输入框区域 */
+.activation-input-wrapper {
+  position: relative;
+  margin-bottom: 18px;
+}
+
+.activation-input {
+  width: 100%;
+  height: 52px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  letter-spacing: 2px;
+  padding: 0 16px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.activation-input:focus {
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.activation-input::placeholder {
+  color: #52525b;
+  letter-spacing: 0;
+  font-size: 14px;
+}
+
+/* 错误提示 */
+.activation-error {
+  font-size: 13px;
+  color: #f43f5e;
+  margin-top: -10px;
+  margin-bottom: 16px;
+  text-align: left;
+  padding-left: 4px;
+  animation: shakeError 0.3s ease;
+}
+
+/* 按钮 */
+.activation-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 0;
+  cursor: pointer;
+}
+
+.activation-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.45);
+}
+
+.activation-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+}
+
+.activation-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* 加载动画 */
+.activation-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+}
+
+/* 获取途径区 */
+.activation-footer {
+  margin-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 20px;
+}
+
+.activation-how-to {
+  background: none;
+  border: none;
+  color: #a855f7;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.activation-how-to:hover {
+  background: rgba(168, 85, 247, 0.1);
+}
+
+/* 微信渠道折叠卡片 */
+.wechat-section {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wechat-section.expanded {
+  max-height: 380px;
+  opacity: 1;
+  margin-top: 16px;
+}
+
+.wechat-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.wechat-copy-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.wechat-id {
+  font-family: monospace;
+  font-weight: 600;
+  color: #e4e4e7;
+}
+
+.copy-btn {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+  background: rgba(168, 85, 247, 0.25);
+  color: #d8b4fe;
+}
+
+.wechat-qr-wrapper {
+  background: #fff;
+  padding: 8px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wechat-qr {
+  width: 160px;
+  height: 160px;
+  display: block;
+  object-fit: contain;
+}
+
+.wechat-tip {
+  font-size: 12px;
+  color: #71717a;
+}
+
+/* 动效 @keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+/* 卡片整体抖动效果 */
+.shake-animation {
+  animation: shakeCard 0.4s ease-in-out;
+}
+
+@keyframes shakeCard {
+  0%, 100% { transform: translateX(0); }
+  15%, 45%, 75% { transform: translateX(-6px); }
+  30%, 60%, 90% { transform: translateX(6px); }
+}
   </style>
 </head>
 <body>
@@ -355,6 +630,55 @@ select::-ms-expand {
     </div>
   </div>
   <div id="app">
+    <!-- 激活码阻断弹窗 -->
+    <div class="activation-overlay" v-if="needsActivation" @click.self="shakeCard">
+      <div class="activation-card" :class="{ 'shake-animation': shouldShake }">
+        <h2 class="activation-title">激活 BingwuAI 语音助手</h2>
+        <p class="activation-subtitle">请输入激活码以开启与 Gemini 的实时音视频对话</p>
+        
+        <div class="activation-input-wrapper">
+          <input 
+            type="text" 
+            class="activation-input" 
+            v-model="activationCode" 
+            placeholder="请输入激活码" 
+            @keyup.enter="verifyAndActivate"
+            :disabled="activating"
+          />
+        </div>
+        
+        <div class="activation-error" v-if="activationError">
+          ⚠️ {{ activationError }}
+        </div>
+        
+        <button class="activation-btn" @click="verifyAndActivate" :disabled="activating || !activationCode.trim()">
+          <span class="activation-spinner" v-if="activating"></span>
+          <span>{{ activating ? '正在验证...' : '立即激活' }}</span>
+        </button>
+        
+        <div class="activation-footer" v-if="wxQrCodeUrl">
+          <button class="activation-how-to" @click="showQrCode = !showQrCode">
+            <span>{{ showQrCode ? '收起获取说明' : '如何获取激活码？' }}</span>
+            <chevron-down-icon v-if="!showQrCode" style="width: 14px; height: 14px;"></chevron-down-icon>
+            <chevron-up-icon v-else style="width: 14px; height: 14px;"></chevron-up-icon>
+          </button>
+          
+          <div class="wechat-section" :class="{ expanded: showQrCode }">
+            <div class="wechat-card">
+              <div class="wechat-copy-row">
+                <span>微信号: <span class="wechat-id">{{ wxAccountID }}</span></span>
+                <button class="copy-btn" @click="copyWechatId('bingwu_ai')">{{ copyTextStatus || '复制' }}</button>
+              </div>
+              <div class="wechat-qr-wrapper">
+                <img class="wechat-qr" :src="wxQrCodeUrl" alt="微信二维码" />
+              </div>
+              <span class="wechat-tip">扫码添加微信获取激活码</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="app-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'drawer-open': drawerOpen }" v-show="uiMode === 'chat'">
       <div class="drawer-scrim" v-if="drawerOpen" @click="drawerOpen = false"></div>
       <aside class="sidebar">
@@ -1115,6 +1439,16 @@ select::-ms-expand {
           userWaveBars: [0, 0, 0, 0, 0],
           waveRafId: null,
           musicStore: musicPlayerStore,
+          activationCode: '',
+          isActivated: false,
+          hasPasscodeConfigured: false,
+          activating: false,
+          activationError: '',
+          showQrCode: false,
+          wxAccountID: '',
+          wxQrCodeUrl: '',
+          shouldShake: false,
+          copyTextStatus: '',
         };
       },
       created() {
@@ -1127,6 +1461,7 @@ select::-ms-expand {
         this.mcpOauthTokens = this.githubService.tokens;
       },
       mounted() {
+        this.checkActivationStatus();
         this.roles = this.loadUserRoles();
         this.selectedRoleId = localStorage.getItem('geminiSelectedRoleId') || this.allRoles[0].id;
         this.audioService = createAudioService({
@@ -1195,6 +1530,9 @@ select::-ms-expand {
         },
       },
       computed: {
+        needsActivation() {
+          return this.hasPasscodeConfigured && !this.isActivated;
+        },
         allRoles() {
           return [...this.roles, ...(this.default_roles.map(role => this.normalizeRole(role)))];
         },
@@ -1299,6 +1637,75 @@ select::-ms-expand {
         },
       },
       methods: {
+        shakeCard() {
+          this.shouldShake = true;
+          setTimeout(() => { this.shouldShake = false; }, 400);
+        },
+        async copyWechatId(wechatId) {
+          const ok = await copyTextToClipboard(wechatId);
+          if (ok) {
+            this.copyTextStatus = '已复制';
+            toast.success('已复制微信号: ' + wechatId);
+            setTimeout(() => { this.copyTextStatus = ''; }, 2000);
+          } else {
+            toast.error('复制失败，请手动选择复制');
+          }
+        },
+        async verifyAndActivate() {
+          const code = this.activationCode.trim();
+          if (!code) return;
+          this.activating = true;
+          this.activationError = '';
+          try {
+            const res = await fetch(`/api/verify-passcode?passcode=${encodeURIComponent(code)}`);
+            const data = await res.json();
+            if (data.valid) {
+              localStorage.setItem('geminiActivationCode', code);
+              this.isActivated = true;
+              this.activationCode = '';
+              toast.success('激活成功！欢迎使用 BingwuAI');
+            } else {
+              this.activationError = data.message || '激活码错误，请重新输入';
+              this.shakeCard();
+            }
+          } catch (e) {
+            this.activationError = '网络请求失败，请稍后重试';
+            this.shakeCard();
+          } finally {
+            this.activating = false;
+          }
+        },
+        async checkActivationStatus() {
+          try {
+            const res = await fetch('/api/config');
+            const data = await res.json();
+            this.hasPasscodeConfigured = !!data.hasPasscode;
+            this.wxAccountID = data.wxAccountID || '';
+            this.wxQrCodeUrl = data.wxQrCodeUrl || '';
+            
+            if (this.hasPasscodeConfigured) {
+              const savedCode = localStorage.getItem('geminiActivationCode') || '';
+              if (savedCode) {
+                const verifyRes = await fetch(`/api/verify-passcode?passcode=${encodeURIComponent(savedCode)}`);
+                const verifyData = await verifyRes.json();
+                if (verifyData.valid) {
+                  this.isActivated = true;
+                } else {
+                  localStorage.removeItem('geminiActivationCode');
+                  this.isActivated = false;
+                  toast.error('激活码已失效，请重新激活');
+                }
+              } else {
+                this.isActivated = false;
+              }
+            } else {
+              this.isActivated = true;
+            }
+          } catch (e) {
+            console.error('Failed to load system config:', e);
+            this.isActivated = false;
+          }
+        },
         toggleSidebar() {
           if (window.matchMedia('(max-width: 960px)').matches) this.drawerOpen = !this.drawerOpen;
           else this.sidebarCollapsed = !this.sidebarCollapsed;
@@ -2560,7 +2967,8 @@ select::-ms-expand {
           const wsGeneration = this.wsGeneration + 1;
           this.wsGeneration = wsGeneration;
           this.resetSessionUsage();
-          const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+          const passcode = localStorage.getItem('geminiActivationCode') || '';
+          const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?passcode=${encodeURIComponent(passcode)}`);
           this.ws = ws;
           this.interruptAiPlayback();
           this.setSessionStatus('connecting');
@@ -2581,8 +2989,22 @@ select::-ms-expand {
             }
             this.handleMessage(payload);
           };
-          ws.onerror = () => {
-            if (wsGeneration === this.wsGeneration) this.setSessionStatus('error');
+          ws.onerror = async () => {
+            if (wsGeneration === this.wsGeneration) {
+              this.setSessionStatus('error');
+              if (this.hasPasscodeConfigured && this.isActivated) {
+                const savedCode = localStorage.getItem('geminiActivationCode') || '';
+                try {
+                  const verifyRes = await fetch(`/api/verify-passcode?passcode=${encodeURIComponent(savedCode)}`);
+                  const verifyData = await verifyRes.json();
+                  if (!verifyData.valid) {
+                    localStorage.removeItem('geminiActivationCode');
+                    this.isActivated = false;
+                    toast.error('连接失败：激活码已失效');
+                  }
+                } catch (e) {}
+              }
+            }
           };
           ws.onclose = (event) => {
             if (wsGeneration !== this.wsGeneration) return;
