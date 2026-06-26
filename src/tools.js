@@ -12,10 +12,10 @@ export const tools = [
   getWeatherTool,
   webSearchTool,
   urlContextTool,
-  // fetchTool,
+  fetchTool,
   checkDomainAvailabilityTool,
-  // imageGenerationTool,
-  // imageEditingTool,
+  imageGenerationTool,
+  imageEditingTool,
   musicPlaylistTool,
   duckduckgoSearchTool,
 ];

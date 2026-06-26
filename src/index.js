@@ -20,6 +20,31 @@ export default {
     const upgradeHeader = request.headers.get('Upgrade');
     const url = new URL(request.url);
 
+    if (url.pathname === '/api/config') {
+      return Response.json({
+        hasPasscode: !!env.ACTIVATION_CODE,
+        wxAccountID: env.WX_ACCOUNT_ID || '',
+        wxQrCodeUrl: env.WX_QR_CODE_URL || '',
+      });
+    }
+
+    if (url.pathname === '/api/verify-passcode') {
+      let passcode = '';
+      if (request.method === 'POST') {
+        try {
+          const body = await request.json();
+          passcode = body.passcode || '';
+        } catch (e) {}
+      } else {
+        passcode = url.searchParams.get('passcode') || '';
+      }
+      const isValid = !env.ACTIVATION_CODE || (passcode === env.ACTIVATION_CODE);
+      return Response.json({
+        valid: isValid,
+        message: isValid ? '验证通过' : '激活码错误',
+      });
+    }
+
     if (url.pathname === '/api/tools') {
       if (availableToolDeclarations.length == 0) {
         availableToolDeclarations.push(
@@ -39,6 +64,13 @@ export default {
 
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
       return env.ASSETS.fetch(request);
+    }
+
+    if (env.ACTIVATION_CODE) {
+      const passcode = url.searchParams.get('passcode') || '';
+      if (passcode !== env.ACTIVATION_CODE) {
+        return new Response('Unauthorized: Invalid passcode', { status: 403 });
+      }
     }
 
     // 1. 创建 WebSocket 对 (client端返回给前端，server端在Worker内部处理)
